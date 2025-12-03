@@ -1,0 +1,68 @@
+# NeuroPhone Default Configuration
+# Optimized for Oppo Reno 13 (Dimensity 8350, 12GB RAM)
+
+# Processing loop interval (milliseconds)
+loop_interval_ms = 20  # 50 Hz
+
+# Debug logging
+debug = false
+
+# LSM (Liquid State Machine) Configuration
+[lsm]
+dimensions = [8, 8, 8]  # 512 neurons
+p_exc = 0.3             # Excitatory connection probability
+p_inh = 0.2             # Inhibitory connection probability
+frac_inh = 0.2          # Fraction of inhibitory neurons
+spectral_radius = 0.9   # Weight scaling
+input_scale = 1.0       # Input scaling
+dt = 1.0                # Simulation timestep (ms)
+
+# ESN (Echo State Network) Configuration
+[esn]
+reservoir_size = 300    # Number of reservoir neurons
+spectral_radius = 0.95  # Echo state property
+leaking_rate = 0.3      # Neuron dynamics
+input_scale = 0.5       # Input scaling
+feedback_scale = 0.0    # Feedback (disabled by default)
+sparsity = 0.9          # Reservoir sparsity
+ridge_param = 1e-6      # Regularization
+use_bias = true         # Include bias in readout
+noise_level = 1e-4      # State noise
+
+# Bridge Configuration
+[bridge]
+lsm_dim = 512           # Must match LSM size
+esn_dim = 300           # Must match ESN size
+llm_dim = 2048          # LLM embedding dimension
+history_size = 100      # State history buffer
+sparse_threshold = 0.1  # Feature sparsity threshold
+temporal_window_ms = 1000.0  # Context window
+
+# Sensor Configuration
+[sensor]
+sample_rate_hz = 50.0   # Sensor sampling rate
+buffer_size = 100       # Samples per sensor
+lowpass_cutoff_hz = 20.0   # Low-pass filter cutoff
+highpass_cutoff_hz = 0.1   # High-pass filter cutoff
+output_dim = 32         # Feature vector dimension
+
+# Local LLM Configuration
+[llm]
+model_path = "/data/local/tmp/llama-3.2-1b-q4_k_m.gguf"
+n_threads = 4           # CPU threads for inference
+context_size = 2048     # Context window size
+n_gpu_layers = 0        # GPU layers (0 for CPU-only)
+use_mmap = true         # Memory-map model file
+batch_size = 512        # Prompt batch size
+flash_attention = false # Flash attention (requires support)
+model_type = "Llama3_2_1B"  # Model variant
+
+# Claude Configuration (optional)
+[claude]
+# api_key = "sk-ant-..."  # Set via ANTHROPIC_API_KEY env var
+base_url = "https://api.anthropic.com/v1"
+model = "claude-sonnet-4-20250514"
+timeout_secs = 60
+max_retries = 3
+include_neural_context = true
+# system_prompt = "Custom system prompt..."
