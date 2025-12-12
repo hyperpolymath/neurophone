@@ -22,3 +22,7 @@
 - No MD5/SHA1 for security (use SHA256+)
 - HTTPS only (no HTTP URLs)
 - No hardcoded secrets
+
+## ⚠️ MIGRATION REQUIRED
+Java/Kotlin code must be migrated to Rust.
+See `.migration/JAVA_TO_RUST.md`
