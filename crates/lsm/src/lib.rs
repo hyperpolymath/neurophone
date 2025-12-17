@@ -7,9 +7,8 @@
 
 use ndarray::{Array1, Array2, Array3, Axis};
 use ndarray_rand::RandomExt;
-use rand::distributions::{Bernoulli, Uniform};
 use rand::Rng;
-use rand_distr::Normal;
+use rand_distr::{Bernoulli, Normal, Uniform};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
@@ -264,7 +263,7 @@ impl LiquidStateMachine {
         scale: f32,
         rng: &mut impl Rng,
     ) -> Array2<f32> {
-        let dist = Uniform::new(-1.0, 1.0);
+        let dist = Uniform::new(-1.0, 1.0).unwrap();
         let mut weights = Array2::random_using((n_neurons, input_dim), dist, rng);
 
         // Sparse connectivity: only ~30% of neurons receive each input

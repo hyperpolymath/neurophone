@@ -11,9 +11,8 @@
 
 use ndarray::{s, Array1, Array2, Axis};
 use ndarray_rand::RandomExt;
-use rand::distributions::Uniform;
 use rand::Rng;
-use rand_distr::Normal;
+use rand_distr::{Normal, Uniform};
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use thiserror::Error;
@@ -176,7 +175,7 @@ impl EchoStateNetwork {
     /// Create sparse reservoir weight matrix with target spectral radius
     fn create_reservoir_matrix(config: &EsnConfig, rng: &mut impl Rng) -> Array2<f32> {
         let n = config.reservoir_size;
-        let dist = Uniform::new(-1.0f32, 1.0f32);
+        let dist = Uniform::new(-1.0f32, 1.0f32).unwrap();
 
         let mut w = Array2::zeros((n, n));
 
@@ -211,7 +210,7 @@ impl EchoStateNetwork {
 
     /// Create input weight matrix
     fn create_input_matrix(config: &EsnConfig, input_dim: usize, rng: &mut impl Rng) -> Array2<f32> {
-        let dist = Uniform::new(-1.0f32, 1.0f32);
+        let dist = Uniform::new(-1.0f32, 1.0f32).unwrap();
         let w = Array2::random_using((config.reservoir_size, input_dim), dist, rng);
         w * config.input_scale
     }
@@ -422,7 +421,7 @@ impl EchoStateNetwork {
     /// Set feedback weights
     pub fn set_feedback(&mut self, output_dim: usize) {
         let mut rng = rand::thread_rng();
-        let dist = Uniform::new(-1.0f32, 1.0f32);
+        let dist = Uniform::new(-1.0f32, 1.0f32).unwrap();
         let w = Array2::random_using((self.config.reservoir_size, output_dim), dist, &mut rng);
         self.w_feedback = Some(w * self.config.feedback_scale);
         self.output_dim = Some(output_dim);
