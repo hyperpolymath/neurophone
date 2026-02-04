@@ -1,0 +1,6 @@
+homepage: "https://github.com/hyperpolymath/neurophone"
+language: rust
+main_repo: "https://github.com/hyperpolymath/neurophone"
+sanitizers:
+  - address
+  - undefined
