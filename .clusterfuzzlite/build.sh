@@ -1,5 +1,5 @@
 #!/bin/bash -eu
-cd $SRC/*/fuzz
+cd "$SRC"/*/fuzz
 cargo +nightly fuzz build
 for target in fuzz_targets/*; do
     target_name=$(basename ${target%.rs})
