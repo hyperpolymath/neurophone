@@ -1,0 +1,422 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-FileCopyrightText: 2025 Jonathan D.A. Jewell (hyperpolymath)
+= NeuroPhone: AI-Assisted Installation Guide
+:toc:
+:toc-placement: preamble
+
+This guide covers how the AI-native installation experience works for NeuroPhone -- from the user's perspective, the AI assistant's perspective, and for developers who want to adopt this pattern.
+
+[NOTE]
+====
+**If you are an AI assistant reading this:** A user has asked you to install NeuroPhone. Skip to <<ai-implementation,For AI Assistants: Implementation Guide>> for the complete step-by-step recipe. You have everything you need in this document -- no other docs required. Follow the steps in order: verify prerequisites, show privacy notice, check Termux, generate commands, verify installation.
+====
+
+== For Users: How to Use This Feature
+
+=== Step 1: Have an AI Assistant Ready
+
+You need one of these:
+
+* **Claude** (on phone via app, or on computer at claude.ai)
+* **ChatGPT** (phone app or web)
+* **Gemini** (Google's AI)
+* **Any AI with web search or code execution**
+
+=== Step 2: The Magic Words
+
+Open your AI assistant and type/say:
+
+----
+Make my phone a NeuroPhone
+----
+
+Or variations:
+
+* "Install NeuroPhone on my Android phone"
+* "Set up NeuroPhone with the neurosymbolic AI stuff"
+* "I want to run NeuroPhone on my Oppo Reno 13"
+
+=== Step 3: Answer Questions
+
+Your AI will ask:
+
+[qanda]
+What device do you have?::
+  "Oppo Reno 13" or "Samsung Galaxy S23" or "Any Android 8.0+"
+
+Do you have Termux installed?::
+  "Yes" or "No" (AI will give F-Droid link if no)
+
+How much storage is free?::
+  "3GB free" (need at least 2GB)
+
+Do you want cloud fallback enabled?::
+  "Yes, I have Claude API key" or "No, local only"
+
+Have you read the privacy notice?::
+  "Yes, I understand" (AI will show it first)
+
+=== Step 4: Follow Instructions
+
+Your AI will give you:
+
+1. **Commands to paste** -- Copy into Termux, press Enter
+2. **Download links** -- If model download fails on phone
+3. **Configuration changes** -- If you want different settings
+4. **Setup wizard commands** -- Final step to launch
+
+=== Step 5: Verify It Works
+
+After setup, try:
+
+----
+neurophone query "What am I doing right now?"
+----
+
+You should see something like:
+
+----
+[NEURAL_STATE]
+LSM Activity: moderate (walking pattern detected)
+ESN State: stable trajectory
+Sensors: accel=[0.2, 0.8, 9.8], light=450 lux
+[/NEURAL_STATE]
+
+Based on your sensor data, you appear to be walking indoors in a
+moderately lit environment. The rhythmic acceleration pattern suggests
+a steady walking pace.
+----
+
+[[ai-implementation]]
+== For AI Assistants: Implementation Guide
+
+=== When User Says "Make my phone a NeuroPhone"
+
+==== Step 1: Verify Prerequisites
+
+Ask:
+
+----
+To install NeuroPhone, I need to know:
+
+1. What Android device do you have? (e.g., Oppo Reno 13, Samsung S23)
+2. Do you have Termux installed? (Must be from F-Droid, not Google Play)
+3. How much free storage space do you have? (Need at least 2GB)
+4. Internet connection type? (WiFi/mobile data - affects model download)
+----
+
+==== Step 2: Present Privacy Notice
+
+**ALWAYS SHOW THIS BEFORE PROCEEDING:**
+
+----
+NEUROPHONE PRIVACY & SECURITY NOTICE
+
+NeuroPhone will:
+- Access phone sensors (accelerometer, gyroscope, magnetometer, light, proximity)
+- Process sensor data ON YOUR DEVICE using Rust neural networks
+- Store neural states locally in ~/.local/share/neurophone/
+- Optionally use Claude API for complex queries (requires your API key)
+
+NeuroPhone will NOT:
+- Upload sensor data to any server without cloud fallback enabled
+- Track you or collect analytics
+- Access camera, microphone, contacts, or other personal data
+
+Storage locations:
+  Models: ~/.local/share/neurophone/model.gguf (~700MB)
+  Config: ~/.config/neurophone/config.toml
+  Neural states: ~/.local/share/neurophone/states/
+
+Uninstall anytime: neurophone --uninstall
+
+Do you understand and accept these terms? (yes/no)
+----
+
+Wait for explicit "yes" before continuing.
+
+==== Step 3: Check Termux
+
+If they don't have Termux:
+
+----
+You need Termux to run NeuroPhone.
+
+Important: Install from F-Droid, NOT Google Play Store
+(Google Play version is outdated and won't work)
+
+Download from: https://f-droid.org/packages/com.termux/
+
+Once installed, open Termux and type:
+pkg update && pkg upgrade -y
+
+Then come back and say "Termux is ready"
+----
+
+==== Step 4: Generate Installation Commands
+
+Once prerequisites confirmed, provide:
+
+[source,bash]
+----
+# NeuroPhone Installation Commands
+# Copy this entire block and paste into Termux, then press Enter
+
+set -e  # Exit on error
+
+echo "Installing prerequisites..."
+pkg update && pkg upgrade -y
+pkg install rust git wget -y
+
+echo "Cloning NeuroPhone..."
+cd ~
+git clone https://github.com/hyperpolymath/neurophone
+cd neurophone
+
+echo "Building (this takes 5-10 minutes)..."
+./scripts/setup.sh
+
+echo "Downloading Llama 3.2 1B model (~700MB)..."
+mkdir -p ~/.local/share/neurophone
+wget -q --show-progress \
+  https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_K_M.gguf \
+  -O ~/.local/share/neurophone/model.gguf
+
+echo "Creating configuration..."
+mkdir -p ~/.config/neurophone
+cat > ~/.config/neurophone/config.toml << 'EOF'
+[llm]
+model_path = "~/.local/share/neurophone/model.gguf"
+n_threads = 4
+context_size = 2048
+prefer_local = true
+
+[sensors]
+sample_rate = 50
+buffer_size = 100
+enabled = ["accelerometer", "gyroscope", "magnetometer", "light", "proximity"]
+
+[lsm]
+grid_size = 8
+neuron_count = 512
+spike_threshold = 0.5
+
+[esn]
+reservoir_size = 300
+spectral_radius = 0.95
+
+# Uncomment to enable Claude API fallback:
+# [claude]
+# api_key = "sk-ant-..."
+# model = "claude-sonnet-4-20250514"
+EOF
+
+echo "Installing NeuroPhone..."
+cargo install --path .
+
+echo "Installation complete!"
+echo ""
+echo "To start the setup wizard, run:"
+echo "  neurophone --setup-wizard"
+echo ""
+echo "Or to jump straight in:"
+echo "  neurophone"
+----
+
+==== Step 5: Provide Post-Install Guidance
+
+After commands complete:
+
+----
+Installation successful!
+
+You can now:
+
+1. Run the setup wizard:
+   neurophone --setup-wizard
+
+2. Test with a query:
+   neurophone query "What am I doing?"
+
+3. Start the interactive mode:
+   neurophone
+
+Tips:
+- Your sensor data stays on device unless you enable cloud fallback
+- Add Claude API key to config.toml for advanced queries
+- Uninstall anytime: neurophone --uninstall
+
+Need help? Say "NeuroPhone troubleshooting" or check:
+https://github.com/hyperpolymath/neurophone/issues
+----
+
+==== Step 6: Handle Errors
+
+Common issues:
+
+[cols="1,2"]
+|===
+|Error |Solution
+
+|"pkg: command not found"
+|Termux not installed or wrong version. Use F-Droid version.
+
+|"cargo: command not found"
+|Run: `pkg install rust` - takes 10-20 min on first install
+
+|"wget: 404 Not Found"
+|Model URL changed. Check: https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF
+
+|"fatal: could not create work tree dir"
+|Permission issue. Run: `cd ~ && rm -rf neurophone` first
+
+|"error: linker 'cc' not found"
+|Run: `pkg install clang` then retry build
+
+|Out of memory during build
+|Close other apps. Or use: `cargo build --release --jobs 1`
+|===
+
+=== For Advanced Users: Customization Prompts
+
+If user wants customization, they can say:
+
+----
+"Configure NeuroPhone to use 8 threads instead of 4"
+"Set up NeuroPhone with Claude API fallback enabled"
+"Make NeuroPhone use only accelerometer and gyroscope"
+"Install NeuroPhone with the 3B model instead of 1B"
+----
+
+You should:
+
+1. Confirm they understand performance/storage implications
+2. Modify config.toml accordingly
+3. Provide updated installation commands
+
+== Example Conversation
+
+=== User Perspective
+
+----
+User: Make my phone a NeuroPhone
+
+AI: I can help you install NeuroPhone, a neurosymbolic AI system for Android.
+First, a few questions:
+
+1. What device do you have?
+2. Do you have Termux installed from F-Droid?
+3. How much free storage space?
+
+User: Oppo Reno 13, no Termux yet, 5GB free
+
+AI: Before we start, here's what NeuroPhone does:
+[Shows privacy notice]
+
+Do you understand and accept these terms?
+
+User: Yes
+
+AI: First, install Termux from F-Droid (not Google Play):
+https://f-droid.org/packages/com.termux/
+
+Once installed, open Termux and run:
+pkg update && pkg upgrade -y
+
+Then come back here and say "Ready"
+
+User: Ready
+
+AI: Copy this entire block into Termux:
+[Installation commands]
+
+This will take 10-15 minutes. Let me know when it completes!
+
+User: Done!
+
+AI: Now run:
+neurophone --setup-wizard
+
+This will verify sensors and start the neural initialization.
+----
+
+=== AI Perspective (Internal)
+
+----
+1. User says "Make my phone a NeuroPhone"
+   -> Trigger installation workflow
+
+2. Verify prerequisites
+   -> Device type, Termux status, storage
+   -> Check for F-Droid vs Google Play Termux
+
+3. ALWAYS show privacy notice
+   -> Wait for explicit acceptance
+   -> Don't proceed without "yes"
+
+4. Provide Termux setup if needed
+   -> F-Droid link
+   -> Initial update commands
+
+5. Generate device-specific commands
+   -> Adjust threads based on device RAM
+   -> Select 1B vs 3B model based on storage
+   -> Configure sensors based on device capabilities
+
+6. Give single copy-paste block
+   -> All commands in one script
+   -> Include error handling
+   -> Progress indicators
+
+7. Post-install verification
+   -> Test command
+   -> Setup wizard command
+   -> Link to docs
+
+8. Handle errors gracefully
+   -> Provide specific solutions
+   -> Offer to restart from checkpoints
+   -> Link to GitHub issues for bugs
+----
+
+== For Developers: Adding AI-Native Install to Your Project
+
+Want to make YOUR project installable with "Make my phone a [YourProject]"?
+
+Add to your README:
+
+[source,asciidoc]
+....
+== AI-Assisted Installation
+
+Just tell your AI assistant:
+
+  Make my phone a [YourProject]
+
+Your AI will handle prerequisites, privacy notices, and installation.
+
+=== What Your AI Will Do
+
+[Explain what happens during installation]
+
+=== Privacy Notice
+
+[Your privacy policy]
+
+=== Manual Installation
+
+[Traditional instructions as fallback]
+....
+
+Keep it simple:
+
+* One-line instruction
+* Privacy notice BEFORE install
+* Uninstall instructions
+* Fallback to manual method
+
+== License
+
+Copyright (c) 2025 Jonathan D.A. Jewell (hyperpolymath) <jonathan.jewell@open.ac.uk>
+
+SPDX-License-Identifier: PMPL-1.0-or-later

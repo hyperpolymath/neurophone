@@ -12,6 +12,123 @@ image:https://img.shields.io/badge/Platform-Android-green[Platform]
 image:https://img.shields.io/badge/Device-Oppo%20Reno%2013-blue[Target Device]
 image:https://img.shields.io/badge/RSR-Bronze-cd7f32[RSR Compliance]
 
+[TIP]
+====
+**AI-Assisted Install:** Just tell any AI: +
+`Set up NeuroPhone on my Android from https://github.com/hyperpolymath/neurophone` +
+It reads this repo, asks a few questions, and does everything. <<ai-install,Details below>>.
+====
+
+[[ai-install]]
+== AI-Assisted Installation (Recommended)
+
+=== Just Say It
+
+**You don't need to read this README.** Just say this to any AI assistant:
+
+[source,text]
+----
+Set up NeuroPhone on my Android from https://github.com/hyperpolymath/neurophone
+----
+
+**That's it. You don't type commands, install packages, or configure anything.** The AI fetches this repo, reads the installation guide inside it, figures out your device, and does everything. You just answer a few questions and confirm the privacy notice.
+
+The URL is the key -- it points the AI to this repo where `docs/AI_INSTALLATION_GUIDE.adoc` contains the complete step-by-step recipe. Any AI that can read a URL and run commands (or generate commands for you to paste) can do this.
+
+The AI handles all of this automatically:
+
+* Checking your device and storage
+* Installing Termux (if needed), Rust, Git, and dependencies
+* Cloning and building NeuroPhone for your specific hardware
+* Downloading the right LLM model for your device's RAM/storage
+* Creating your configuration with sensible defaults
+* Running the setup wizard
+* Giving you a working NeuroPhone
+
+=== Other Ways to Say It
+
+If your AI already knows about NeuroPhone (e.g. it can search the web), even shorter versions work:
+
+* "Make my phone a NeuroPhone"
+* "Install NeuroPhone on my Android"
+* "Turn my Oppo Reno 13 into a NeuroPhone"
+
+If it doesn't know the project, just include the URL:
+
+* "Set up https://github.com/hyperpolymath/neurophone on my phone"
+* "I want neurosymbolic AI on my phone -- install from https://github.com/hyperpolymath/neurophone"
+
+=== What You'll Be Asked
+
+Your AI will ask you:
+
+1. **What device?** (so it picks the right thread count and model size)
+2. **Privacy confirmation** -- what sensors are used and how data stays on-device
+3. **Cloud fallback?** (optional Claude API for complex queries -- default is local-only)
+
+That's it. Everything else is automatic. No package managers, no build flags, no config files.
+
+=== Privacy & Security Notice
+
+[IMPORTANT]
+====
+**What NeuroPhone does:**
+
+* Reads phone sensors (accelerometer, gyroscope, magnetometer, light, proximity)
+* Processes everything on-device using Rust neural networks + local Llama LLM
+* Stores neural states locally in `~/.local/share/neurophone/` (never uploaded)
+* Optionally uses Claude API for complex queries (you control this)
+
+**What NeuroPhone does NOT do:**
+
+* Upload sensor data to any server (unless you enable cloud fallback)
+* Track you or collect analytics
+* Access camera, microphone, contacts, or personal data
+
+**You control everything:** cloud fallback toggle, all config in `~/.config/neurophone/`, uninstall anytime.
+====
+
+=== After Install
+
+Once your AI finishes setup, just use it:
+
+[source,bash]
+----
+neurophone                                       # Start NeuroPhone
+neurophone query "What am I doing right now?"    # Ask a question
+neurophone status                                # Check system status
+----
+
+=== Uninstall
+
+Tell your AI: "Uninstall NeuroPhone from my phone"
+
+=== Troubleshooting
+
+Tell your AI what went wrong -- it can read the troubleshooting docs in this repo. Common issues:
+
+[cols="1,3"]
+|===
+|Problem |Solution
+
+|"Termux not found"
+|AI will guide you to install from F-Droid (NOT Google Play)
+
+|Build takes too long
+|Normal for first build (5-10 min). AI adjusts thread count for your device.
+
+|"Model download failed"
+|AI will try alternate download methods or suggest `adb push` from PC
+
+|"LSM crashes"
+|Low RAM. AI will reduce model size or neuron count for your device.
+|===
+
+[[manual-installation]]
+For manual installation without AI assistance, see the <<getting-started,Getting Started>> section below.
+
+'''
+
 == What This Is
 
 **neurophone** is a complete *Android application* for neurosymbolic AI on mobile devices. It combines spiking neural networks with large language models for on-device intelligence.
@@ -197,6 +314,7 @@ Cloud fallback for complex queries:
 * Hybrid inference (local/cloud decision)
 * Neural state context injection
 
+[[getting-started]]
 == Getting Started
 
 === Prerequisites
@@ -425,3 +543,8 @@ Palimpsest-MPL-1.0 License - See LICENSE file
 ---
 
 *Android Application • On-Device Neural Processing • Spiking Networks • Local LLM*
+
+
+== Architecture
+
+See link:TOPOLOGY.md[TOPOLOGY.md] for a visual architecture map and completion dashboard.
