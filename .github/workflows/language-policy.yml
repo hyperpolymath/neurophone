@@ -1,4 +1,6 @@
 # SPDX-License-Identifier: PMPL-1.0-or-later
+permissions: read-all
+
 name: Language Policy Enforcement
 on: [push, pull_request]
 jobs:

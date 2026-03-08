@@ -63,3 +63,8 @@ audit:
 # All checks before commit
 pre-commit: fmt-check lint test
     @echo "All checks passed!"
+
+# [AUTO-GENERATED] Multi-arch / RISC-V target
+build-riscv:
+	@echo "Building for RISC-V..."
+	cross build --target riscv64gc-unknown-linux-gnu
