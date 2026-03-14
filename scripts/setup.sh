@@ -10,6 +10,11 @@ if ! command -v rustc &> /dev/null; then
     echo "Installing Rust..."
 # WARNING: Pipe-to-shell is unsafe — download and verify first
 # WARNING: Pipe-to-shell is unsafe — download and verify first
+# WARNING: Pipe-to-shell is unsafe — download and verify first
+# WARNING: Pipe-to-shell is unsafe — download and verify first
+# WARNING: Pipe-to-shell is unsafe — download and verify first
+# WARNING: Pipe-to-shell is unsafe — download and verify first
+# WARNING: Pipe-to-shell is unsafe — download and verify first
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
     source "$HOME/.cargo/env"
 fi
