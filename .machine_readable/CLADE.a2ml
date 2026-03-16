@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Clade declaration — part of the gv-clade-index registry
+# See: https://github.com/hyperpolymath/gv-clade-index
+
+[identity]
+uuid = "4205251f-09a4-59e4-9496-ae20888b8ffa"
+primary-forge = "github"
+primary-owner = "hyperpolymath"
+canonical-name = "neurophone"
+prefixed-name = "ax-neurophone"
+
+[clade]
+primary = "ax"
+secondary = ["ap"]
+assigned = "2026-03-16"
+rationale = ""
+
+[forges]
+github = "hyperpolymath/neurophone"
+gitlab = "hyperpolymath/neurophone"
+bitbucket = "hyperpolymath/neurophone"
+
+[lineage]
+type = "standalone"
+parent = "Neural phone interface"
+born = "2026-03-16"
