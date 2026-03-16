@@ -5,6 +5,7 @@
 //! This serves as the first reservoir in our neurosymbolic pipeline,
 //! processing temporal sensor data with spike-timing dynamics.
 
+#![forbid(unsafe_code)]
 use ndarray::{Array1, Array2, Array3, Axis};
 use ndarray_rand::RandomExt;
 use rand::distributions::{Bernoulli, Uniform};

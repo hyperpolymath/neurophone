@@ -12,6 +12,7 @@
 //! 3. **Bridge**: Encodes neural firing patterns into textual context for the LLM.
 //! 4. **LLM**: Local Llama 3.2 for reasoning, with Claude 3.5 fallback.
 
+#![forbid(unsafe_code)]
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;

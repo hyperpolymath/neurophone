@@ -10,6 +10,7 @@
 //! - Hybrid local/cloud inference
 //! - Rate limiting and retry logic
 
+#![forbid(unsafe_code)]
 use futures::StreamExt;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
