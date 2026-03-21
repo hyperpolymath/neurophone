@@ -6,7 +6,8 @@ on:
       - '**/*.rs'
       - 'Cargo.toml'
       - 'Cargo.lock'
-permissions: read-all
+permissions:
+  contents: read
 jobs:
   fuzz:
     runs-on: ubuntu-latest
