@@ -18,6 +18,7 @@
 
 #![forbid(unsafe_code)]
 
+#![forbid(unsafe_code)]
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::fmt;
