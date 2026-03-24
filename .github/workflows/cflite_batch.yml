@@ -3,7 +3,8 @@ name: ClusterFuzzLite Batch Fuzzing
 on:
   schedule:
     - cron: '0 0 * * 0'  # Weekly
-permissions: read-all
+permissions:
+  contents: read
 jobs:
   fuzz:
     runs-on: ubuntu-latest
