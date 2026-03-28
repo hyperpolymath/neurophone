@@ -48,9 +48,9 @@ This report documents the testing and validation of the Neurophone project, a ne
 
 *Files Affected:*
 
-* `/var/home/hyper/repos/neurophone/crates/lsm/src/lib.rs`
-* `/var/home/hyper/repos/neurophone/crates/esn/src/lib.rs`
-* `/var/home/hyper/repos/neurophone/crates/bridge/src/lib.rs`
+* `/var$HOME/repos/neurophone/crates/lsm/src/lib.rs`
+* `/var$HOME/repos/neurophone/crates/esn/src/lib.rs`
+* `/var$HOME/repos/neurophone/crates/bridge/src/lib.rs`
 
 *Problem:* The `rand` crate v0.9 moved `distributions` module to `distr` and deprecated several functions.
 
@@ -73,8 +73,8 @@ rng.random::<f32>()
 
 *Files Affected:*
 
-* `/var/home/hyper/repos/neurophone/crates/lsm/src/lib.rs` (line 267)
-* `/var/home/hyper/repos/neurophone/crates/esn/src/lib.rs` (lines 179, 214, 425)
+* `/var$HOME/repos/neurophone/crates/lsm/src/lib.rs` (line 267)
+* `/var$HOME/repos/neurophone/crates/esn/src/lib.rs` (lines 179, 214, 425)
 
 *Problem:* In rand 0.9+, `Uniform::new()` returns a `Result<Uniform<T>, Error>` instead of `Uniform<T>`.
 
@@ -93,7 +93,7 @@ let dist = Uniform::new(-1.0, 1.0).unwrap();
 
 *Files Affected:*
 
-* `/var/home/hyper/repos/neurophone/crates/esn/src/lib.rs` (lines 196, 202)
+* `/var$HOME/repos/neurophone/crates/esn/src/lib.rs` (lines 196, 202)
 
 *Problem:* Rust compiler could not infer closure parameter types in `mapv()` calls.
 
@@ -112,7 +112,7 @@ let norm = new_v.mapv(|x: f32| x * x).sum().sqrt();
 
 *Files Affected:*
 
-* `/var/home/hyper/repos/neurophone/crates/neurophone-android/src/lib.rs` (line 197)
+* `/var$HOME/repos/neurophone/crates/neurophone-android/src/lib.rs` (line 197)
 
 *Problem:* `DateTime::from_timestamp_nanos()` does not exist in chrono.
 
