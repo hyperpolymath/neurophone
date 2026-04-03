@@ -1,0 +1,24 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= NeuroPhone - Neurosymbolic AI Android Application — Show Me The Receipts
+:toc:
+:icons: font
+
+The README makes claims. This file backs them up.
+
+[quote, README]
+____
+It reads this repo, asks a few questions, and does everything. <<ai-install,Details below>>.
+____
+
+== Technology Choices
+
+[cols="1,2"]
+|===
+| Technology | Learn More
+
+| **Rust** | https://www.rust-lang.org
+|===
+
+== Questions?
+
+Open an issue or reach out directly — happy to explain anything in more detail.
