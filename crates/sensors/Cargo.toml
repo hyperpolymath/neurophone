@@ -4,6 +4,8 @@ description = "Phone Sensor Processing - Temporal Feature Extraction"
 version.workspace = true
 edition.workspace = true
 
+[lib]
+name = "sensors"
 [dependencies]
 ndarray = { workspace = true }
 serde = { workspace = true }

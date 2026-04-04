@@ -4,6 +4,8 @@ description = "Local LLM Interface - Llama 3.2 Integration"
 version.workspace = true
 edition.workspace = true
 
+[lib]
+name = "llm"
 [dependencies]
 ndarray = { workspace = true }
 serde = { workspace = true }

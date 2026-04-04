@@ -23,3 +23,9 @@ chrono = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+proptest = { workspace = true }
+criterion = { workspace = true }
+
+[[bench]]
+name = "neurophone_bench"
+harness = false

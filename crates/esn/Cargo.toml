@@ -4,6 +4,10 @@ description = "Echo State Network - Reservoir Computing"
 version.workspace = true
 edition.workspace = true
 
+[lib]
+name = "esn"
+path = "src/lib.rs"
+
 [dependencies]
 ndarray = { workspace = true }
 ndarray-rand = { workspace = true }

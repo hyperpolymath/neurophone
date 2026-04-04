@@ -4,6 +4,8 @@ description = "Bridge - State Encoding Between Neural Components and LLM"
 version.workspace = true
 edition.workspace = true
 
+[lib]
+name = "bridge"
 [dependencies]
 ndarray = { workspace = true }
 ndarray-rand = { workspace = true }
