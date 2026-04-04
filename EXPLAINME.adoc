@@ -1,24 +1,185 @@
 // SPDX-License-Identifier: PMPL-1.0-or-later
-= NeuroPhone - Neurosymbolic AI Android Application — Show Me The Receipts
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= NeuroPhone — Neurosymbolic AI Android Application — Show Me The Receipts
 :toc:
 :icons: font
 
-The README makes claims. This file backs them up.
+The README makes claims. This file backs them up. For each headline feature:
+what makes it work, where the code is, and an honest caveat.
+
+== Claim: On-device spiking neural networks + local LLM pipeline
 
 [quote, README]
 ____
-It reads this repo, asks a few questions, and does everything. <<ai-install,Details below>>.
+neurophone is a complete Android application for neurosymbolic AI on mobile
+devices. It combines spiking neural networks with large language models for
+on-device intelligence. Processes: Sensor data → Neural interpretation → LLM query.
+Runs on the device, with cloud fallback.
 ____
 
-== Technology Choices
+The pipeline is implemented as eight Rust crates under `crates/`. The critical
+path runs: `sensors` crate collects accelerometer, gyroscope, magnetometer, light
+and proximity readings at 50Hz with IIR filtering → `lsm` crate feeds the
+filtered readings into a 512-neuron Leaky Integrate-and-Fire grid (8×8×8,
+distance-dependent connectivity, 1kHz processing) → `esn` crate runs a
+300-neuron Echo State Network with spectral radius 0.95 for state prediction
+→ `bridge` crate integrates LSM and ESN states into a natural-language context
+string for the LLM → `llm` crate runs Llama 3.2 1B/3B via llama.cpp with
+Q4_K_M quantization. The `neurophone-core` crate orchestrates the async loop
+via `NeuroSymbolicSystem::start()`, accepting sensor data via
+`system.send_sensor(reading).await` and answering queries via
+`system.query("What's happening?", prefer_local).await`.
+
+**Caveat:** The JNI bridge (`neurophone-android` crate) requires Android NDK 26+
+and the Android app (`android/` directory) currently uses Kotlin for the
+JNI interface and Compose UI — this is an acknowledged exception in an
+otherwise Kotlin-banned account, because Android JNI without Kotlin is
+significantly more complex. The migration path toward Tauri 2.0 / Dioxus is
+documented in the README. Also, Llama model download (~700MB) is a manual
+step; there is no in-app model downloader yet.
+
+- Core orchestration: `crates/neurophone-core/src/`
+- LSM: `crates/lsm/src/`
+- ESN: `crates/esn/src/`
+- Bridge: `crates/bridge/src/`
+- LLM client: `crates/llm/src/`
+- Android JNI: `crates/neurophone-android/src/`
+- Android app: `android/app/src/main/java/ai/neurophone/`
+
+== Claim: AI-assisted installation — point an AI at the repo URL and it handles everything
+
+[quote, README]
+____
+You don't need to read this README. Just say this to any AI assistant:
+"Set up NeuroPhone on my Android from https://github.com/hyperpolymath/neurophone"
+The AI fetches this repo, reads the installation guide inside it, figures out
+your device, and does everything.
+____
+
+The mechanism is `docs/AI_INSTALLATION_GUIDE.adoc`, which is a structured,
+machine-readable step-by-step recipe. It covers: Termux installation (F-Droid
+path only — not Play Store), Rust toolchain setup, repository clone,
+`./scripts/build-android.sh` execution, model download via `adb push`, and
+config generation. The guide is written so that an AI with web-read or repo-read
+capability can execute it procedurally. The `scripts/setup.sh` and
+`scripts/build-android.sh` scripts do the actual heavy lifting; the
+AI-installation claim is a UX wrapper around them.
+
+**Caveat:** The AI-installation path requires an AI that can execute shell
+commands or generate them accurately for the user's device. It is not a
+magic one-click install — it is a structured handoff. Devices other than
+Oppo Reno 13 (the primary target, MediaTek Dimensity 8350, 12GB RAM) will
+need thread-count and model-size adjustments that the guide parametrises
+but which the AI must apply correctly.
+
+- AI guide: `docs/AI_INSTALLATION_GUIDE.adoc`
+- Build scripts: `scripts/setup.sh`, `scripts/build-android.sh`
+- Config template: `config/default.toml`
+
+== Dogfooded Across The Account
 
 [cols="1,2"]
 |===
-| Technology | Learn More
+| Technology | Also Used In
 
-| **Rust** | https://www.rust-lang.org
+| **Rust (multi-crate workspace)** | https://github.com/hyperpolymath/project-wharf[project-wharf],
+  https://github.com/hyperpolymath/protocol-squisher[protocol-squisher],
+  https://github.com/hyperpolymath/ephapax[ephapax] (17 crates),
+  https://github.com/hyperpolymath/burble[burble]
+| **Cargo.toml workspace layout** | https://github.com/hyperpolymath/ephapax[ephapax],
+  https://github.com/hyperpolymath/protocol-squisher[protocol-squisher],
+  https://github.com/hyperpolymath/raze-tui[raze-tui]
+| **Claude API fallback pattern** | The cloud-fallback via `crates/claude-client/`
+  mirrors the pattern used in https://github.com/hyperpolymath/maa-framework[maa-framework]
+  and https://github.com/hyperpolymath/boj-server[boj-server]
+| **llama.cpp / local LLM** | Pattern shared with
+  https://github.com/hyperpolymath/neurophone[neurophone] as the primary
+  account experiment in on-device inference
 |===
 
-== Questions?
+== File Map
 
-Open an issue or reach out directly — happy to explain anything in more detail.
+[cols="1,3"]
+|===
+| Path | What's There
+
+| `Cargo.toml`
+| Workspace root. Declares all eight member crates and shared dependency versions.
+
+| `crates/lsm/`
+| Liquid State Machine. 512 LIF neurons in 8×8×8 grid. Distance-weighted
+  connectivity. Spike processing at 1kHz. Key type: `LiquidStateMachine`.
+
+| `crates/esn/`
+| Echo State Network. 300-neuron reservoir, spectral radius 0.95, leaky integrator
+  dynamics, ridge regression output. Key type: `EchoStateNetwork`.
+
+| `crates/sensors/`
+| Android sensor abstraction. Reads accelerometer, gyroscope, magnetometer,
+  light, proximity via Android Sensor API (through JNI). IIR filters at 50Hz.
+
+| `crates/bridge/`
+| Neural-to-symbolic translation. Takes LSM + ESN state vectors and produces
+  natural language context strings injected into LLM prompts.
+  Key function: `encode_neural_state()`.
+
+| `crates/llm/`
+| On-device LLM inference via llama.cpp bindings. Handles model loading,
+  Q4_K_M quantization, streaming token output, and neural context injection.
+
+| `crates/claude-client/`
+| Cloud fallback. Claude Messages API with retry/backoff. Activated when
+  `prefer_local=false` or when LSM confidence is below threshold.
+
+| `crates/neurophone-core/`
+| Top-level orchestrator. `NeuroSymbolicSystem` manages the async event loop
+  connecting sensors → LSM → ESN → bridge → LLM. Entry: `start()`.
+
+| `crates/neurophone-android/`
+| JNI bridge crate. Exposes `init()`, `start()`, `stop()`, `query()`, and
+  `get_neural_context()` to Kotlin via `NativeLib.kt`.
+
+| `android/`
+| Android app. `MainActivity.kt`, `NativeLib.kt` (JNI declarations),
+  `SensorManager.kt`, Compose UI in `ui/`.
+
+| `config/default.toml`
+| Runtime configuration. Claude API key, Llama model path, thread count,
+  context size, cloud fallback threshold.
+
+| `scripts/setup.sh`
+| Environment setup: installs Rust, Android NDK, cross-compilation targets.
+
+| `scripts/build-android.sh`
+| Builds all Rust crates for Android ARM64 and copies `.so` files to
+  `android/app/src/main/jniLibs/`.
+
+| `docs/AI_INSTALLATION_GUIDE.adoc`
+| Machine-readable AI-assisted installation recipe.
+
+| `benches/`
+| Criterion benchmarks for LSM and ESN step performance.
+
+| `fuzz/`
+| Cargo-fuzz targets for sensor input fuzzing.
+
+| `.machine_readable/6a2/`
+| A2ML checkpoint files: STATE, META, ECOSYSTEM, AGENTIC, NEUROSYM, PLAYBOOK.
+|===
+
+== Checking It
+
+[source,bash]
+----
+# Run unit tests (host)
+cargo test
+
+# Build for Android
+./scripts/build-android.sh
+
+# Run benchmarks
+cargo bench
+
+# Generate API docs
+cargo doc --open
+----
