@@ -1,5 +1,7 @@
 # NeuroPhone Test Coverage - CRG Grade Report
 
+## CRG Grade: C — ACHIEVED 2026-04-04
+
 ## CRG C Requirements
 
 NeuroPhone now meets **CRG C** grade with comprehensive test coverage:
