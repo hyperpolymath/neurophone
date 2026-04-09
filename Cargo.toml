@@ -22,7 +22,7 @@ repository = "https://github.com/hyperpolymath/neurophone"
 # Core neural network
 ndarray = { version = "0.17", features = ["rayon", "serde"] }
 ndarray-rand = "0.16"
-rand = "0.9"
+rand = "0.10"
 rand_distr = "0.6"
 rayon = "1.8"
 
