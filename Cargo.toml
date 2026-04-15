@@ -24,7 +24,7 @@ ndarray = { version = "0.17", features = ["rayon", "serde"] }
 ndarray-rand = "0.16"
 rand = "0.10"
 rand_distr = "0.6"
-rayon = "1.8"
+rayon = "1.12"
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
