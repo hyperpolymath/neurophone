@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 # SPDX-License-Identifier: PMPL-1.0-or-later
-=======
-# SPDX-License-Identifier: MPL-2.0-or-later
->>>>>>> 0a372d5 (chore: sync from parent repo automation)
 # workflow-linter.yml - Validates GitHub workflows against RSR security standards
 # This workflow can be copied to other repos for consistent enforcement
 name: Workflow Security Linter
@@ -58,8 +54,9 @@ jobs:
             fi
           done
           if [ $failed -eq 1 ]; then
-            echo "Add 'permissions:
-  contents: read' at workflow level"
+            echo "Add 'permissions:'"
+            echo "       contents: read"
+            echo "at workflow level"
             exit 1
           fi
           echo "All workflows have permissions declared"

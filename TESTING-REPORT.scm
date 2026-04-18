@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 ;; SPDX-License-Identifier: PMPL-1.0-or-later
-=======
-;; SPDX-License-Identifier: MPL-2.0-or-later
->>>>>>> 0a372d5 (chore: sync from parent repo automation)
 ;; Neurophone Testing Report - Guile Scheme Format
 ;; Generated: 2025-12-29
 
