@@ -1,0 +1,494 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+
+= Neurophone — CRG Audit (2026-04-18)
+Jonathan D.A. Jewell
+2026-04-18
+:toc:
+:sectnums:
+
+== Scope and Standard
+
+Evaluates the `neurophone` repository against *Component Readiness Grades
+v2.0 (STRICT)*, 2026-03-30 revision. Neurophone was flagged in this
+session's Bucket-B sweep as a "plausibly defensible" self-declared C —
+the repo's own numbers are internally consistent and do not obviously
+contradict the C claim, so it merits the full evidence audit.
+
+- Standard: `standards/component-readiness-grades/COMPONENT-READINESS-GRADES.md`
+- Criteria boilerplate: `rsr-template-repo/docs/governance/CRG-CRITERIA.adoc`
+- Audit template: `rsr-template-repo/docs/governance/CRG-AUDIT-TEMPLATE.adoc`
+- Self-declared grade (prior art):
+  * `.machine_readable/6a2/STATE.a2ml` `[metadata] crg-grade = "C"`,
+    declared 2026-04-04 with commit note "CRG C grade achieved".
+  * `[project-context] completion-percentage = 65`.
+- Audit date: 2026-04-18
+- Auditor: Jonathan D.A. Jewell
+
+Schema note: neurophone uses the *flat* `crg-grade = "C"` under
+`[metadata]` (unlike gossamer's sectioned `[crg] grade = …`). This is the
+form HYP-S005 already matches — no rule drift here.
+
+The audit grades the repo *as-is today*, not aspirationally.
+
+== v2.0 Strictness Recap
+
+[cols="1,3,4"]
+|===
+| Grade | Release Stage | Hard Requirement (v2.0)
+
+| X | None             | Untested.
+| F | Reject           | Harmful, wasteful, or superseded.
+| E | Pre-alpha        | >=1 test, failures documented.
+| D | Alpha            | Test matrix + scope documented + *RSR compliance mandatory*.
+| C | Alpha-stable     | Dogfooded, CI green, *deep per-file + per-directory annotation*.
+| B | Beta             | 6+ *diverse* external targets, issues fed back.
+| A | Stable           | Real-world external feedback confirms value; no harm.
+|===
+
+Publication requires B+. Long alpha is discipline, not shame.
+
+== Evidence Inventory (verified 2026-04-18)
+
+=== Structural compliance
+
+[cols="2,1,3"]
+|===
+| Item | State | Source
+
+| RSR mandatory workflows (17+)
+| PRESENT (24 YAML files in `.github/workflows/`) — *but see merge-conflict block below*
+| `.github/workflows/`
+
+| `.machine_readable/6a2/` canonical A2ML
+| PRESENT (STATE, META, ECOSYSTEM, AGENTIC, NEUROSYM, PLAYBOOK — all 6 files)
+| 132 lines across 6 files; META/ECOSYSTEM/NEUROSYM/PLAYBOOK/AGENTIC are near-empty stubs (9-24 lines each). Only STATE.a2ml has substantive content.
+
+| `0-AI-MANIFEST.a2ml`
+| PRESENT (4166 bytes)
+| Root
+
+| `README.adoc`, `EXPLAINME.adoc`, `CONTRIBUTING.{md,adoc}`, `SECURITY.md`, `MAINTAINERS.adoc`, `CODE_OF_CONDUCT.md`
+| PRESENT
+| Root
+
+| `docs/` orientation subtree
+| *minimal* — only `docs/AI_INSTALLATION_GUIDE.adoc` and `docs/CITATIONS.adoc`; no `docs/architecture/`, `docs/decisions/`, `docs/governance/` (until this audit), `docs/practice/`
+| Very thin relative to gossamer/boj-server annotation bars
+
+| `LICENSE` + `LICENSES/` directory
+| PRESENT (`LICENSE`, `LICENSES/PMPL-1.0-or-later.txt`, `LICENSES/MPL-2.0.txt`)
+| Good licence hygiene structurally, but *see merge conflicts below*
+
+| `guix.scm` + `flake.nix`
+| PRESENT (both)
+| Root
+
+| `.well-known/` (security.txt, ai.txt, humans.txt)
+| PRESENT (all three, plus `groove/`)
+| `.well-known/`
+
+| SPDX headers on source
+| PRESENT on all 6 Rust lib.rs + benches + property_test.rs (9/9 sampled source files)
+| Grep confirmed — but several headers themselves contain merge conflicts
+
+| `Containerfile` (not `Dockerfile`)
+| N/A at root; `.clusterfuzzlite/Containerfile` present (correct for fuzzing). Zero `Dockerfile` at any depth.
+| Container policy met
+
+| `Justfile` + `Mustfile` (no `Makefile`)
+| PRESENT; zero `Makefile`
+| RSR R-020 met
+
+| Contractile trident
+| PRESENT: `.machine_readable/INTENT.contractile`, `TRUST.contractile`, `MUST.contractile`, `ADJUST.contractile` plus `contractiles/{intend,must,trust}/*.a2ml` runner pattern
+| Six-verb layout partial — has intend/must/trust trident but no `bust`/`adjust`/`dust`
+
+| Remote
+| `origin → github.com:hyperpolymath/neurophone.git` plus four mirror remotes (bitbucket, codeberg, gitlab, sourcehut)
+| `git remote -v`. Mirrors are configured locally; per GitHub-only mirroring rule they should be driven by downstream hub-and-spoke not local push
+|===
+
+*RSR compliance verdict*: **structural shell met, content compromised**.
+The file inventory is a respectable D-floor; the content is not.
+
+=== CATASTROPHIC FINDING: committed unresolved merge conflicts
+
+`git status` on the working tree is clean (`nothing to commit`) and HEAD
+is at `75bdc66` (2026-04-17). Yet *20 files are committed to main with
+unresolved `<<<<<<< HEAD … ======= … >>>>>>>` merge-conflict markers*.
+These were introduced by `5fe78cf Merge branch 'main' of
+github.com:hyperpolymath/neurophone` and carried forward silently.
+
+Files with committed conflict markers (verified by grep for
+`^<<<<<<< HEAD` / `^>>>>>>> `):
+
+[cols="2,3"]
+|===
+| Class | Files (20 total)
+
+| Top-level docs
+| `README.adoc`, `MAINTAINERS.adoc`, `TESTING-REPORT.adoc`, `TESTING-REPORT.scm`
+
+| GitHub plumbing
+| `.github/dependabot.yml`, `.github/FUNDING.yml`
+
+| *Every RSR workflow that was touched in the merge*
+| `.github/workflows/codeql.yml`, `guix-nix-policy.yml`, `instant-sync.yml`, `language-policy.yml`, `mirror.yml`, `quality.yml`, `rsr-antipattern.yml`, `rust-ci.yml`, `scorecard.yml`, `scorecard-enforcer.yml`, `secret-scanner.yml`, `security-policy.yml`, `wellknown-enforcement.yml`, `workflow-linter.yml`
+|===
+
+Sample (`.github/workflows/rust-ci.yml` lines 1-5):
+
+[source,yaml]
+----
+<<<<<<< HEAD
+# SPDX-License-Identifier: PMPL-1.0-or-later
+=======
+# SPDX-License-Identifier: MPL-2.0-or-later
+>>>>>>> 0a372d5 (chore: sync from parent repo automation)
+name: Rust CI
+----
+
+A YAML file cannot parse with `<<<<<<< HEAD` as its first token. This
+means every affected workflow (including `rust-ci.yml`, `codeql.yml`,
+`scorecard.yml`, `quality.yml`, `security-policy.yml`) is *syntactically
+invalid* and cannot have run successfully since the merge. The README
+badge "image:https://img.shields.io/…[License: PMPL-1.0]" is in a
+conflict block — GitHub's adoc renderer will display the conflict
+markers verbatim to any visitor.
+
+This single finding invalidates *three* CRG-C hard requirements
+simultaneously:
+
+. **RSR compliance** (D-floor): workflows exist but don't parse, so they
+  don't execute. RSR structural requirements are nominally met but
+  behaviourally broken.
+. **CI green last 7 days** (C requirement): CI cannot be green — the
+  pipelines are YAML-broken as of the merge commit.
+. **Deep annotation** (C requirement): the README itself is unreadable.
+
+It also violates the "honest D > dishonest B" clause: self-declared
+C + `completion-percentage = 65` coexisting with 20 merge-conflict
+files is the *exact* honesty pathology v2.0 was designed to catch.
+
+=== Code and proofs
+
+[cols="2,1,3"]
+|===
+| Item | Count | Notes
+
+| Rust workspace crates
+| 8
+| `neurophone-core` (710 LOC), `claude-client` (548 LOC), `lsm` (518 LOC), `esn` (404 LOC), plus *four stub crates at 6 LOC each*: `bridge`, `llm`, `sensors`, `neurophone-android`
+
+| Total Rust source LOC
+| ~2 480
+| 4 real crates ≈ 2 180 LOC + tests 276 LOC + four 6-LOC stubs
+
+| Stub crates (explicitly declared in STATE.a2ml `[crates]` as `"stub"`)
+| 4
+| `bridge`, `llm`, `sensors`, `claude-client` (listed as "stub" despite 548 LOC — likely means "not wired"), `neurophone-android`. STATE honestly flags these — good — but a grade-C claim over a workspace where half the crates are stubs is strained.
+
+| `#[test]` / `#[tokio::test]` annotations
+| *59 total* across 5 files (not 95 as STATE claims)
+| `neurophone-core/src/lib.rs`: 28; `neurophone-core/tests/property_test.rs`: 14; `esn/src/lib.rs`: 9; `lsm/src/lib.rs`: 4; `claude-client/src/lib.rs`: 4. The 95 claim in STATE cannot be reconciled with the on-disk count.
+
+| `believe_me` / `assert_total` / `Admitted` / `sorry` / `unsafeCoerce` / `Obj.magic` in `crates/`
+| *0*
+| Grepped 2026-04-18. (Hits exist in `.machine_readable/MUST.contractile` and `.machine_readable/agent_instructions/methodology.a2ml` — these are *bans on use*, not uses.)
+
+| `unsafe` / other dangerous Rust idioms
+| Not audited in this pass
+| Follow-up: run `panic-attack assail` on the workspace.
+|===
+
+=== Test matrix — declared vs actual
+
+STATE.a2ml `[test-coverage]` declares:
+
+[cols="2,1,1"]
+|===
+| Suite | Declared | Actual (grep `#[test]`/`#[tokio::test]`)
+
+| unit-tests       | 41 | —
+| smoke-tests      | 3  | —
+| e2e-tests        | 2  | —
+| property-tests   | 14 | 14 (confirmed in `neurophone-core/tests/property_test.rs`)
+| reflexive-tests  | 3  | —
+| contract-tests   | 2  | —
+| aspect-tests     | 6  | —
+| benchmarks       | 24 | 2 bench files (`neurophone_bench.rs`, `lsm_bench.rs`) — criterion groups not individually counted
+| *total-tests*    | *95* | *59 test attributes + 2 bench files*
+|===
+
+The 95-total figure does not match the on-disk test-attribute count of
+59. Possible reconciliations (any of which STATE should spell out):
+
+. `proptest!` macro calls inside the 14-item property file expand to
+  multiple logical cases — but proptest reports as one test per
+  `proptest!` block, so this doesn't close the gap.
+. "Criterion benchmarks" counted as tests — criterion benches are not
+  tests under v2.0 `[test-coverage]` semantics.
+. Six of the named suites (smoke, e2e, reflexive, contract, aspect) have
+  no corresponding files under `crates/*/tests/` — the only integration
+  test file is `property_test.rs`.
+
+Most likely explanation: STATE.a2ml was updated to claim the C-grade
+test bar before the suites were written, and the numbers are
+aspirational.
+
+CI coverage: `.github/workflows/rust-ci.yml` is *broken* by the merge
+conflict at line 1 (see above). No green runs are possible on HEAD
+until this is fixed. There is no CI-badge link in the README and no
+recent-run evidence cited in STATE.
+
+=== Annotation depth
+
+v2.0 C requires **per-file and per-directory orientation**. Evidence:
+
+- `docs/` contains *only* `AI_INSTALLATION_GUIDE.adoc` and
+  `CITATIONS.adoc`. No `architecture/`, `decisions/`, `governance/`
+  (until this audit), `practice/`, `theory/`, `integration/`,
+  `whitepapers/`, `wikis/`. This is the *thinnest* top-level `docs/`
+  tree of any C-candidate audited this session.
+- Per-crate README coverage: *0 of 8* crates carry a README. None of
+  `bridge/`, `claude-client/`, `esn/`, `llm/`, `lsm/`,
+  `neurophone-android/`, `neurophone-core/`, `sensors/` has an
+  orienting README. 0% coverage fails the "deep per-file annotation"
+  clause by a wide margin.
+- EXPLAINME.adoc is present (7444 bytes) and was substantively updated
+  in commit `1b88ce5 docs: substantive CRG C annotation (EXPLAINME.adoc)`
+  — this is the one genuine C-annotation signal.
+- README.adoc has substantive content structure (AI-install workflow,
+  Architecture, Components, ESN/LSM/Sensors sections) but the file
+  header is broken by the merge conflict.
+- `.machine_readable/6a2/` A2ML files other than STATE are near-empty
+  stubs (9-24 lines, only section placeholders).
+
+=== Dogfooding / home-stable evidence
+
+STATE.a2ml has *no* `[dogfooding-status]` section. (Grep for
+`dogfooding-status|dogfood` under `.machine_readable/` returns zero
+hits.) There is no `docs/practice/DOGFOOD-LOG.adoc` or equivalent.
+
+There is a `.github/workflows/dogfood-gate.yml` (13 KB) — a gate
+workflow, not a dogfood log. Without a `[dogfooding-status]` section
+cataloguing *what was dogfooded, by whom, when, where*, this is
+infrastructure for dogfooding rather than evidence of it.
+
+Indirect signals:
+
+- Target-device line in README ("Oppo Reno 13"). Neurophone is designed
+  to run on an Android phone; no on-device dogfood log (APK install
+  count, session logs, field bug reports) is present.
+- `neurophone-android/` crate is a 6-LOC stub. The Android side —
+  the whole target environment — is not yet code.
+- Completion-percentage = 65 in STATE concedes the project is
+  two-thirds built.
+
+v2.0 C requires *continuous* home-context use with no known failures.
+The evidence does not support this for neurophone today.
+
+=== External validation
+
+No `[external-targets]`. No `[issues-fed-back]`. No `[field-signal]`.
+
+External-adjacent signals:
+
+- Dependabot PRs (#27-#34) — *automated dependency bumps*, not external
+  users. These are bots raising PRs, not field feedback.
+- Mirror remotes configured (bitbucket/codeberg/gitlab/sourcehut) —
+  mirror presence is not usage.
+
+Per v2.0, reaching B requires *6+ diverse external targets* actually
+using the software with feedback fed back. Neurophone is at *0*.
+
+== Grade x Evidence Matrix
+
+[cols="1,1,3,3"]
+|===
+| Grade | Met? | Evidence supporting | Evidence against / gaps
+
+| X
+| n/a
+| 59 tests exist → not X
+| —
+
+| F
+| n/a
+| Not superseded; no harm signal
+| —
+
+| E
+| ✓
+| >=1 test exists; 59 `#[test]`/`#[tokio::test]` annotations across 5 files; property-test integration file present
+| —
+
+| D
+| *✗ (D-floor failed)*
+| Structural shell in place (24 workflow files, 6a2 layout, contractile trident, Justfile, `.well-known/`, LICENSES, SPDX headers on sampled source)
+| *20 files committed with unresolved merge conflicts including README, MAINTAINERS, TESTING-REPORT, 14 workflow YAMLs.* Workflows that don't parse don't satisfy "RSR compliance mandatory". STATE.a2ml test counts (95) contradict on-disk count (59). Six named suites (smoke/e2e/reflexive/contract/aspect) have no corresponding files.
+
+| C
+| *✗*
+| EXPLAINME.adoc substantive (1b88ce5); property_test.rs real; 0 dangerous-pattern uses in source
+| CI cannot be green — workflows syntactically invalid. Zero per-crate READMEs (0/8). `docs/` tree contains 2 files, no architecture/decisions/governance subtree. No `[dogfooding-status]`. No dogfood log. 4/8 crates are declared stubs at 6 LOC. STATE test claims unverifiable.
+
+| B
+| ✗
+| —
+| Zero external targets. Zero issues-fed-back. Zero field signal.
+
+| A
+| ✗
+| —
+| No field confirmation.
+|===
+
+== Verdict
+
+*Current CRG grade: **E (Pre-alpha)**. Demote two grades from
+self-declared C.*
+
+Self-declared: *C*. Audited: *E*. This is the largest honesty delta of
+any Bucket-B candidate audited this session (two grades, not one).
+
+Reasoning (one sentence): the repo has committed unresolved
+`<<<<<<< HEAD` conflict markers across its README, its MAINTAINERS
+file, its TESTING-REPORT, and every RSR workflow touched by the
+2026-03-xx merge — so CI cannot parse, the docs cannot render, and
+the D-floor "RSR compliance mandatory" clause fails even before the
+C-specific clauses (per-directory annotation, CI green, dogfood log)
+are considered.
+
+A D grade would require clean workflow YAML and a test-count
+reconciliation. A C grade would require those *plus* a populated
+`[dogfooding-status]`, per-crate READMEs, and a `docs/` annotation
+surface comparable to gossamer's. The gap to C is not one sprint's
+worth of work — it is a fix-the-merge sprint *followed by* a
+full-completion-percentage-100 sprint.
+
+The E grade is earned, not conservative-by-default, on three positive
+signals that keep it above X/F:
+
+1. Real Rust code: 4 non-stub crates totalling ≈2 180 LOC (core 710,
+   claude-client 548, lsm 518, esn 404) with constructive content —
+   this is not vapourware.
+2. Zero dangerous-pattern uses (`believe_me`, `assert_total`,
+   `Admitted`, `sorry`, `unsafeCoerce`, `Obj.magic`) in `crates/`.
+3. 59 live test attributes including a 14-test proptest integration
+   file — tests exist and are non-trivial.
+
+What blocks *immediate* promotion to D (do these first):
+
+. **Resolve the 20 committed merge conflicts.** One commit, careful
+  hand-merge of each file, delete all `<<<<<<< HEAD` / `=======` /
+  `>>>>>>> ` marker lines. Verify with
+  `rg '^<<<<<<< HEAD|^>>>>>>> '` returns zero. Keep the
+  PMPL-1.0-or-later SPDX line (drop the `MPL-2.0-or-later` variant per
+  Rule 1 of the licence policy).
+. **Make `rust-ci.yml` actually run.** Once conflicts are resolved,
+  trigger a CI run and record the green SHA in STATE.a2ml.
+. **Reconcile STATE.a2ml test counts with reality.** Either write the
+  declared suites (smoke/e2e/reflexive/contract/aspect) that are
+  missing, or drop their counts. `total-tests` should equal the
+  grep-verifiable count plus explicit proptest-case-count if cited.
+
+What blocks promotion to C (do after D):
+
+. Add `[dogfooding-status]` to STATE.a2ml with concrete done-entries:
+  what was dogfooded, on which device, when, evidence link.
+. Per-crate READMEs for all 8 crates. `neurophone-core/` and `lsm/`
+  need full orientation; stubs need a one-paragraph "TODO" placeholder
+  so the coverage metric is honest.
+. Build out `docs/` with `architecture/`, `decisions/`, `governance/`,
+  `practice/` subtrees. Start with ADR-001 explaining the
+  LSM+ESN+LLM neurosymbolic architecture.
+. Either implement the four stub crates (`bridge`, `llm`, `sensors`,
+  `neurophone-android`) or drop them from the workspace until they're
+  substantive. `completion-percentage = 65` is more honest than
+  declaring C over half-empty crates.
+
+What blocks promotion to B (after C):
+
+. Zero external targets. Need 6+ diverse — different Android OEMs,
+  different Android versions, different LLM backends, different
+  sensor profiles.
+. No external-contributor flow. Dependabot PRs don't count under v2.0.
+
+== Notes on Non-Negotiables Respected by this Audit
+
+- The self-declared grade is tested against v2.0 STRICT criteria as
+  written. The "plausibly defensible" classification that queued this
+  audit for evidence review stands — the numbers inside STATE.a2ml are
+  internally self-consistent. What destroys them is evidence *outside*
+  STATE.a2ml: the committed merge conflicts, the missing test files,
+  the empty `docs/` tree.
+- The four stub crates at 6 LOC are honestly labelled "stub" in
+  STATE.a2ml `[crates]`. The audit credits the honesty in labelling
+  while still counting the stubs against the "half-complete workspace"
+  claim for C.
+- `completion-percentage = 65` is higher than the evidence supports
+  (absence of the Android crate, of LLM integration, of sensor wiring
+  suggests closer to 35-45%); but since completion-percentage is not a
+  v2.0 grade criterion, this audit does not re-score it.
+
+== STATE.a2ml update recommendation
+
+Recommended (do NOT execute as part of this audit) — edit
+`.machine_readable/6a2/STATE.a2ml`:
+
+[source,toml]
+----
+[metadata]
+project = "neurophone"
+version = "1.0.0"
+last-updated = "2026-04-18"
+status = "active"
+crg-grade = "E"               # was "C"
+crg-grade-previous = "C"      # audit trail
+crg-audit = "docs/governance/CRG-AUDIT-2026-04-18.adoc"
+crg-next-target = "D"         # honest proximate bar
+
+[project-context]
+name = "neurophone"
+completion-percentage = 45    # was 65 — closer to evidence
+phase = "Merge-conflict cleanup, test reconciliation needed before D"
+
+[test-coverage]
+# Reconcile or drop these:
+# unit-tests = 41             -> verify with file listing
+# smoke-tests = 3             -> no smoke test files found
+# e2e-tests = 2               -> no e2e test files found
+# reflexive-tests = 3         -> no reflexive test files found
+# contract-tests = 2          -> no contract test files found
+# aspect-tests = 6            -> no aspect test files found
+property-tests = 14           # confirmed
+test-attributes-total = 59    # grep-verifiable
+# total-tests = 95            # not reconcilable; remove until suites exist
+
+[blockers]
+ci-broken = "20 files committed with unresolved git merge conflicts (rust-ci.yml, codeql.yml, scorecard.yml, etc.) — CI cannot parse workflows. See CRG-AUDIT-2026-04-18.adoc."
+test-suites-claimed = "STATE claims 5 suites (smoke/e2e/reflexive/contract/aspect) with zero corresponding test files on disk."
+----
+
+Demote target: *E*. Route-to-D is the "resolve conflicts + reconcile
+tests" sprint above. Once D is earned, the C climb is the standard
+annotation + dogfood + stub-completion block.
+
+== Related Files
+
+- `.machine_readable/6a2/STATE.a2ml` — authoritative self-declared
+  state; recommend demote C→E with notes citing this audit.
+- `README.adoc` lines 1-13 — unresolved merge conflict in licence
+  badge block.
+- `.github/workflows/rust-ci.yml` lines 1-5 — unresolved merge conflict
+  in SPDX header (YAML cannot parse).
+- 18 other files with `^<<<<<<< HEAD` markers (see full list in
+  §Catastrophic Finding).
+- `docs/governance/CRG-LIFT-PLAN-2026-04-18.adoc` — *to be written* if
+  a D-lift sprint is scheduled.
+- `~/Desktop/CRG-STATE-INVENTORY.md` — Phase 1 estate inventory entry
+  for neurophone.
+
+_End of audit._
