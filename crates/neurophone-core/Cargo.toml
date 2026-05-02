@@ -25,7 +25,13 @@ chrono = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 proptest = { workspace = true }
 criterion = { workspace = true }
+approx = { workspace = true }
+ndarray = { workspace = true }
 
 [[bench]]
 name = "neurophone_bench"
+harness = false
+
+[[bench]]
+name = "pipeline_bench"
 harness = false

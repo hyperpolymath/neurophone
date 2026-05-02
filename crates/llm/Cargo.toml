@@ -17,3 +17,9 @@ futures = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+criterion = { workspace = true }
+proptest = { workspace = true }
+
+[[bench]]
+name = "llm_bench"
+harness = false
