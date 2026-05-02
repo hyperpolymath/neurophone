@@ -61,6 +61,45 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         initializeSystem()
 
         checkPermissions()
+        handleEntryIntent(intent)
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        handleEntryIntent(intent)
+    }
+
+    /**
+     * Handle entry from the home-screen widget, share sheet, ASSIST gesture,
+     * or `neurophone://` deep link.
+     */
+    private fun handleEntryIntent(intent: android.content.Intent?) {
+        intent ?: return
+        when (intent.action) {
+            ai.neurophone.widget.NeurophoneAppWidget.ACTION_QUERY -> {
+                inputField.requestFocus()
+            }
+            android.content.Intent.ACTION_SEND -> {
+                val text = intent.getStringExtra(android.content.Intent.EXTRA_TEXT)
+                if (!text.isNullOrBlank()) {
+                    inputField.setText(text)
+                    if (isSystemRunning) sendQuery()
+                }
+            }
+            android.content.Intent.ACTION_VIEW -> {
+                intent.data?.let { uri ->
+                    if (uri.scheme == "neurophone") {
+                        uri.getQueryParameter("q")?.let {
+                            inputField.setText(it)
+                            if (isSystemRunning) sendQuery()
+                        }
+                    }
+                }
+            }
+            android.content.Intent.ACTION_ASSIST -> {
+                inputField.requestFocus()
+            }
+        }
     }
 
     private fun initializeViews() {

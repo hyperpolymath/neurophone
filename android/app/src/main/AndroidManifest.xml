@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+SPDX-License-Identifier: PMPL-1.0-or-later
+SPDX-FileCopyrightText: 2025 Jonathan D.A. Jewell
+-->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="ai.neurophone">
 
@@ -6,6 +10,11 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.BODY_SENSORS" />
     <uses-permission android:name="android.permission.HIGH_SAMPLING_RATE_SENSORS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <!-- Features (optional, for sensor availability checks) -->
     <uses-feature android:name="android.hardware.sensor.accelerometer" android:required="false" />
@@ -31,7 +40,55 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Voice / share entry point -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <action android:name="android.intent.action.SEND" />
+                <action android:name="android.intent.action.ASSIST" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:mimeType="text/plain" />
+                <data android:scheme="neurophone" />
+            </intent-filter>
         </activity>
+
+        <!-- Long-running foreground service that owns the sensor → LSM → ESN loop -->
+        <service
+            android:name=".NeurophoneService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <!-- Boot receiver: optionally restart service on phone reboot -->
+        <receiver
+            android:name=".BootReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Quick-query receiver used by the home-screen widget tap -->
+        <receiver
+            android:name=".widget.NeurophoneWidgetActions"
+            android:exported="false" />
+
+        <!-- Home-screen App Widget -->
+        <receiver
+            android:name=".widget.NeurophoneAppWidget"
+            android:exported="true"
+            android:label="@string/widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="ai.neurophone.widget.ACTION_REFRESH" />
+                <action android:name="ai.neurophone.widget.ACTION_QUERY" />
+                <action android:name="ai.neurophone.widget.ACTION_TOGGLE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/neurophone_widget_info" />
+        </receiver>
 
     </application>
 

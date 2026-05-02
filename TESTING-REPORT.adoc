@@ -318,3 +318,95 @@ The `test_lsm_reset` test runs for ~140 seconds due to:
 The Neurophone project builds and passes all tests after fixing the rand 0.9 API migration issues. The codebase is functional but has some architectural warnings related to async/await patterns in the Android JNI bindings that should be addressed for future Rust edition compatibility.
 
 The neurosymbolic pipeline (LSM -> ESN -> Bridge -> LLM) is working correctly as demonstrated by the integration tests.
+
+== Test Pyramid Expansion (May 2026)
+
+The suite was expanded from 28 tests in a single crate to *139 tests across
+the full workspace*, organised by the standard testing-pyramid layers:
+
+[cols="1,1,4"]
+|===
+|Layer | Examples | Files
+
+|*Unit* | per-module asserts on invariants
+| `crates/<c>/src/lib.rs#tests`
+
+|*Point-to-point integration* | one-crate boundary at a time
+| `crates/sensors/tests/integration_pipeline.rs`,
+  `crates/bridge/tests/integration_encode.rs`,
+  `crates/llm/tests/integration_backend.rs`,
+  `crates/lsm/tests/integration_lsm.rs`,
+  `crates/esn/tests/integration_esn.rs`,
+  `crates/claude-client/tests/integration_routing.rs`
+
+|*End-to-end* | sensor → LSM → ESN → bridge → LLM
+| `crates/neurophone-core/tests/integration_pipeline.rs`
+
+|*Aspect* | concurrency / timing / error paths / resource bounds
+| `crates/neurophone-core/tests/aspect_concurrency.rs`,
+  `crates/{sensors,bridge}/tests/aspect_lifecycle.rs`
+
+|*Lifecycle* | init → start → run → shutdown → restart
+| `crates/neurophone-core/tests/lifecycle.rs`
+
+|*Property* | proptest on configs and event spaces
+| `crates/neurophone-core/tests/property_test.rs`
+|===
+
+Bench coverage was extended in the same way: *eight* `criterion` bench
+crates now exist (`lsm_bench`, `esn_bench`, `sensors_bench`, `bridge_bench`,
+`llm_bench`, `claude_bench`, `neurophone_bench`, `pipeline_bench`).
+
+=== Bench Results (host x86_64, release, criterion)
+
+These are reference numbers — phone numbers will differ but the relative
+shape is what matters for budgeting the 50 Hz frame (20 ms).
+
+[cols="3,2,3"]
+|===
+|Bench | Time (median) | Notes
+
+| `iir_lowpass_step_3ch`           | 33.9 ns      | per-sample
+| `iir_highpass_step_3ch`          | 68.1 ns      | per-sample
+| `windowed_features_cap50`        | 328 ns       | mean+var+L2
+| `pipeline_ingest/accelerometer_3ch` | 186 ns    | per-sample
+| `pipeline_50hz_full_second`      | 9.5 µs       | 50 ingests + features
+| `bridge_encode/lsm100_esn50`     | 791 ns       |
+| `bridge_encode/lsm512_esn300`    | 1.73 µs      | target reservoir sizes
+| `bridge_encode/lsm2048_esn1024`  | 5.24 µs      |
+| `llm_mock_generate/short`        | 150 ns       | mock backend
+| `llm_mock_generate/long_256`     | 1.90 µs      |
+| `claude/complexity_estimation`   | 635 ns       | offline scoring
+| `claude/should_use_cloud_decision` | 1.06 ns    |
+| `esn_step/50`                    | 2.07 µs      | small reservoir
+| `esn_step/300`                   | 34.2 µs      | target reservoir
+| `esn_step/1000`                  | 335 µs       | stress
+| `lsm_step_10x10x10`              | 2.62 ms      | 1000 neurons (target)
+| `e2e_to_bridge_step`             | 5.18 µs      | sensor → bridge
+| `e2e_pipeline/sensor_to_llm_step` | 6.59 µs     | full pipeline w/ mock LLM
+|===
+
+*Frame-budget analysis (50 Hz = 20 ms):*
+
+The full non-LLM pipeline (sensor → LSM → ESN → bridge) runs in
+~2.6 ms on host, leaving ~17 ms for LLM token emission. Real Llama 3.2
+1B Q4 on Dimensity 8350 is ~50–100 ms/token, so streaming tokens
+naturally span multiple sample frames — the 50 Hz inner loop never
+blocks on the LLM.
+
+== OS Integration
+
+* `scripts/install-on-phone.sh` — workstation-side ADB installer (APK +
+  optional model push + permission grant + service start).
+* `scripts/install-termux.sh` — on-device Termux installer for the CLI path.
+* `scripts/start-on-boot.sh` — Termux:Boot hook for CLI persistence.
+* `scripts/uninstall.sh` — clean uninstall in both modes.
+* `docs/OS_INTEGRATION.adoc` — full integration surface documentation.
+
+== Home-Screen Widget
+
+Live App Widget at `android/app/src/main/java/ai/neurophone/widget/`.
+Power-toggle, salience meter, "Ask NeuroPhone" button, configuration
+activity. State pushed from `NeurophoneService` every 1 s via
+`SharedPreferences` + broadcast refresh. Boot persistence via
+`BootReceiver`.

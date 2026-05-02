@@ -18,3 +18,9 @@ chrono = { workspace = true }
 
 [dev-dependencies]
 approx = { workspace = true }
+criterion = { workspace = true }
+proptest = { workspace = true }
+
+[[bench]]
+name = "bridge_bench"
+harness = false

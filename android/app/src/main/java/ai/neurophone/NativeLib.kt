@@ -73,4 +73,21 @@ object NativeLib {
      * Check if system is running
      */
     external fun isRunning(): Boolean
+
+    /**
+     * Convenience wrapper used by the foreground service so the call site
+     * is symmetric with the rest of the API even though the JNI signature
+     * matches `processSensor` underneath.
+     */
+    fun pushSensorEvent(sensorType: String, timestampMs: Long, values: FloatArray): Boolean {
+        val typeId = when (sensorType) {
+            "accelerometer" -> 1
+            "gyroscope"     -> 4
+            "magnetometer"  -> 2
+            "light"         -> 5
+            "proximity"     -> 8
+            else            -> 0
+        }
+        return processSensor(typeId, values, timestampMs * 1_000_000L, 3)
+    }
 }

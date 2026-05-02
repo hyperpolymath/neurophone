@@ -1,4 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+SPDX-License-Identifier: PMPL-1.0-or-later
+SPDX-FileCopyrightText: 2025 Jonathan D.A. Jewell
+-->
 <resources>
     <string name="app_name">NeuroPhone</string>
+
+    <!-- Widget -->
+    <string name="widget_label">NeuroPhone</string>
+    <string name="widget_title">NeuroPhone</string>
+    <string name="widget_state_idle">Idle — tap power to start</string>
+    <string name="widget_state_running">Running</string>
+    <string name="widget_state_stopped">Stopped</string>
+    <string name="widget_state_error">Error</string>
+    <string name="widget_salience">Salience</string>
+    <string name="widget_query_now">Ask NeuroPhone</string>
+    <string name="widget_toggle">Toggle service</string>
+    <string name="widget_refresh">Refresh state</string>
+    <string name="widget_configure_title">Configure widget</string>
+    <string name="widget_configure_done">Done</string>
+    <string name="widget_configure_local_only">Local-only mode (no Claude fallback)</string>
+
+    <!-- Foreground service notification -->
+    <string name="service_channel_name">NeuroPhone runtime</string>
+    <string name="service_channel_desc">Sensor → neural → LLM loop</string>
+    <string name="service_notification_title">NeuroPhone is running</string>
+    <string name="service_notification_text">Listening to sensors at 50 Hz</string>
 </resources>

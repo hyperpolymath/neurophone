@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+SPDX-License-Identifier: PMPL-1.0-or-later
+SPDX-FileCopyrightText: 2025 Jonathan D.A. Jewell
+Placeholder bitmap-less preview: re-use the widget gradient background.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient
+        android:angle="135"
+        android:startColor="#1A237E"
+        android:endColor="#283593" />
+    <corners android:radius="18dp" />
+</shape>
