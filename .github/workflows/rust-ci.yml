@@ -7,27 +7,39 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
-  # NOTE: do NOT set RUSTFLAGS=-Dwarnings at workflow-env level. It promotes
-  # warnings in *dependency* code (over which we have no control) to errors,
-  # which breaks the build non-deterministically as upstream crates emit
-  # deprecation warnings. Use `cargo clippy ... -D warnings` below — that
-  # scope only applies to *this workspace*.
+  # IMPORTANT: do NOT set RUSTFLAGS=-Dwarnings at workflow-env level. That
+  # promotes warnings in *dependency* code to errors, which breaks the build
+  # non-deterministically as upstream crates emit deprecations. Use
+  # `cargo clippy -- -D warnings` below, which is scoped to this workspace.
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@b3b07ba8b418998c39fb20f53e8b695cdcc8de1b # stable
-        with:
-          components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@98c8021b550208e191a6a3145459bfc9fb29c4c0 # v2.8.0
+        # Install via official rustup script directly. This avoids any
+        # dependency on third-party setup actions whose SHA pins may
+        # drift; rustup.rs is the canonical install path.
+        run: |
+          set -eux
+          curl --proto '=https' --tlsv1.2 -sSfL https://sh.rustup.rs \
+            | sh -s -- -y --default-toolchain stable --profile minimal \
+                       --component rustfmt,clippy
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+      - name: Print toolchain
+        run: |
+          rustc --version
+          cargo --version
+          rustfmt --version
+          cargo clippy --version
 
       - name: Check formatting
         run: cargo fmt --all -- --check
 
-      - name: Clippy lints (workspace only)
+      - name: Clippy lints (workspace, errors only on our code)
         run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
       - name: Run tests
@@ -40,40 +52,46 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@b3b07ba8b418998c39fb20f53e8b695cdcc8de1b # stable
-      - name: Install cargo tools (prebuilt — fast)
-        uses: taiki-e/install-action@84c20235bedc3797c7d641f97fbd9e0f4d8acb0d # v2.62.61
-        with:
-          tool: cargo-audit,cargo-outdated
-      - name: Security audit (advisories only)
-        # `cargo audit` exits non-zero on any RUSTSEC entry. Some yanked-crate
-        # warnings are pre-existing and tracked by dependabot — they are not
-        # security advisories. Pass without `--deny warnings` so only real
-        # vulnerabilities fail the job.
+        run: |
+          set -eux
+          curl --proto '=https' --tlsv1.2 -sSfL https://sh.rustup.rs \
+            | sh -s -- -y --default-toolchain stable --profile minimal
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+      - name: Install cargo-audit (locked)
+        run: cargo install --locked cargo-audit
+
+      - name: Security audit (advisories)
+        # cargo audit fails on any RUSTSEC advisory. Yanked-crate notes are
+        # informational warnings and do not fail without `--deny warnings`.
         run: cargo audit
-      - name: Check for outdated deps (informational)
-        run: cargo outdated --workspace
-        continue-on-error: true
 
   coverage:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@b3b07ba8b418998c39fb20f53e8b695cdcc8de1b # stable
-        with:
-          components: llvm-tools-preview
-      - name: Install cargo-llvm-cov (prebuilt — fast)
-        # cargo-llvm-cov is the modern coverage tool; faster + more reliable
-        # than building cargo-tarpaulin from source on every CI run.
-        uses: taiki-e/install-action@84c20235bedc3797c7d641f97fbd9e0f4d8acb0d # v2.62.61
-        with:
-          tool: cargo-llvm-cov
-      - uses: Swatinem/rust-cache@98c8021b550208e191a6a3145459bfc9fb29c4c0 # v2.8.0
+
+      - name: Install Rust toolchain (with llvm-tools-preview)
+        run: |
+          set -eux
+          curl --proto '=https' --tlsv1.2 -sSfL https://sh.rustup.rs \
+            | sh -s -- -y --default-toolchain stable --profile minimal \
+                       --component llvm-tools-preview
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+      - name: Install cargo-llvm-cov (locked)
+        # cargo-llvm-cov uses Rust's native coverage instrumentation —
+        # faster and more reliable than tarpaulin (which depends on a
+        # kernel module that breaks under Ubuntu kernel updates).
+        run: cargo install --locked cargo-llvm-cov
+
       - name: Generate coverage (lcov)
         run: cargo llvm-cov --workspace --all-features --lcov --output-path lcov.info
-      - uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
+
+      - name: Upload to codecov (best-effort)
+        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
         with:
           files: lcov.info
         continue-on-error: true
