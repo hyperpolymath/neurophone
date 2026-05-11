@@ -10,12 +10,22 @@ use lsm::{LiquidStateMachine, LsmConfig};
 use ndarray::Array1;
 use sensors::{PipelineConfig, SensorKind, SensorPipeline, SensorReading};
 
-fn build_pipeline() -> (SensorPipeline, LiquidStateMachine, EchoStateNetwork, Bridge, MockBackend) {
+fn build_pipeline() -> (
+    SensorPipeline,
+    LiquidStateMachine,
+    EchoStateNetwork,
+    Bridge,
+    MockBackend,
+) {
     let sp = SensorPipeline::new(SensorKind::Accelerometer, PipelineConfig::default()).unwrap();
     let lsm = LiquidStateMachine::new(
-        LsmConfig { dimensions: (3, 3, 3), ..Default::default() },
+        LsmConfig {
+            dimensions: (3, 3, 3),
+            ..Default::default()
+        },
         7,
-    ).unwrap();
+    )
+    .unwrap();
     let esn = EchoStateNetwork::new(EsnConfig {
         reservoir_size: 64,
         input_dim: 27,
@@ -23,7 +33,8 @@ fn build_pipeline() -> (SensorPipeline, LiquidStateMachine, EchoStateNetwork, Br
         input_scale: 1.0,
         sparsity: 0.9,
         leaking_rate: 0.3,
-    }).unwrap();
+    })
+    .unwrap();
     let bridge = Bridge::new(BridgeConfig::default()).unwrap();
     let mut llm = MockBackend::new(LlmConfig::default()).unwrap();
     llm.load().unwrap();
@@ -40,7 +51,8 @@ fn end_to_end_single_step() {
             SensorKind::Accelerometer,
             i as u64 * 20,
             vec![(i as f32 * 0.1).sin(), (i as f32 * 0.1).cos(), 9.81],
-        ).unwrap();
+        )
+        .unwrap();
         sp.ingest(&r).unwrap();
     }
 
@@ -66,7 +78,8 @@ fn end_to_end_50hz_one_second_loop() {
             SensorKind::Accelerometer,
             i as u64 * 20,
             vec![(i as f32 * 0.2).sin(), 0.0, 9.81],
-        ).unwrap();
+        )
+        .unwrap();
         sp.ingest(&r).unwrap();
         if i >= 25 {
             let f = sp.features().unwrap();
@@ -88,7 +101,12 @@ fn end_to_end_quiet_input_yields_quiet_description() {
     let (mut sp, mut lsm, mut esn, mut br, _llm) = build_pipeline();
     // Constant gravity = no motion variance.
     for i in 0..200 {
-        let r = SensorReading::new(SensorKind::Accelerometer, i as u64 * 20, vec![0.0, 0.0, 9.81]).unwrap();
+        let r = SensorReading::new(
+            SensorKind::Accelerometer,
+            i as u64 * 20,
+            vec![0.0, 0.0, 9.81],
+        )
+        .unwrap();
         sp.ingest(&r).unwrap();
     }
     let f = sp.features().unwrap();
@@ -103,7 +121,10 @@ fn end_to_end_quiet_input_yields_quiet_description() {
 #[test]
 fn end_to_end_dimension_negotiation() {
     // Verify shapes line up: features.len → lsm.input → lsm.size → esn.input.
-    let cfg_lsm = LsmConfig { dimensions: (4, 4, 4), ..Default::default() };
+    let cfg_lsm = LsmConfig {
+        dimensions: (4, 4, 4),
+        ..Default::default()
+    };
     let mut lsm = LiquidStateMachine::new(cfg_lsm, 7).unwrap();
     let lsm_state = lsm.step(&Array1::from_vec(vec![0.0; 7]));
     assert_eq!(lsm_state.len(), 64);
@@ -115,7 +136,8 @@ fn end_to_end_dimension_negotiation() {
         input_scale: 1.0,
         sparsity: 0.9,
         leaking_rate: 0.3,
-    }).unwrap();
+    })
+    .unwrap();
     let esn_state = esn.step(&lsm_state);
     assert_eq!(esn_state.len(), 128);
 }

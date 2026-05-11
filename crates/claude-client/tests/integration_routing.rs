@@ -14,7 +14,10 @@ fn point_to_point_message_construction() {
 
 #[test]
 fn aspect_offline_never_routes_to_cloud() {
-    let cfg = ClaudeConfig { api_key: Some("sk-test".into()), ..Default::default() };
+    let cfg = ClaudeConfig {
+        api_key: Some("sk-test".into()),
+        ..Default::default()
+    };
     let mut h = HybridInference::new(Some(cfg));
     h.set_online(false);
     assert!(!h.should_use_cloud(0.99, true));
@@ -22,7 +25,10 @@ fn aspect_offline_never_routes_to_cloud() {
 
 #[test]
 fn aspect_no_local_always_cloud_when_online() {
-    let cfg = ClaudeConfig { api_key: Some("sk-test".into()), ..Default::default() };
+    let cfg = ClaudeConfig {
+        api_key: Some("sk-test".into()),
+        ..Default::default()
+    };
     let h = HybridInference::new(Some(cfg));
     assert!(h.should_use_cloud(0.0, false));
 }
@@ -47,7 +53,7 @@ fn complexity_estimation_bounded() {
     let h = HybridInference::new(None);
     let huge = "analyze ".repeat(5000);
     let s = h.estimate_complexity(&huge);
-    assert!(s <= 1.0 && s >= 0.0);
+    assert!((0.0..=1.0).contains(&s));
 }
 
 #[test]

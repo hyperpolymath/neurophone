@@ -27,7 +27,9 @@ fn point_to_point_step_returns_state() {
 #[test]
 fn lifecycle_step_reset_step() {
     let mut e = EchoStateNetwork::new(small_cfg()).unwrap();
-    for _ in 0..100 { let _ = e.step(&Array1::from_vec(vec![1.0, 0.5, 0.0, -0.5])); }
+    for _ in 0..100 {
+        let _ = e.step(&Array1::from_vec(vec![1.0, 0.5, 0.0, -0.5]));
+    }
     let s_before = e.get_state();
     e.reset();
     let s_after = e.get_state();
@@ -37,13 +39,19 @@ fn lifecycle_step_reset_step() {
 
 #[test]
 fn aspect_invalid_config_zero_size() {
-    let cfg = EsnConfig { reservoir_size: 0, ..small_cfg() };
+    let cfg = EsnConfig {
+        reservoir_size: 0,
+        ..small_cfg()
+    };
     assert!(EchoStateNetwork::new(cfg).is_err());
 }
 
 #[test]
 fn aspect_invalid_leaking_rate() {
-    let cfg = EsnConfig { leaking_rate: 1.5, ..small_cfg() };
+    let cfg = EsnConfig {
+        leaking_rate: 1.5,
+        ..small_cfg()
+    };
     assert!(EchoStateNetwork::new(cfg).is_err());
 }
 

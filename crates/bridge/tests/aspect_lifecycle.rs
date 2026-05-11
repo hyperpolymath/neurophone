@@ -7,13 +7,19 @@ use ndarray::Array1;
 
 #[test]
 fn aspect_invalid_threshold_rejected() {
-    let cfg = BridgeConfig { activation_threshold: 1.5, lsm_weight: 0.5 };
+    let cfg = BridgeConfig {
+        activation_threshold: 1.5,
+        lsm_weight: 0.5,
+    };
     assert!(Bridge::new(cfg).is_err());
 }
 
 #[test]
 fn aspect_invalid_weight_rejected() {
-    let cfg = BridgeConfig { activation_threshold: 0.5, lsm_weight: -0.1 };
+    let cfg = BridgeConfig {
+        activation_threshold: 0.5,
+        lsm_weight: -0.1,
+    };
     assert!(Bridge::new(cfg).is_err());
 }
 

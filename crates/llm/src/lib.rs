@@ -49,10 +49,14 @@ impl LlmConfig {
             return Err(LlmError::InvalidConfig("n_threads must be > 0".into()));
         }
         if self.context_size == 0 || self.max_tokens == 0 {
-            return Err(LlmError::InvalidConfig("context_size/max_tokens must be > 0".into()));
+            return Err(LlmError::InvalidConfig(
+                "context_size/max_tokens must be > 0".into(),
+            ));
         }
         if self.max_tokens > self.context_size {
-            return Err(LlmError::InvalidConfig("max_tokens cannot exceed context_size".into()));
+            return Err(LlmError::InvalidConfig(
+                "max_tokens cannot exceed context_size".into(),
+            ));
         }
         Ok(())
     }
@@ -85,16 +89,29 @@ pub struct MockBackend {
 impl MockBackend {
     pub fn new(config: LlmConfig) -> Result<Self, LlmError> {
         config.validate()?;
-        Ok(Self { config, loaded: false, calls: AtomicU64::new(0) })
+        Ok(Self {
+            config,
+            loaded: false,
+            calls: AtomicU64::new(0),
+        })
     }
 
-    pub fn call_count(&self) -> u64 { self.calls.load(Ordering::SeqCst) }
+    pub fn config(&self) -> &LlmConfig {
+        &self.config
+    }
+    pub fn call_count(&self) -> u64 {
+        self.calls.load(Ordering::SeqCst)
+    }
 }
 
 impl LlmBackend for MockBackend {
-    fn name(&self) -> &'static str { "mock" }
+    fn name(&self) -> &'static str {
+        "mock"
+    }
 
-    fn is_loaded(&self) -> bool { self.loaded }
+    fn is_loaded(&self) -> bool {
+        self.loaded
+    }
 
     fn load(&mut self) -> Result<(), LlmError> {
         self.loaded = true;
@@ -102,7 +119,9 @@ impl LlmBackend for MockBackend {
     }
 
     fn generate(&mut self, prompt: &str, max_tokens: u32) -> Result<LlmResponse, LlmError> {
-        if !self.loaded { return Err(LlmError::NotLoaded); }
+        if !self.loaded {
+            return Err(LlmError::NotLoaded);
+        }
         if prompt.trim().is_empty() {
             return Err(LlmError::InvalidPrompt("empty prompt".into()));
         }
@@ -110,30 +129,50 @@ impl LlmBackend for MockBackend {
             return Err(LlmError::InvalidConfig("max_tokens=0".into()));
         }
         self.calls.fetch_add(1, Ordering::SeqCst);
-        let words: Vec<&str> = prompt.split_whitespace().take(max_tokens as usize).collect();
+        let words: Vec<&str> = prompt
+            .split_whitespace()
+            .take(max_tokens as usize)
+            .collect();
         let text = format!("(local-llama-mock) echo: {}", words.join(" "));
         let tokens_emitted = words.len() as u32;
-        Ok(LlmResponse { text, tokens_emitted, elapsed_ms: 1 })
+        Ok(LlmResponse {
+            text,
+            tokens_emitted,
+            elapsed_ms: 1,
+        })
     }
 
-    fn unload(&mut self) { self.loaded = false; }
+    fn unload(&mut self) {
+        self.loaded = false;
+    }
 }
 
-pub fn hello() -> &'static str { "llm" }
+pub fn hello() -> &'static str {
+    "llm"
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test] fn config_validation() {
+    #[test]
+    fn config_validation() {
         assert!(LlmConfig::default().validate().is_ok());
-        let bad = LlmConfig { n_threads: 0, ..Default::default() };
+        let bad = LlmConfig {
+            n_threads: 0,
+            ..Default::default()
+        };
         assert!(bad.validate().is_err());
-        let bad2 = LlmConfig { max_tokens: 9999, context_size: 100, ..Default::default() };
+        let bad2 = LlmConfig {
+            max_tokens: 9999,
+            context_size: 100,
+            ..Default::default()
+        };
         assert!(bad2.validate().is_err());
     }
 
-    #[test] fn mock_lifecycle() {
+    #[test]
+    fn mock_lifecycle() {
         let mut b = MockBackend::new(LlmConfig::default()).unwrap();
         assert!(!b.is_loaded());
         b.load().unwrap();
@@ -145,27 +184,39 @@ mod tests {
         assert!(!b.is_loaded());
     }
 
-    #[test] fn generate_rejects_unloaded() {
+    #[test]
+    fn generate_rejects_unloaded() {
         let mut b = MockBackend::new(LlmConfig::default()).unwrap();
         assert!(matches!(b.generate("x", 1), Err(LlmError::NotLoaded)));
     }
 
-    #[test] fn generate_rejects_empty_prompt() {
+    #[test]
+    fn generate_rejects_empty_prompt() {
         let mut b = MockBackend::new(LlmConfig::default()).unwrap();
         b.load().unwrap();
-        assert!(matches!(b.generate("   ", 5), Err(LlmError::InvalidPrompt(_))));
+        assert!(matches!(
+            b.generate("   ", 5),
+            Err(LlmError::InvalidPrompt(_))
+        ));
     }
 
-    #[test] fn generate_rejects_zero_tokens() {
+    #[test]
+    fn generate_rejects_zero_tokens() {
         let mut b = MockBackend::new(LlmConfig::default()).unwrap();
         b.load().unwrap();
-        assert!(matches!(b.generate("ok", 0), Err(LlmError::InvalidConfig(_))));
+        assert!(matches!(
+            b.generate("ok", 0),
+            Err(LlmError::InvalidConfig(_))
+        ));
     }
 
-    #[test] fn call_count_increments() {
+    #[test]
+    fn call_count_increments() {
         let mut b = MockBackend::new(LlmConfig::default()).unwrap();
         b.load().unwrap();
-        for _ in 0..3 { b.generate("a b c", 5).unwrap(); }
+        for _ in 0..3 {
+            b.generate("a b c", 5).unwrap();
+        }
         assert_eq!(b.call_count(), 3);
     }
 }

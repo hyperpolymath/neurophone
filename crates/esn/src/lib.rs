@@ -110,21 +110,23 @@ impl EchoStateNetwork {
             config.reservoir_size, config.input_dim
         );
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         // Create recurrent weight matrix with sparsity
         let recurrent_weights =
             Self::create_recurrent_weights(config.reservoir_size, config.sparsity, &mut rng);
 
         // Scale to achieve target spectral radius
-        let recurrent_weights = Self::scale_to_spectral_radius(
-            &recurrent_weights,
-            config.spectral_radius,
-        );
+        let recurrent_weights =
+            Self::scale_to_spectral_radius(&recurrent_weights, config.spectral_radius);
 
         // Create input weight matrix
-        let input_weights =
-            Self::create_input_weights(config.reservoir_size, config.input_dim, config.input_scale, &mut rng);
+        let input_weights = Self::create_input_weights(
+            config.reservoir_size,
+            config.input_dim,
+            config.input_scale,
+            &mut rng,
+        );
 
         // Initialize state
         let state = Array1::zeros(config.reservoir_size);
@@ -144,18 +146,14 @@ impl EchoStateNetwork {
     }
 
     /// Create sparse recurrent weight matrix
-    fn create_recurrent_weights(
-        size: usize,
-        sparsity: f32,
-        rng: &mut impl Rng,
-    ) -> Array2<f32> {
+    fn create_recurrent_weights(size: usize, sparsity: f32, rng: &mut impl Rng) -> Array2<f32> {
         let mut weights = Array2::<f32>::zeros((size, size));
         let dist = Normal::new(0.0, 1.0).expect("valid normal distribution");
 
         let connection_prob = 1.0 - sparsity;
         for i in 0..size {
             for j in 0..size {
-                if rng.gen::<f32>() < connection_prob {
+                if rng.random::<f32>() < connection_prob {
                     let w: f32 = rng.sample(dist);
                     weights[[i, j]] = w;
                 }
@@ -270,7 +268,10 @@ impl EchoStateNetwork {
     }
 
     /// Process a sequence of inputs
-    pub fn process_sequence(&mut self, inputs: &[Array1<f32>]) -> Result<Vec<Array1<f32>>, EsnError> {
+    pub fn process_sequence(
+        &mut self,
+        inputs: &[Array1<f32>],
+    ) -> Result<Vec<Array1<f32>>, EsnError> {
         let mut outputs = Vec::with_capacity(inputs.len());
         for input in inputs {
             outputs.push(self.step(input));

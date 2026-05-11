@@ -7,51 +7,91 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
-  RUSTFLAGS: -Dwarnings
+  # IMPORTANT: do NOT set RUSTFLAGS=-Dwarnings at workflow-env level. That
+  # promotes warnings in *dependency* code to errors, which breaks the build
+  # non-deterministically as upstream crates emit deprecations. Use
+  # `cargo clippy -- -D warnings` below, which is scoped to this workspace.
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # stable
-        with:
-          components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+
+      - name: Install Rust toolchain
+        # Install via official rustup script directly. This avoids any
+        # dependency on third-party setup actions whose SHA pins may
+        # drift; rustup.rs is the canonical install path.
+        run: |
+          set -eux
+          curl --proto '=https' --tlsv1.2 -sSfL https://sh.rustup.rs \
+            | sh -s -- -y --default-toolchain stable --profile minimal \
+                       --component rustfmt,clippy
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+      - name: Print toolchain
+        run: |
+          rustc --version
+          cargo --version
+          rustfmt --version
+          cargo clippy --version
 
       - name: Check formatting
         run: cargo fmt --all -- --check
 
-      - name: Clippy lints
-        run: cargo clippy --all-targets --all-features -- -D warnings
+      - name: Clippy lints (workspace, errors only on our code)
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
       - name: Run tests
-        run: cargo test --all-features
+        run: cargo test --workspace --all-features --no-fail-fast
 
       - name: Build release
-        run: cargo build --release
+        run: cargo build --workspace --release
 
   security:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # stable
-      - name: Install cargo-audit
-        run: cargo install cargo-audit
-      - name: Security audit
+
+      - name: Install Rust toolchain
+        run: |
+          set -eux
+          curl --proto '=https' --tlsv1.2 -sSfL https://sh.rustup.rs \
+            | sh -s -- -y --default-toolchain stable --profile minimal
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+      - name: Install cargo-audit (locked)
+        run: cargo install --locked cargo-audit
+
+      - name: Security audit (advisories)
+        # cargo audit fails on any RUSTSEC advisory. Yanked-crate notes are
+        # informational warnings and do not fail without `--deny warnings`.
         run: cargo audit
-      - name: Check for outdated deps
-        run: cargo install cargo-outdated && cargo outdated --exit-code 1 || true
 
   coverage:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # stable
-      - name: Install tarpaulin
-        run: cargo install cargo-tarpaulin
-      - name: Generate coverage
-        run: cargo tarpaulin --out Xml
-      - uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
+
+      - name: Install Rust toolchain (with llvm-tools-preview)
+        run: |
+          set -eux
+          curl --proto '=https' --tlsv1.2 -sSfL https://sh.rustup.rs \
+            | sh -s -- -y --default-toolchain stable --profile minimal \
+                       --component llvm-tools-preview
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+      - name: Install cargo-llvm-cov (locked)
+        # cargo-llvm-cov uses Rust's native coverage instrumentation —
+        # faster and more reliable than tarpaulin (which depends on a
+        # kernel module that breaks under Ubuntu kernel updates).
+        run: cargo install --locked cargo-llvm-cov
+
+      - name: Generate coverage (lcov)
+        run: cargo llvm-cov --workspace --all-features --lcov --output-path lcov.info
+
+      - name: Upload to codecov (best-effort)
+        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
         with:
-          files: cobertura.xml
+          files: lcov.info
+        continue-on-error: true

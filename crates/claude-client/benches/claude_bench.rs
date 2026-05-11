@@ -3,7 +3,8 @@
 //! Benches for the Claude client (offline / routing only — no network).
 
 use claude_client::{HybridInference, Message};
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
+use std::hint::black_box;
 
 fn bench_complexity_estimation(c: &mut Criterion) {
     let h = HybridInference::new(None);
@@ -28,5 +29,10 @@ fn bench_message_construction(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, bench_complexity_estimation, bench_should_use_cloud, bench_message_construction);
+criterion_group!(
+    benches,
+    bench_complexity_estimation,
+    bench_should_use_cloud,
+    bench_message_construction
+);
 criterion_main!(benches);

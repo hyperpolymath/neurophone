@@ -2,8 +2,9 @@
 // SPDX-FileCopyrightText: 2025 Jonathan D.A. Jewell
 //! Benches for the LLM mock backend (real backend benched out-of-tree).
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use llm::{LlmBackend, LlmConfig, MockBackend};
+use std::hint::black_box;
 
 fn bench_generate(c: &mut Criterion) {
     let mut g = c.benchmark_group("llm_mock_generate");

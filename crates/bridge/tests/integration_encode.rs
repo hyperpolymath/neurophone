@@ -28,7 +28,10 @@ fn salience_monotonic_in_active_fraction() {
 
 #[test]
 fn lsm_weight_zero_uses_only_esn() {
-    let cfg = BridgeConfig { lsm_weight: 0.0, ..Default::default() };
+    let cfg = BridgeConfig {
+        lsm_weight: 0.0,
+        ..Default::default()
+    };
     let mut b = Bridge::new(cfg).unwrap();
     let lsm = Array1::from_elem(10, 1.0);
     let esn = Array1::zeros(10);
@@ -38,7 +41,10 @@ fn lsm_weight_zero_uses_only_esn() {
 
 #[test]
 fn lsm_weight_one_uses_only_lsm() {
-    let cfg = BridgeConfig { lsm_weight: 1.0, ..Default::default() };
+    let cfg = BridgeConfig {
+        lsm_weight: 1.0,
+        ..Default::default()
+    };
     let mut b = Bridge::new(cfg).unwrap();
     let lsm = Array1::zeros(10);
     let esn = Array1::from_elem(10, 1.0);
