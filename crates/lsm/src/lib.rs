@@ -9,7 +9,7 @@
 use ndarray::{Array1, Array2, Axis};
 use ndarray_rand::RandomExt;
 use rand::Rng;
-use rand_distr::{Normal, Uniform, Bernoulli};
+use rand_distr::{Bernoulli, Normal, Uniform};
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use thiserror::Error;
@@ -143,12 +143,17 @@ impl LiquidStateMachine {
         let n_neurons = nx * ny * nz;
 
         if n_neurons == 0 {
-            return Err(LsmError::InvalidConfig("Grid dimensions must be positive".into()));
+            return Err(LsmError::InvalidConfig(
+                "Grid dimensions must be positive".into(),
+            ));
         }
 
-        debug!("Creating LSM with {} neurons ({} x {} x {})", n_neurons, nx, ny, nz);
+        debug!(
+            "Creating LSM with {} neurons ({} x {} x {})",
+            n_neurons, nx, ny, nz
+        );
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let lif_params = LifParameters::default();
 
         // Initialize neurons
@@ -161,7 +166,7 @@ impl LiquidStateMachine {
             let z = idx / (nx * ny);
 
             neurons.push(NeuronState {
-                v: lif_params.v_rest + rng.gen::<f32>() * 5.0, // Small random offset
+                v: lif_params.v_rest + rng.random::<f32>() * 5.0, // Small random offset
                 refrac_remaining: 0.0,
                 is_inhibitory: idx < n_inhibitory,
                 position: (x, y, z),
@@ -184,7 +189,8 @@ impl LiquidStateMachine {
         let weights = Self::create_recurrent_weights(&config, &neurons, &mut rng);
 
         // Create input weights
-        let input_weights = Self::create_input_weights(n_neurons, input_dim, config.input_scale, &mut rng);
+        let input_weights =
+            Self::create_input_weights(n_neurons, input_dim, config.input_scale, &mut rng);
 
         // Initialize spike history
         let spike_history = vec![VecDeque::with_capacity(100); n_neurons];
@@ -226,7 +232,8 @@ impl LiquidStateMachine {
                 let (xj, yj, zj) = neurons[j].position;
                 let dist = (((xi as i32 - xj as i32).pow(2)
                     + (yi as i32 - yj as i32).pow(2)
-                    + (zi as i32 - zj as i32).pow(2)) as f32).sqrt();
+                    + (zi as i32 - zj as i32).pow(2)) as f32)
+                    .sqrt();
 
                 // Distance-dependent connection probability
                 let p_connect = if neurons[i].is_inhibitory {
@@ -235,7 +242,7 @@ impl LiquidStateMachine {
                     config.p_exc * (-dist / (max_dist * 0.5)).exp()
                 };
 
-                if rng.gen::<f32>() < p_connect {
+                if rng.random::<f32>() < p_connect {
                     let w: f32 = rng.sample(weight_dist);
                     let w = w.abs().max(0.01); // Ensure positive base weight
 
@@ -246,7 +253,10 @@ impl LiquidStateMachine {
         }
 
         // Scale weights to achieve target spectral radius
-        let eigenvalue_estimate = weights.mapv(|x| x.abs()).sum_axis(Axis(1)).into_iter()
+        let eigenvalue_estimate = weights
+            .mapv(|x| x.abs())
+            .sum_axis(Axis(1))
+            .into_iter()
             .fold(0.0f32, |a, b| a.max(b));
 
         if eigenvalue_estimate > 0.0 {
@@ -290,7 +300,9 @@ impl LiquidStateMachine {
             let expected = self.input_weights.ncols();
             let mut padded = Array1::zeros(expected);
             let copy_len = input.len().min(expected);
-            padded.slice_mut(ndarray::s![..copy_len]).assign(&input.slice(ndarray::s![..copy_len]));
+            padded
+                .slice_mut(ndarray::s![..copy_len])
+                .assign(&input.slice(ndarray::s![..copy_len]));
             return self.step(&padded);
         }
 
@@ -298,15 +310,17 @@ impl LiquidStateMachine {
         let input_current = self.input_weights.dot(input);
 
         // Get previous spike indicators for recurrent input
-        let spike_indicators: Array1<f32> = Array1::from_iter(
-            self.neurons.iter().map(|_n| {
-                if let Some(&last_spike) = self.spike_history[0].back() {
-                    if self.current_time - last_spike < dt as f64 { 1.0 } else { 0.0 }
+        let spike_indicators: Array1<f32> = Array1::from_iter(self.neurons.iter().map(|_n| {
+            if let Some(&last_spike) = self.spike_history[0].back() {
+                if self.current_time - last_spike < dt as f64 {
+                    1.0
                 } else {
                     0.0
                 }
-            })
-        );
+            } else {
+                0.0
+            }
+        }));
 
         // Calculate recurrent currents
         let recurrent_current = self.weights.t().dot(&spike_indicators);
@@ -326,8 +340,7 @@ impl LiquidStateMachine {
 
             // LIF dynamics: tau_m * dV/dt = -(V - V_rest) + R_m * I
             let dv = dt / self.lif_params.tau_m
-                * (-(neuron.v - self.lif_params.v_rest)
-                   + self.lif_params.r_m * total_current[idx]);
+                * (-(neuron.v - self.lif_params.v_rest) + self.lif_params.r_m * total_current[idx]);
 
             neuron.v += dv;
 
@@ -379,25 +392,21 @@ impl LiquidStateMachine {
 
     /// Get the current firing rates (spikes per window)
     pub fn get_firing_rates(&self, window_ms: f64) -> Array1<f32> {
-        Array1::from_iter(
-            self.spike_history.iter().map(|history| {
-                let count = history.iter()
-                    .filter(|&&t| self.current_time - t <= window_ms)
-                    .count();
-                count as f32 / (window_ms / 1000.0) as f32 // Convert to Hz
-            })
-        )
+        Array1::from_iter(self.spike_history.iter().map(|history| {
+            let count = history
+                .iter()
+                .filter(|&&t| self.current_time - t <= window_ms)
+                .count();
+            count as f32 / (window_ms / 1000.0) as f32 // Convert to Hz
+        }))
     }
 
     /// Get state vector (normalized membrane potentials)
     pub fn get_state(&self, window_ms: f64) -> Array1<f32> {
         // Combine membrane potentials and firing rates
-        let potentials = Array1::from_iter(
-            self.neurons.iter().map(|n| {
-                (n.v - self.lif_params.v_rest) /
-                (self.lif_params.v_thresh - self.lif_params.v_rest)
-            })
-        );
+        let potentials = Array1::from_iter(self.neurons.iter().map(|n| {
+            (n.v - self.lif_params.v_rest) / (self.lif_params.v_thresh - self.lif_params.v_rest)
+        }));
 
         let rates = self.get_firing_rates(window_ms);
         let max_rate = rates.iter().cloned().fold(1.0f32, f32::max);
@@ -419,10 +428,10 @@ impl LiquidStateMachine {
 
     /// Reset the LSM to initial state
     pub fn reset(&mut self) {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         for neuron in &mut self.neurons {
-            neuron.v = self.lif_params.v_rest + rng.gen::<f32>() * 5.0;
+            neuron.v = self.lif_params.v_rest + rng.random::<f32>() * 5.0;
             neuron.refrac_remaining = 0.0;
         }
 
@@ -453,6 +462,7 @@ impl LiquidStateMachine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[allow(unused_imports)]
     use approx::assert_relative_eq;
 
     #[test]

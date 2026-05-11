@@ -9,7 +9,9 @@ use std::time::{Duration, Instant};
 
 #[test]
 fn aspect_concurrent_queries_via_mutex() {
-    let sys = Arc::new(Mutex::new(NeuroSymbolicSystem::new(SystemConfig::default()).unwrap()));
+    let sys = Arc::new(Mutex::new(
+        NeuroSymbolicSystem::new(SystemConfig::default()).unwrap(),
+    ));
     let mut handles = vec![];
     for i in 0..16 {
         let sys = sys.clone();
@@ -18,13 +20,17 @@ fn aspect_concurrent_queries_via_mutex() {
             sys.lock().unwrap().query(&q, true).unwrap();
         }));
     }
-    for h in handles { h.join().unwrap(); }
+    for h in handles {
+        h.join().unwrap();
+    }
     assert_eq!(sys.lock().unwrap().query_count(), 16);
 }
 
 #[test]
 fn aspect_concurrent_sensor_events() {
-    let sys = Arc::new(Mutex::new(NeuroSymbolicSystem::new(SystemConfig::default()).unwrap()));
+    let sys = Arc::new(Mutex::new(
+        NeuroSymbolicSystem::new(SystemConfig::default()).unwrap(),
+    ));
     sys.lock().unwrap().initialize().unwrap();
     let mut handles = vec![];
     for i in 0..32u64 {
@@ -38,7 +44,9 @@ fn aspect_concurrent_sensor_events() {
             let _ = sys.lock().unwrap().process_sensor_event(&event);
         }));
     }
-    for h in handles { h.join().unwrap(); }
+    for h in handles {
+        h.join().unwrap();
+    }
 }
 
 #[test]
@@ -60,7 +68,9 @@ fn aspect_error_path_empty_query() {
 fn aspect_error_path_inactive_system_event() {
     let mut sys = NeuroSymbolicSystem::new(SystemConfig::default()).unwrap();
     let e = SensorEvent {
-        sensor_type: "x".into(), timestamp_ms: 0, values: vec![0.0],
+        sensor_type: "x".into(),
+        timestamp_ms: 0,
+        values: vec![0.0],
     };
     assert!(sys.process_sensor_event(&e).is_err());
 }

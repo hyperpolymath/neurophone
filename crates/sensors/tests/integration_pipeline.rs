@@ -2,13 +2,20 @@
 // SPDX-FileCopyrightText: 2025 Jonathan D.A. Jewell
 //! Integration tests for the sensors crate (point-to-point: reading -> features).
 
-use sensors::{IirFilter, PipelineConfig, SensorKind, SensorPipeline, SensorReading, WindowedFeatures};
+use sensors::{
+    IirFilter, PipelineConfig, SensorKind, SensorPipeline, SensorReading, WindowedFeatures,
+};
 
 #[test]
 fn pipeline_50hz_one_second_yields_features() {
     let mut p = SensorPipeline::new(SensorKind::Accelerometer, PipelineConfig::default()).unwrap();
     for i in 0..50 {
-        let r = SensorReading::new(SensorKind::Accelerometer, i as u64 * 20, vec![0.1, 0.2, 9.81]).unwrap();
+        let r = SensorReading::new(
+            SensorKind::Accelerometer,
+            i as u64 * 20,
+            vec![0.1, 0.2, 9.81],
+        )
+        .unwrap();
         p.ingest(&r).unwrap();
     }
     let f = p.features().unwrap();
@@ -20,7 +27,8 @@ fn pipeline_50hz_one_second_yields_features() {
 fn light_sensor_singlechannel_pipeline() {
     let mut p = SensorPipeline::new(SensorKind::Light, PipelineConfig::default()).unwrap();
     for i in 0..30 {
-        let r = SensorReading::new(SensorKind::Light, i as u64 * 20, vec![100.0 + i as f32]).unwrap();
+        let r =
+            SensorReading::new(SensorKind::Light, i as u64 * 20, vec![100.0 + i as f32]).unwrap();
         p.ingest(&r).unwrap();
     }
     let f = p.features().unwrap();
@@ -39,7 +47,9 @@ fn filter_chain_preserves_dimensionality() {
 #[test]
 fn windowed_features_after_overflow_stays_bounded() {
     let mut w = WindowedFeatures::new(2, 5).unwrap();
-    for i in 0..100 { w.push(&[i as f32, -(i as f32)]).unwrap(); }
+    for i in 0..100 {
+        w.push(&[i as f32, -(i as f32)]).unwrap();
+    }
     assert_eq!(w.len(), 5);
     let f = w.features().unwrap();
     assert!(f.iter().all(|v| v.is_finite()));

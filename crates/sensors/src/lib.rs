@@ -66,7 +66,11 @@ impl SensorReading {
                 got: values.len(),
             });
         }
-        Ok(Self { kind, timestamp_ms, values })
+        Ok(Self {
+            kind,
+            timestamp_ms,
+            values,
+        })
     }
 }
 
@@ -82,13 +86,22 @@ pub struct IirFilter {
 }
 
 impl IirFilter {
-    pub fn new(channels: usize, cutoff_hz: f32, sample_hz: f32, high_pass: bool) -> Result<Self, SensorError> {
+    pub fn new(
+        channels: usize,
+        cutoff_hz: f32,
+        sample_hz: f32,
+        high_pass: bool,
+    ) -> Result<Self, SensorError> {
         if channels == 0 || sample_hz <= 0.0 || cutoff_hz <= 0.0 {
             return Err(SensorError::InvalidConfig("non-positive params".into()));
         }
         let dt = 1.0 / sample_hz;
         let rc = 1.0 / (2.0 * std::f32::consts::PI * cutoff_hz);
-        let alpha = if high_pass { rc / (rc + dt) } else { dt / (rc + dt) };
+        let alpha = if high_pass {
+            rc / (rc + dt)
+        } else {
+            dt / (rc + dt)
+        };
         Ok(Self {
             alpha,
             prev_out: vec![0.0; channels],
@@ -99,7 +112,10 @@ impl IirFilter {
 
     pub fn step(&mut self, input: &[f32]) -> Result<Vec<f32>, SensorError> {
         if input.len() != self.prev_out.len() {
-            return Err(SensorError::DimensionMismatch { expected: self.prev_out.len(), got: input.len() });
+            return Err(SensorError::DimensionMismatch {
+                expected: self.prev_out.len(),
+                got: input.len(),
+            });
         }
         let mut out = vec![0.0; self.prev_out.len()];
         for (i, &x) in input.iter().enumerate() {
@@ -134,17 +150,24 @@ pub struct WindowedFeatures {
 impl WindowedFeatures {
     pub fn new(channels: usize, capacity: usize) -> Result<Self, SensorError> {
         if channels == 0 || capacity == 0 {
-            return Err(SensorError::InvalidConfig("zero channels or capacity".into()));
+            return Err(SensorError::InvalidConfig(
+                "zero channels or capacity".into(),
+            ));
         }
         Ok(Self {
             capacity,
-            buffers: (0..channels).map(|_| VecDeque::with_capacity(capacity)).collect(),
+            buffers: (0..channels)
+                .map(|_| VecDeque::with_capacity(capacity))
+                .collect(),
         })
     }
 
     pub fn push(&mut self, sample: &[f32]) -> Result<(), SensorError> {
         if sample.len() != self.buffers.len() {
-            return Err(SensorError::DimensionMismatch { expected: self.buffers.len(), got: sample.len() });
+            return Err(SensorError::DimensionMismatch {
+                expected: self.buffers.len(),
+                got: sample.len(),
+            });
         }
         for (buf, &v) in self.buffers.iter_mut().zip(sample) {
             if buf.len() == self.capacity {
@@ -155,11 +178,17 @@ impl WindowedFeatures {
         Ok(())
     }
 
-    pub fn len(&self) -> usize { self.buffers.first().map_or(0, |b| b.len()) }
-    pub fn is_empty(&self) -> bool { self.len() == 0 }
+    pub fn len(&self) -> usize {
+        self.buffers.first().map_or(0, |b| b.len())
+    }
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 
     pub fn features(&self) -> Result<Array1<f32>, SensorError> {
-        if self.is_empty() { return Err(SensorError::EmptyBuffer); }
+        if self.is_empty() {
+            return Err(SensorError::EmptyBuffer);
+        }
         let mut out = Vec::with_capacity(self.buffers.len() * 2 + 1);
         let mut last_sq_sum = 0.0f32;
         for buf in &self.buffers {
@@ -168,7 +197,9 @@ impl WindowedFeatures {
             let var = buf.iter().map(|v| (v - mean).powi(2)).sum::<f32>() / n;
             out.push(mean);
             out.push(var);
-            if let Some(&last) = buf.back() { last_sq_sum += last * last; }
+            if let Some(&last) = buf.back() {
+                last_sq_sum += last * last;
+            }
         }
         out.push(last_sq_sum.sqrt());
         Ok(Array1::from_vec(out))
@@ -194,7 +225,12 @@ pub struct PipelineConfig {
 
 impl Default for PipelineConfig {
     fn default() -> Self {
-        Self { sample_hz: 50.0, low_pass_hz: 10.0, high_pass_hz: 0.5, window_size: 25 }
+        Self {
+            sample_hz: 50.0,
+            low_pass_hz: 10.0,
+            high_pass_hz: 0.5,
+            window_size: 25,
+        }
     }
 }
 
@@ -210,12 +246,15 @@ impl SensorPipeline {
         })
     }
 
-    pub fn kind(&self) -> SensorKind { self.kind }
+    pub fn kind(&self) -> SensorKind {
+        self.kind
+    }
 
     pub fn ingest(&mut self, reading: &SensorReading) -> Result<(), SensorError> {
         if reading.kind != self.kind {
             return Err(SensorError::InvalidConfig(format!(
-                "kind mismatch {:?} vs {:?}", reading.kind, self.kind
+                "kind mismatch {:?} vs {:?}",
+                reading.kind, self.kind
             )));
         }
         let lp = self.low_pass.step(&reading.values)?;
@@ -225,8 +264,12 @@ impl SensorPipeline {
         Ok(())
     }
 
-    pub fn features(&self) -> Result<Array1<f32>, SensorError> { self.window.features() }
-    pub fn last_timestamp_ms(&self) -> Option<u64> { self.last_ts }
+    pub fn features(&self) -> Result<Array1<f32>, SensorError> {
+        self.window.features()
+    }
+    pub fn last_timestamp_ms(&self) -> Option<u64> {
+        self.last_ts
+    }
 
     pub fn reset(&mut self) {
         self.low_pass.reset();
@@ -236,13 +279,16 @@ impl SensorPipeline {
     }
 }
 
-pub fn hello() -> &'static str { "sensors" }
+pub fn hello() -> &'static str {
+    "sensors"
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test] fn arity_for_each_kind() {
+    #[test]
+    fn arity_for_each_kind() {
         assert_eq!(SensorKind::Accelerometer.arity(), 3);
         assert_eq!(SensorKind::Gyroscope.arity(), 3);
         assert_eq!(SensorKind::Magnetometer.arity(), 3);
@@ -250,46 +296,64 @@ mod tests {
         assert_eq!(SensorKind::Proximity.arity(), 1);
     }
 
-    #[test] fn reading_validates_arity() {
+    #[test]
+    fn reading_validates_arity() {
         assert!(SensorReading::new(SensorKind::Light, 0, vec![1.0]).is_ok());
         assert!(SensorReading::new(SensorKind::Light, 0, vec![1.0, 2.0]).is_err());
     }
 
-    #[test] fn lowpass_smooths_step() {
+    #[test]
+    fn lowpass_smooths_step() {
         let mut f = IirFilter::new(1, 1.0, 50.0, false).unwrap();
-        for _ in 0..200 { let _ = f.step(&[1.0]); }
+        for _ in 0..200 {
+            let _ = f.step(&[1.0]);
+        }
         let out = f.step(&[1.0]).unwrap()[0];
-        assert!((out - 1.0).abs() < 1e-2, "lowpass should converge to 1.0, got {}", out);
+        assert!(
+            (out - 1.0).abs() < 1e-2,
+            "lowpass should converge to 1.0, got {}",
+            out
+        );
     }
 
-    #[test] fn highpass_zeroes_constant() {
+    #[test]
+    fn highpass_zeroes_constant() {
         let mut f = IirFilter::new(1, 1.0, 50.0, true).unwrap();
-        for _ in 0..200 { let _ = f.step(&[1.0]); }
+        for _ in 0..200 {
+            let _ = f.step(&[1.0]);
+        }
         let out = f.step(&[1.0]).unwrap()[0];
         assert!(out.abs() < 1e-3, "highpass should zero DC, got {}", out);
     }
 
-    #[test] fn window_features_dimension() {
+    #[test]
+    fn window_features_dimension() {
         let mut w = WindowedFeatures::new(3, 5).unwrap();
-        for i in 0..5 { w.push(&[i as f32, 0.0, 1.0]).unwrap(); }
+        for i in 0..5 {
+            w.push(&[i as f32, 0.0, 1.0]).unwrap();
+        }
         let f = w.features().unwrap();
         assert_eq!(f.len(), 3 * 2 + 1);
     }
 
-    #[test] fn pipeline_kind_mismatch_rejected() {
+    #[test]
+    fn pipeline_kind_mismatch_rejected() {
         let mut p = SensorPipeline::new(SensorKind::Light, PipelineConfig::default()).unwrap();
         let r = SensorReading::new(SensorKind::Accelerometer, 0, vec![0.0, 0.0, 0.0]).unwrap();
         assert!(p.ingest(&r).is_err());
     }
 
-    #[test] fn pipeline_ingest_then_features() {
-        let mut p = SensorPipeline::new(SensorKind::Accelerometer, PipelineConfig::default()).unwrap();
+    #[test]
+    fn pipeline_ingest_then_features() {
+        let mut p =
+            SensorPipeline::new(SensorKind::Accelerometer, PipelineConfig::default()).unwrap();
         for i in 0..30 {
             let r = SensorReading::new(
                 SensorKind::Accelerometer,
                 i as u64 * 20,
                 vec![i as f32 * 0.01, 0.0, 9.81],
-            ).unwrap();
+            )
+            .unwrap();
             p.ingest(&r).unwrap();
         }
         assert_eq!(p.last_timestamp_ms(), Some(580));
@@ -297,7 +361,8 @@ mod tests {
         assert_eq!(f.len(), 7);
     }
 
-    #[test] fn pipeline_reset_clears_state() {
+    #[test]
+    fn pipeline_reset_clears_state() {
         let mut p = SensorPipeline::new(SensorKind::Light, PipelineConfig::default()).unwrap();
         let r = SensorReading::new(SensorKind::Light, 0, vec![100.0]).unwrap();
         p.ingest(&r).unwrap();

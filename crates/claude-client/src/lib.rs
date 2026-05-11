@@ -11,13 +11,11 @@
 //! - Rate limiting and retry logic
 
 #![forbid(unsafe_code)]
-use futures::StreamExt;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use thiserror::Error;
-use tokio::sync::mpsc;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, warn};
 
 /// Claude API errors
 #[derive(Error, Debug)]
@@ -39,9 +37,10 @@ pub enum ClaudeError {
 }
 
 /// Claude model variants
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Default)]
 pub enum ClaudeModel {
     /// Claude 3.5 Sonnet - Best balance of intelligence and speed
+    #[default]
     #[serde(rename = "claude-sonnet-4-20250514")]
     Claude35Sonnet,
     /// Claude 3.5 Haiku - Fast and efficient
@@ -50,12 +49,6 @@ pub enum ClaudeModel {
     /// Claude 3 Opus - Most capable
     #[serde(rename = "claude-3-opus-20240229")]
     Claude3Opus,
-}
-
-impl Default for ClaudeModel {
-    fn default() -> Self {
-        ClaudeModel::Claude35Sonnet
-    }
 }
 
 impl ClaudeModel {
@@ -137,14 +130,18 @@ impl Message {
     pub fn user(text: &str) -> Self {
         Self {
             role: MessageRole::User,
-            content: vec![ContentBlock::Text { text: text.to_string() }],
+            content: vec![ContentBlock::Text {
+                text: text.to_string(),
+            }],
         }
     }
 
     pub fn assistant(text: &str) -> Self {
         Self {
             role: MessageRole::Assistant,
-            content: vec![ContentBlock::Text { text: text.to_string() }],
+            content: vec![ContentBlock::Text {
+                text: text.to_string(),
+            }],
         }
     }
 }
@@ -201,6 +198,7 @@ struct ErrorResponse {
 #[derive(Debug, Deserialize)]
 struct ErrorDetail {
     #[serde(rename = "type")]
+    #[allow(dead_code)]
     error_type: String,
     message: String,
 }
@@ -242,7 +240,8 @@ impl ClaudeClient {
         let response = self.create_message(messages, None).await?;
 
         // Extract text from response
-        let text = response.content
+        let text = response
+            .content
             .into_iter()
             .filter_map(|c| c.text)
             .collect::<Vec<_>>()
@@ -275,7 +274,8 @@ impl ClaudeClient {
         let messages = vec![Message::user(content)];
         let response = self.create_message(messages, system).await?;
 
-        let text = response.content
+        let text = response
+            .content
             .into_iter()
             .filter_map(|c| c.text)
             .collect::<Vec<_>>()
@@ -288,12 +288,15 @@ impl ClaudeClient {
     pub async fn chat(&mut self, content: &str) -> Result<String, ClaudeError> {
         self.conversation_history.push(Message::user(content));
 
-        let response = self.create_message(
-            self.conversation_history.clone(),
-            self.config.system_prompt.clone(),
-        ).await?;
+        let response = self
+            .create_message(
+                self.conversation_history.clone(),
+                self.config.system_prompt.clone(),
+            )
+            .await?;
 
-        let text = response.content
+        let text = response
+            .content
             .into_iter()
             .filter_map(|c| c.text)
             .collect::<Vec<_>>()
@@ -333,7 +336,8 @@ impl ClaudeClient {
                 tokio::time::sleep(delay).await;
             }
 
-            let response = self.client
+            let response = self
+                .client
                 .post(&url)
                 .header("x-api-key", api_key)
                 .header("anthropic-version", "2023-06-01")
@@ -355,7 +359,9 @@ impl ClaudeClient {
                             .unwrap_or(60);
 
                         warn!("Rate limited, retry after {}s", retry_after);
-                        last_error = Some(ClaudeError::RateLimited { retry_after_secs: retry_after });
+                        last_error = Some(ClaudeError::RateLimited {
+                            retry_after_secs: retry_after,
+                        });
                         continue;
                     }
 
@@ -375,7 +381,9 @@ impl ClaudeClient {
                         continue;
                     }
 
-                    let message_response: MessageResponse = resp.json().await
+                    let message_response: MessageResponse = resp
+                        .json()
+                        .await
                         .map_err(|e| ClaudeError::InvalidResponse(e.to_string()))?;
 
                     return Ok(message_response);
@@ -486,8 +494,16 @@ impl HybridInference {
         score += (len / 1000.0).min(0.3);
 
         // Complexity indicators
-        let complex_words = ["analyze", "explain", "compare", "synthesize",
-            "evaluate", "reason", "complex", "detailed"];
+        let complex_words = [
+            "analyze",
+            "explain",
+            "compare",
+            "synthesize",
+            "evaluate",
+            "reason",
+            "complex",
+            "detailed",
+        ];
         for word in &complex_words {
             if query.to_lowercase().contains(word) {
                 score += 0.1;
@@ -514,7 +530,10 @@ mod tests {
 
     #[test]
     fn test_model_strings() {
-        assert_eq!(ClaudeModel::Claude35Sonnet.as_str(), "claude-sonnet-4-20250514");
+        assert_eq!(
+            ClaudeModel::Claude35Sonnet.as_str(),
+            "claude-sonnet-4-20250514"
+        );
     }
 
     #[test]

@@ -2,9 +2,10 @@
 // SPDX-FileCopyrightText: 2025 Jonathan D.A. Jewell
 //! Benches for the ESN reservoir.
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use esn::{EchoStateNetwork, EsnConfig};
 use ndarray::Array1;
+use std::hint::black_box;
 
 fn cfg(size: usize, input: usize) -> EsnConfig {
     EsnConfig {

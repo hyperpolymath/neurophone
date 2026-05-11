@@ -45,7 +45,9 @@ fn aspect_concurrent_calls_via_arc_mutex() {
             guard.generate(&prompt, 5).unwrap();
         }));
     }
-    for h in handles { h.join().unwrap(); }
+    for h in handles {
+        h.join().unwrap();
+    }
     assert_eq!(backend.lock().unwrap().call_count(), 8);
 }
 

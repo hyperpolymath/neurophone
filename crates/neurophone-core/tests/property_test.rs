@@ -11,13 +11,11 @@ use proptest::prelude::*;
 
 fn arb_system_config() -> impl Strategy<Value = SystemConfig> {
     (0.1f32..100.0, 0.0f32..1.0, 100u32..5000u32).prop_map(
-        |(sample_rate, threshold, response_time)| {
-            SystemConfig {
-                sample_rate,
-                window_size_ms: 100,
-                local_threshold: threshold,
-                max_response_time_ms: response_time,
-            }
+        |(sample_rate, threshold, response_time)| SystemConfig {
+            sample_rate,
+            window_size_ms: 100,
+            local_threshold: threshold,
+            max_response_time_ms: response_time,
         },
     )
 }
@@ -28,11 +26,11 @@ fn arb_sensor_event() -> impl Strategy<Value = SensorEvent> {
         0u64..10000u64,
         prop::collection::vec(-10.0f32..10.0f32, 1..10),
     )
-    .prop_map(|(sensor_type, timestamp_ms, values)| SensorEvent {
-        sensor_type,
-        timestamp_ms,
-        values,
-    })
+        .prop_map(|(sensor_type, timestamp_ms, values)| SensorEvent {
+            sensor_type,
+            timestamp_ms,
+            values,
+        })
 }
 
 fn arb_query_string() -> impl Strategy<Value = String> {
@@ -96,11 +94,9 @@ proptest! {
         let mut system = NeuroSymbolicSystem::new(SystemConfig::default())
             .expect("system creation");
 
-        let mut expected_count = 0u64;
-        for query in queries.iter().filter(|q| !q.is_empty()) {
+        for (i, query) in queries.iter().filter(|q| !q.is_empty()).enumerate() {
             system.query(query, true).ok();
-            expected_count += 1;
-            prop_assert_eq!(system.query_count(), expected_count);
+            prop_assert_eq!(system.query_count(), (i as u64) + 1);
         }
     }
 
@@ -199,7 +195,6 @@ proptest! {
 
         let result = system.query("test", true);
         if let Ok(r) = result {
-            prop_assert!(r.latency_ms >= 0);
             prop_assert!(r.latency_ms < 5000); // Should complete within 5 seconds
         }
     }

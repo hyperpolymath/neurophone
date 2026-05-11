@@ -12,9 +12,10 @@
 //! - `LiquidStateMachine::reset` — reservoir state clear between sessions
 //! - Full pipeline: N steps + firing rate extraction
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use lsm::{LiquidStateMachine, LsmConfig};
 use ndarray::Array1;
+use std::hint::black_box;
 
 // ============================================================================
 // Helpers
@@ -95,9 +96,7 @@ fn bench_step_scaling(c: &mut Criterion) {
         group.bench_with_input(
             BenchmarkId::from_parameter(n_neurons),
             &n_neurons,
-            |b, _| {
-                b.iter(|| black_box(lsm.step(black_box(&input))))
-            },
+            |b, _| b.iter(|| black_box(lsm.step(black_box(&input)))),
         );
     }
     group.finish();
@@ -136,9 +135,7 @@ fn bench_get_state_window_scaling(c: &mut Criterion) {
         group.bench_with_input(
             BenchmarkId::from_parameter(window_ms as u64),
             &window_ms,
-            |b, &w| {
-                b.iter(|| black_box(lsm.get_state(black_box(w))))
-            },
+            |b, &w| b.iter(|| black_box(lsm.get_state(black_box(w)))),
         );
     }
     group.finish();

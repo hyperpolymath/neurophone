@@ -29,13 +29,20 @@ pub struct BridgeConfig {
 }
 
 impl Default for BridgeConfig {
-    fn default() -> Self { Self { activation_threshold: 0.3, lsm_weight: 0.5 } }
+    fn default() -> Self {
+        Self {
+            activation_threshold: 0.3,
+            lsm_weight: 0.5,
+        }
+    }
 }
 
 impl BridgeConfig {
     pub fn validate(&self) -> Result<(), BridgeError> {
         if !(0.0..=1.0).contains(&self.activation_threshold) {
-            return Err(BridgeError::InvalidConfig("activation_threshold ∉ [0,1]".into()));
+            return Err(BridgeError::InvalidConfig(
+                "activation_threshold ∉ [0,1]".into(),
+            ));
         }
         if !(0.0..=1.0).contains(&self.lsm_weight) {
             return Err(BridgeError::InvalidConfig("lsm_weight ∉ [0,1]".into()));
@@ -69,20 +76,31 @@ pub struct Bridge {
 impl Bridge {
     pub fn new(config: BridgeConfig) -> Result<Self, BridgeError> {
         config.validate()?;
-        Ok(Self { config, last_lsm: None })
+        Ok(Self {
+            config,
+            last_lsm: None,
+        })
     }
 
-    pub fn config(&self) -> &BridgeConfig { &self.config }
+    pub fn config(&self) -> &BridgeConfig {
+        &self.config
+    }
 
     fn count_active(view: ArrayView1<f32>, thresh: f32) -> usize {
         view.iter().filter(|v| v.abs() >= thresh).count()
     }
 
     fn rms_delta(prev: &Array1<f32>, curr: ArrayView1<f32>) -> f32 {
-        if prev.len() != curr.len() { return 0.0; }
+        if prev.len() != curr.len() {
+            return 0.0;
+        }
         let n = prev.len() as f32;
-        if n == 0.0 { return 0.0; }
-        let sum_sq: f32 = prev.iter().zip(curr.iter())
+        if n == 0.0 {
+            return 0.0;
+        }
+        let sum_sq: f32 = prev
+            .iter()
+            .zip(curr.iter())
             .map(|(a, b)| (a - b).powi(2))
             .sum();
         (sum_sq / n).sqrt().min(1.0)
@@ -93,8 +111,16 @@ impl Bridge {
         let t = self.config.activation_threshold;
         let lsm_active = Self::count_active(lsm, t);
         let esn_active = Self::count_active(esn, t);
-        let lsm_frac = if lsm.len() == 0 { 0.0 } else { lsm_active as f32 / lsm.len() as f32 };
-        let esn_frac = if esn.len() == 0 { 0.0 } else { esn_active as f32 / esn.len() as f32 };
+        let lsm_frac = if lsm.is_empty() {
+            0.0
+        } else {
+            lsm_active as f32 / lsm.len() as f32
+        };
+        let esn_frac = if esn.is_empty() {
+            0.0
+        } else {
+            esn_active as f32 / esn.len() as f32
+        };
         let w = self.config.lsm_weight;
         let salience = (w * lsm_frac + (1.0 - w) * esn_frac).clamp(0.0, 1.0);
 
@@ -106,10 +132,18 @@ impl Bridge {
         let description = describe(salience, urgency, lsm_active, esn_active);
         self.last_lsm = Some(lsm.to_owned());
 
-        NeuralContext { salience, urgency, lsm_active, esn_active, description }
+        NeuralContext {
+            salience,
+            urgency,
+            lsm_active,
+            esn_active,
+            description,
+        }
     }
 
-    pub fn reset(&mut self) { self.last_lsm = None; }
+    pub fn reset(&mut self) {
+        self.last_lsm = None;
+    }
 }
 
 fn describe(salience: f32, urgency: f32, lsm_active: usize, esn_active: usize) -> String {
@@ -129,20 +163,34 @@ fn describe(salience: f32, urgency: f32, lsm_active: usize, esn_active: usize) -
     )
 }
 
-pub fn hello() -> &'static str { "bridge" }
+pub fn hello() -> &'static str {
+    "bridge"
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use ndarray::Array1;
 
-    #[test] fn config_validates() {
-        assert!(BridgeConfig { activation_threshold: -0.1, lsm_weight: 0.5 }.validate().is_err());
-        assert!(BridgeConfig { activation_threshold: 0.5, lsm_weight: 1.5 }.validate().is_err());
+    #[test]
+    fn config_validates() {
+        assert!(BridgeConfig {
+            activation_threshold: -0.1,
+            lsm_weight: 0.5
+        }
+        .validate()
+        .is_err());
+        assert!(BridgeConfig {
+            activation_threshold: 0.5,
+            lsm_weight: 1.5
+        }
+        .validate()
+        .is_err());
         assert!(BridgeConfig::default().validate().is_ok());
     }
 
-    #[test] fn quiet_state_low_salience() {
+    #[test]
+    fn quiet_state_low_salience() {
         let mut b = Bridge::new(BridgeConfig::default()).unwrap();
         let lsm = Array1::zeros(100);
         let esn = Array1::zeros(50);
@@ -153,7 +201,8 @@ mod tests {
         assert!(ctx.description.contains("quiet"));
     }
 
-    #[test] fn high_state_high_salience() {
+    #[test]
+    fn high_state_high_salience() {
         let mut b = Bridge::new(BridgeConfig::default()).unwrap();
         let lsm = Array1::from_elem(100, 1.0);
         let esn = Array1::from_elem(50, 1.0);
@@ -162,21 +211,24 @@ mod tests {
         assert!(ctx.description.contains("high"));
     }
 
-    #[test] fn urgency_zero_on_first_call() {
+    #[test]
+    fn urgency_zero_on_first_call() {
         let mut b = Bridge::new(BridgeConfig::default()).unwrap();
         let lsm = Array1::from_elem(10, 0.5);
         let ctx = b.encode(lsm.view(), Array1::zeros(10).view());
         assert!(ctx.urgency.abs() < 1e-6);
     }
 
-    #[test] fn urgency_rises_with_change() {
+    #[test]
+    fn urgency_rises_with_change() {
         let mut b = Bridge::new(BridgeConfig::default()).unwrap();
         let _ = b.encode(Array1::zeros(10).view(), Array1::zeros(10).view());
         let ctx = b.encode(Array1::from_elem(10, 1.0).view(), Array1::zeros(10).view());
         assert!(ctx.urgency > 0.5);
     }
 
-    #[test] fn reset_clears_history() {
+    #[test]
+    fn reset_clears_history() {
         let mut b = Bridge::new(BridgeConfig::default()).unwrap();
         let _ = b.encode(Array1::from_elem(10, 1.0).view(), Array1::zeros(10).view());
         b.reset();
@@ -184,7 +236,8 @@ mod tests {
         assert!(ctx.urgency.abs() < 1e-6);
     }
 
-    #[test] fn description_contains_markers() {
+    #[test]
+    fn description_contains_markers() {
         let mut b = Bridge::new(BridgeConfig::default()).unwrap();
         let ctx = b.encode(Array1::zeros(10).view(), Array1::zeros(10).view());
         assert!(ctx.description.starts_with("[NEURAL_STATE]"));

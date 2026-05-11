@@ -3,23 +3,44 @@
 //! End-to-end pipeline bench: sensor → LSM → ESN → bridge → LLM mock.
 
 use bridge::{Bridge, BridgeConfig};
-use criterion::{black_box, criterion_group, criterion_main, Criterion, Throughput};
+use criterion::{criterion_group, criterion_main, Criterion, Throughput};
 use esn::{EchoStateNetwork, EsnConfig};
 use llm::{LlmBackend, LlmConfig, MockBackend};
 use lsm::{LiquidStateMachine, LsmConfig};
 use sensors::{PipelineConfig, SensorKind, SensorPipeline, SensorReading};
+use std::hint::black_box;
 
-fn warmed_pipeline() -> (SensorPipeline, LiquidStateMachine, EchoStateNetwork, Bridge, MockBackend) {
+fn warmed_pipeline() -> (
+    SensorPipeline,
+    LiquidStateMachine,
+    EchoStateNetwork,
+    Bridge,
+    MockBackend,
+) {
     let mut sp = SensorPipeline::new(SensorKind::Accelerometer, PipelineConfig::default()).unwrap();
     for i in 0..50u64 {
-        sp.ingest(&SensorReading::new(SensorKind::Accelerometer, i * 20, vec![0.1, 0.2, 9.81]).unwrap()).unwrap();
+        sp.ingest(
+            &SensorReading::new(SensorKind::Accelerometer, i * 20, vec![0.1, 0.2, 9.81]).unwrap(),
+        )
+        .unwrap();
     }
-    let lsm = LiquidStateMachine::new(LsmConfig { dimensions: (3, 3, 3), ..Default::default() }, 7).unwrap();
+    let lsm = LiquidStateMachine::new(
+        LsmConfig {
+            dimensions: (3, 3, 3),
+            ..Default::default()
+        },
+        7,
+    )
+    .unwrap();
     let esn = EchoStateNetwork::new(EsnConfig {
-        reservoir_size: 64, input_dim: 27,
-        spectral_radius: 0.9, input_scale: 1.0,
-        sparsity: 0.9, leaking_rate: 0.3,
-    }).unwrap();
+        reservoir_size: 64,
+        input_dim: 27,
+        spectral_radius: 0.9,
+        input_scale: 1.0,
+        sparsity: 0.9,
+        leaking_rate: 0.3,
+    })
+    .unwrap();
     let br = Bridge::new(BridgeConfig::default()).unwrap();
     let mut llm = MockBackend::new(LlmConfig::default()).unwrap();
     llm.load().unwrap();
