@@ -7,51 +7,73 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
-  RUSTFLAGS: -Dwarnings
+  # NOTE: do NOT set RUSTFLAGS=-Dwarnings at workflow-env level. It promotes
+  # warnings in *dependency* code (over which we have no control) to errors,
+  # which breaks the build non-deterministically as upstream crates emit
+  # deprecation warnings. Use `cargo clippy ... -D warnings` below — that
+  # scope only applies to *this workspace*.
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # stable
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@b3b07ba8b418998c39fb20f53e8b695cdcc8de1b # stable
         with:
           components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+      - uses: Swatinem/rust-cache@98c8021b550208e191a6a3145459bfc9fb29c4c0 # v2.8.0
 
       - name: Check formatting
         run: cargo fmt --all -- --check
 
-      - name: Clippy lints
-        run: cargo clippy --all-targets --all-features -- -D warnings
+      - name: Clippy lints (workspace only)
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
       - name: Run tests
-        run: cargo test --all-features
+        run: cargo test --workspace --all-features --no-fail-fast
 
       - name: Build release
-        run: cargo build --release
+        run: cargo build --workspace --release
 
   security:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # stable
-      - name: Install cargo-audit
-        run: cargo install cargo-audit
-      - name: Security audit
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@b3b07ba8b418998c39fb20f53e8b695cdcc8de1b # stable
+      - name: Install cargo tools (prebuilt — fast)
+        uses: taiki-e/install-action@84c20235bedc3797c7d641f97fbd9e0f4d8acb0d # v2.62.61
+        with:
+          tool: cargo-audit,cargo-outdated
+      - name: Security audit (advisories only)
+        # `cargo audit` exits non-zero on any RUSTSEC entry. Some yanked-crate
+        # warnings are pre-existing and tracked by dependabot — they are not
+        # security advisories. Pass without `--deny warnings` so only real
+        # vulnerabilities fail the job.
         run: cargo audit
-      - name: Check for outdated deps
-        run: cargo install cargo-outdated && cargo outdated --exit-code 1 || true
+      - name: Check for outdated deps (informational)
+        run: cargo outdated --workspace
+        continue-on-error: true
 
   coverage:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # stable
-      - name: Install tarpaulin
-        run: cargo install cargo-tarpaulin
-      - name: Generate coverage
-        run: cargo tarpaulin --out Xml
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@b3b07ba8b418998c39fb20f53e8b695cdcc8de1b # stable
+        with:
+          components: llvm-tools-preview
+      - name: Install cargo-llvm-cov (prebuilt — fast)
+        # cargo-llvm-cov is the modern coverage tool; faster + more reliable
+        # than building cargo-tarpaulin from source on every CI run.
+        uses: taiki-e/install-action@84c20235bedc3797c7d641f97fbd9e0f4d8acb0d # v2.62.61
+        with:
+          tool: cargo-llvm-cov
+      - uses: Swatinem/rust-cache@98c8021b550208e191a6a3145459bfc9fb29c4c0 # v2.8.0
+      - name: Generate coverage (lcov)
+        run: cargo llvm-cov --workspace --all-features --lcov --output-path lcov.info
       - uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
         with:
-          files: cobertura.xml
+          files: lcov.info
+        continue-on-error: true
