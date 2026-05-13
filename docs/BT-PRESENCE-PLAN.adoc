@@ -1,0 +1,128 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell
+= NeuroPhone — Bluetooth Presence Sensor Plan
+:toc: preamble
+
+[NOTE]
+====
+*Status:* Design only — no code yet. Authored 2026-05-13.
+
+*Authoritative source:* `burble/docs/architecture/ANDROID-CLIENT.adoc` (in the sibling
+`https://github.com/hyperpolymath/burble[burble]` repo) is the canonical plan for the
+cross-repo Bluetooth integration. This document covers only the neurophone side.
+====
+
+== Scope
+
+NeuroPhone gains a Bluetooth Low Energy *presence sensor* that feeds the existing
+`sensor → LSM → ESN → bridge → LLM` pipeline. It is sensor-class only:
+
+* *No microphone access* — `RECORD_AUDIO` is NOT added.
+* *No voice* — neurophone is not getting a voice client. The privacy notice in
+  `README.adoc` ("does not access microphone, contacts, or personal data") remains accurate.
+* *No outbound advertising* — neurophone is read-only on the Burble nearby protocol.
+
+The presence signal is consumed exactly like accelerometer or proximity: a stream of
+readings that the LSM treats as one more sensor input. The bridge's context output
+becomes richer ("user is in a 3-person nearby cluster, salience rising") without
+neurophone caring what Burble is. Any future co-located service emitting the same
+advertisement schema could replace Burble without code changes here.
+
+== Repository ownership boundary
+
+Burble owns the wire protocol and the voice client. NeuroPhone owns only the consumer.
+
+[cols="2,3",options="header"]
+|===
+| Lives in burble | Lives in neurophone
+
+| `.machine_readable/6a2/nearby-presence.a2ml` (wire format)
+| `crates/bt-presence/` (scanner + decoder + decay)
+
+| `src/Burble/ABI/NearbyPresence.idr` (Idris2 type)
+| `crates/sensors/src/bt_presence.rs` (sensor variant)
+
+| `client/lib/src/extensions/NeurophonePresence.affine` (signatures)
+| `android/app/src/main/java/ai/neurophone/bluetooth/` (Kotlin scanner)
+
+| `server/lib/burble/bridges/neurophone.ex` (server-side bridge)
+| `crates/bridge/src/encode.rs` (context generation extension)
+|===
+
+The neurophone build pulls the a2ml manifest from burble at build time (via
+`crates/bt-presence/build.rs` codegen) — single source of truth, no protocol fork.
+
+== File-by-file plan
+
+[source]
+----
+neurophone/
+├── crates/bt-presence/                    # NEW crate, android target only
+│   ├── Cargo.toml
+│   └── src/
+│       ├── lib.rs                         # BtPresenceReading public struct
+│       ├── ble_scan.rs                    # JNI wrappers around BluetoothLeScanner
+│       ├── burble_filter.rs               # ScanFilter on Burble UUID, decode payload
+│       └── decay.rs                       # RSSI → presence score, exponential decay
+├── crates/sensors/src/
+│   └── bt_presence.rs                     # register BtPresenceReading as sensor variant
+├── crates/bridge/src/
+│   └── encode.rs                          # extend Bridge context with peer cluster info
+├── crates/neurophone-android/src/lib.rs   # add JNI: bt_scan_event, bt_lost
+└── android/app/src/main/
+    ├── AndroidManifest.xml                # add BLUETOOTH_SCAN (neverForLocation), BLUETOOTH_CONNECT
+    ├── java/ai/neurophone/
+    │   ├── NativeLib.kt                   # add btScanEvent, btLost
+    │   ├── bluetooth/
+    │   │   ├── BurbleNeighborScanner.kt   # BluetoothLeScanner on Burble UUID
+    │   │   ├── PresenceCollector.kt       # debounce, push into NativeLib
+    │   │   └── ConsentGate.kt             # toggle defaults OFF, separate from main sensors
+    │   └── NeurophoneService.kt           # start/stop scanner alongside accelerometer
+    └── res/values/strings.xml             # consent copy
+----
+
+== Privacy posture (don't regress)
+
+NeuroPhone's existing README guarantees the app does not access microphone, contacts,
+or personal data, and that sensor data stays on-device. Adding BLE scanning is a
+real change to that posture:
+
+. *Default OFF.* The `ConsentGate` toggle defaults to disabled. Scanning never
+  starts without an explicit user action.
+. *Separate toggle from main sensors.* The existing sensor consent (accel, gyro,
+  light, prox) and the Bluetooth consent are independent. Granting one does not
+  grant the other.
+. *AI install guide update.* `docs/AI_INSTALLATION_GUIDE.adoc` MUST be updated to
+  describe the new toggle. The AI-driven install flow asks the consent questions
+  in a specific order; adding a sensor without updating the script means the AI
+  doesn't ask, which means it's silently enabled — a real privacy regression. This
+  is a hard prerequisite for shipping Phase 2.
+. *Scanning is presence-only.* `BurbleNeighborScanner` filters on the Burble
+  advertisement UUID and decodes only the published payload fields. It does not
+  do generic BLE device discovery and does not log non-Burble MAC addresses.
+. *`neverForLocation` flag.* `BLUETOOTH_SCAN` is requested with
+  `usesPermissionFlags="neverForLocation"` so Android does not require
+  `ACCESS_FINE_LOCATION` and does not treat scan results as location data.
+
+== Phases
+
+NeuroPhone work begins at Phase 2 in the cross-repo plan:
+
+* *Phase 0* (burble-only) — protocol exists, neurophone touches nothing.
+* *Phase 1* (burble-only) — burble's Android client ships and emits the advertisement.
+* *Phase 2* (~1–2 weeks, neurophone) — this plan. Read-only consumption.
+* *Phase 3* and later (burble-only) — does not require neurophone changes.
+
+== Cross-references
+
+* link:../README.adoc[README.adoc] — privacy commitments to preserve.
+* link:../TOPOLOGY.md[TOPOLOGY.md] — existing sensor → LSM → ESN → bridge pipeline diagram.
+* `burble/docs/architecture/ANDROID-CLIENT.adoc` — authoritative cross-repo plan.
+* `burble/.machine_readable/6a2/nearby-presence.a2ml` — wire format that codegen reads.
+
+== Memory pointer
+
+The Claude memory entry
+`~/.claude/projects/C--Users-USER/memory/project_burble_neurophone_bt.md`
+covers both sides of the integration. This document is the neurophone-specific
+projection; burble's `ANDROID-CLIENT.adoc` is the authoritative full plan.
