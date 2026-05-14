@@ -14,7 +14,7 @@
 use ndarray::{Array1, Array2};
 use ndarray_rand::RandomExt;
 use rand::Rng;
-use rand_distr::{Normal, Uniform};
+use ndarray_rand::rand_distr::{Normal, Uniform};
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use thiserror::Error;
