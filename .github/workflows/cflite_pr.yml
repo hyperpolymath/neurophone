@@ -4,8 +4,8 @@ on:
   pull_request:
     paths:
       - '**/*.rs'
-      - 'Cargo.toml'
-      - 'Cargo.lock'
+      - '**/Cargo.toml'
+      - '**/Cargo.lock'
 permissions:
   contents: read
 jobs:
