@@ -7,9 +7,9 @@
 
 #![allow(unsafe_code)]
 use ndarray::{Array1, Array2, Axis};
+use ndarray_rand::rand_distr::{Bernoulli, Normal, Uniform};
 use ndarray_rand::RandomExt;
 use rand::Rng;
-use ndarray_rand::rand_distr::{Bernoulli, Normal, Uniform};
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use thiserror::Error;
