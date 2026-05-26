@@ -1,97 +1,20 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
+# Rust CI — thin wrapper calling the shared estate reusable in
+# hyperpolymath/standards. Configure once, propagate everywhere.
+# See: docs/CI-REUSABLE-WORKFLOWS.adoc in standards.
 name: Rust CI
-on: [push, pull_request]
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
 
 permissions:
   contents: read
 
-env:
-  CARGO_TERM_COLOR: always
-  # IMPORTANT: do NOT set RUSTFLAGS=-Dwarnings at workflow-env level. That
-  # promotes warnings in *dependency* code to errors, which breaks the build
-  # non-deterministically as upstream crates emit deprecations. Use
-  # `cargo clippy -- -D warnings` below, which is scoped to this workspace.
-
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Install Rust toolchain
-        # Install via official rustup script directly. This avoids any
-        # dependency on third-party setup actions whose SHA pins may
-        # drift; rustup.rs is the canonical install path.
-        run: |
-          set -eux
-          curl --proto '=https' --tlsv1.2 -sSfL https://sh.rustup.rs \
-            | sh -s -- -y --default-toolchain stable --profile minimal \
-                       --component rustfmt,clippy
-          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
-
-      - name: Print toolchain
-        run: |
-          rustc --version
-          cargo --version
-          rustfmt --version
-          cargo clippy --version
-
-      - name: Check formatting
-        run: cargo fmt --all -- --check
-
-      - name: Clippy lints (workspace, errors only on our code)
-        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
-
-      - name: Run tests
-        run: cargo test --workspace --all-features --no-fail-fast
-
-      - name: Build release
-        run: cargo build --workspace --release
-
-  security:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Install Rust toolchain
-        run: |
-          set -eux
-          curl --proto '=https' --tlsv1.2 -sSfL https://sh.rustup.rs \
-            | sh -s -- -y --default-toolchain stable --profile minimal
-          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
-
-      - name: Install cargo-audit (locked)
-        run: cargo install --locked cargo-audit
-
-      - name: Security audit (advisories)
-        # cargo audit fails on any RUSTSEC advisory. Yanked-crate notes are
-        # informational warnings and do not fail without `--deny warnings`.
-        run: cargo audit
-
-  coverage:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Install Rust toolchain (with llvm-tools-preview)
-        run: |
-          set -eux
-          curl --proto '=https' --tlsv1.2 -sSfL https://sh.rustup.rs \
-            | sh -s -- -y --default-toolchain stable --profile minimal \
-                       --component llvm-tools-preview
-          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
-
-      - name: Install cargo-llvm-cov (locked)
-        # cargo-llvm-cov uses Rust's native coverage instrumentation —
-        # faster and more reliable than tarpaulin (which depends on a
-        # kernel module that breaks under Ubuntu kernel updates).
-        run: cargo install --locked cargo-llvm-cov
-
-      - name: Generate coverage (lcov)
-        run: cargo llvm-cov --workspace --all-features --lcov --output-path lcov.info
-
-      - name: Upload to codecov (best-effort)
-        uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v6.0.1
-        with:
-          files: lcov.info
-        continue-on-error: true
+  rust-ci:
+    uses: hyperpolymath/standards/.github/workflows/rust-ci-reusable.yml@4fdf4314b4ab54269adbaff10e30e483b5e86845
+    with:
+      enable_audit: true
+      enable_coverage: true
