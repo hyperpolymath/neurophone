@@ -9,7 +9,7 @@
 //! This serves as the first reservoir in our neurosymbolic pipeline,
 //! processing temporal sensor data with spike-timing dynamics.
 
-#![allow(unsafe_code)]
+#![deny(unsafe_code)]
 use ndarray::{Array1, Array2, Axis};
 use ndarray_rand::rand_distr::{Bernoulli, Normal, Uniform};
 use ndarray_rand::RandomExt;
