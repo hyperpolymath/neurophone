@@ -1,0 +1,72 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= Building NeuroPhone
+:toc:
+
+== Getting Started
+
+=== Prerequisites
+
+* Rust 1.75+
+* Android NDK 26+
+* Android Studio (for app development)
+* Oppo Reno 13 or Android 8.0+ device
+
+=== Build
+
+```bash
+# Clone
+git clone https://github.com/hyperpolymath/neurophone
+cd neurophone
+
+# Setup
+./scripts/setup.sh
+
+# Build native libraries for Android
+./scripts/build-android.sh
+
+# Open android/ in Android Studio
+```
+
+=== Download LLM Model
+
+```bash
+# Download Llama 3.2 1B Instruct (Q4_K_M, ~700MB)
+# From: https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF
+
+# Push to device
+adb push llama-3.2-1b-instruct-q4_k_m.gguf /data/local/tmp/
+```
+
+=== Configure
+
+Set Claude API key (for cloud fallback):
+
+```bash
+export ANTHROPIC_API_KEY="your-api-key"
+```
+
+Or in `config/default.toml`:
+
+```toml
+[claude]
+api_key = "your-api-key"
+model = "claude-sonnet-4-20250514"
+
+[llm]
+model_path = "/data/local/tmp/llama-3.2-1b-q4_k_m.gguf"
+n_threads = 4
+context_size = 2048
+```
+
+== Development
+
+```bash
+# Run tests
+cargo test
+
+# Build for Android
+./scripts/build-android.sh
+
+# Generate docs
+cargo doc --open
+```
