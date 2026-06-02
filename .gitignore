@@ -84,3 +84,6 @@ deps/
 .cache/
 build/
 dist/
+
+# Claude Code agent worktrees (transient, harness-managed — never committed)
+.claude/worktrees/
