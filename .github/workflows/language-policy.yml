@@ -86,12 +86,22 @@ jobs:
 
       - name: Check for Java/Kotlin files
         run: |
-          if find . -name "*.java" -o -name "*.kt" -o -name "*.kts" | head -1 | grep -q .; then
+          # Carve-out: the android/ subtree is owner-authored Kotlin/Gradle
+          # code currently being migrated to Gossamer (RFC PR #97). It is
+          # not vendored upstream — it is intentional work-in-flight. Once
+          # the Gossamer migration lands and android/ is removed, this
+          # exclusion should be removed too. Mirrors the .hypatia-ignore /
+          # .hypatia-baseline.json carve-out consumed by the standards
+          # governance-reusable workflow.
+          VIOLATIONS=$(find . \
+            \( -path './android' -o -path './android/*' -o -path './.git/*' \) -prune -o \
+            \( -name "*.java" -o -name "*.kt" -o -name "*.kts" \) -type f -print)
+          if [ -n "$VIOLATIONS" ]; then
             echo "::error::Java/Kotlin files found. Use Rust/Tauri/Dioxus instead."
-            find . -name "*.java" -o -name "*.kt" -o -name "*.kts"
+            echo "$VIOLATIONS"
             exit 1
           fi
-          echo "✓ No Java/Kotlin files found"
+          echo "✓ No Java/Kotlin files found (android/ exempt — Gossamer migration in flight, RFC PR #97)"
 
       - name: Check for Swift files
         run: |
