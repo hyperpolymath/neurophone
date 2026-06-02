@@ -4,7 +4,7 @@
 :toc:
 :toclevels: 3
 :revdate: 2026-06-02
-:status: DRAFT — awaiting owner review BEFORE any bulk conversion
+:status: Q1-Q6 RESOLVED 2026-06-02; sub-PR #2 in flight (neurophone#107 + standards#341)
 
 == Problem
 
@@ -187,20 +187,29 @@ Three resolution paths exist; this RFC proposes **(A)** and explicitly
 * Con: experimental, fragile, no maintained tooling for
   `AppWidgetProvider`; not worth the risk.
 
-== Upstream-vs-downstream scope
+== Upstream-vs-downstream scope (RESOLVED — UPSTREAM)
 
 Per Gossamer ROADMAP Phase 3 (Mobile, partially implemented) — the seven
 missing platform-integration capabilities (service, widget, receivers,
-sensors, intent dispatch, prefs, deep-links) are **not** in Gossamer's
-scope. Gossamer is a webview shell.
+sensors, intent dispatch, prefs, deep-links) are not in Gossamer's
+current scope. Gossamer is today a webview shell.
 
-**Recommendation:** build all seven downstream in neurophone's `android/`
-tree as application-specific Java shims. Do not block neurophone's
-migration on Gossamer upstream PRs.
+**Owner decision 2026-06-02 (Q6):** contribute the missing surface
+**upstream** to `hyperpolymath/gossamer` as a `gossamer-android-services`
+companion module. The four shim base classes (Service, BroadcastReceiver,
+AppWidgetProvider, Activity-with-bridge) land in Gossamer upstream so
+future estate Android consumers inherit them.
 
-*Possible later upstream contribution:* if a second estate consumer
-(idaptik-ums? a future mobile project?) needs the same surface, extract
-a `gossamer-android-services` companion module then. Not for this RFC.
+**Implications:**
+
+* Sub-PR #3 (neurophone Gossamer scaffolding) blocks on the Gossamer
+  upstream PR landing.
+* The Gossamer companion API shape needs owner review — generic enough
+  for future consumers (idaptik-ums Android port, etc.), not just
+  neurophone-shaped.
+* neurophone-side shims (Service / BootReceiver / Widget triple) become
+  thin subclasses extending the Gossamer base classes rather than
+  Android framework classes directly.
 
 == Sub-PR sequence
 
@@ -238,35 +247,69 @@ Each is a small, reviewable PR. Numbers are PR ordering, not commit count.
   in `GossamerActivity`. `gossamer_rs::App::command()` registrations
   wire `start/stop/query/get_context` to the Rust core.
 . **#9 — Delete legacy Kotlin `android/` tree.** Both banned-language
-  checks now green. Behaviour parity verified on hardware + Termux CLI
-  smoke test.
+  checks now green. Behaviour parity verified on emulator AND Oppo Reno
+  13 hardware (per Q5 — emulator for development, hardware for the
+  final close-out) + Termux CLI smoke test.
 
 PRs #2 and #3 are sequenced and blocking. PRs #4 through #7 can land in
 parallel after #3. PR #8 needs #4 done. PR #9 is gated on all prior.
 
-== Open questions for owner
+**Note**: the section above is the *original* sequence. The
+**revised sequence per Q6** lives in `Sequencing implications of Q6`
+below — read that for the post-2026-06-02 plan.
 
-. **CI exemption scope.** Estate-wide exemption for `android/**/*.java`
-  via `hyperpolymath/standards`, or neurophone-local exemption only?
-  This is the linchpin — without it the migration cannot land cleanly
-  because Android demands JVM bytecode at four system boundaries
-  (`Activity` / `Service` / `BroadcastReceiver` / `AppWidgetProvider`).
-. **Estate governance check.** Who owns the
-  `governance / Language / package anti-pattern policy` callable in
-  `hyperpolymath/standards`? Cross-repo PR needed before #2.
-. **Widget config sacrifice.** Acceptable to drop the widget-configure
-  activity (Path B partial) in exchange for a smaller JVM surface?
-  Saves one shim.
-. **Gradle DSL choice.** Match Gossamer upstream's Groovy `*.gradle`, or
-  keep Kotlin `*.gradle.kts` under a separate exemption? The CI check
-  blocks `*.kts`; using Groovy is the cleaner path.
-. **Hardware test plan.** Oppo Reno 13 (current target per
-  `app/build.gradle.kts:21`) or Android emulator + Termux on a generic
-  device?
-. **Upstream contribution.** Build the four shim classes purely in
-  neurophone, or factor a `gossamer-android-services` companion as we
-  go? RFC recommends neurophone-local for now; revisit when a second
-  consumer appears.
+== Owner decisions (all resolved 2026-06-02)
+
+[cols="1,5,3", options="header"]
+|===
+| # | Question | Resolution
+
+| Q1 | **CI exemption scope** — estate-wide via `hyperpolymath/standards` or neurophone-local?
+| **Estate-wide.** Filed as `hyperpolymath/standards#341` (open). Glob `(^|/)android/.*/src/.*\.java$`; Kotlin (.kt, .kts) stays banned. neurophone auto-consumes via `@main` pin on the reusable.
+
+| Q2 | **Standards reusable owner** — who reviews the cross-repo PR?
+| Self-answered. Owner approves directly; no third-party gatekeeper.
+
+| Q3 | **Widget-configure activity** — keep or drop?
+| **DROP.** The single setting (local-only mode) moves into the main Gossamer UI; widget gets sensible default at install. Saves one Java shim (`NeurophoneWidgetConfigureActivity`).
+
+| Q4 | **Gradle DSL** — Groovy `*.gradle` or Kotlin `*.gradle.kts`?
+| **Groovy `*.gradle`.** Matches Gossamer upstream's `android/` tree. Banned-language check accepts Groovy out of the box. Single estate convention.
+
+| Q5 | **Hardware test plan** — Oppo Reno 13 or emulator + Termux?
+| **Both.** Emulator + Termux smoke test during sub-PR development (faster iteration); Oppo Reno 13 hardware verification before sub-PR #9 deletes the legacy Kotlin tree.
+
+| Q6 | **Shim location** — neurophone-local or factor `gossamer-android-services` upstream?
+| **Contribute upstream NOW.** Build the four shim base classes (`Service` / `BroadcastReceiver` / `AppWidgetProvider` / `Activity`) as a `gossamer-android-services` companion in `hyperpolymath/gossamer`. neurophone consumes them. **Coupled ordering**: sub-PR #3 BLOCKS on the Gossamer upstream companion landing.
+|===
+
+== Sequencing implications of Q6
+
+Q6's "contribute upstream now" choice **changes the sub-PR sequence**:
+
+. The original sub-PR #3 (Gossamer scaffolding in neurophone) now depends
+  on a NEW prerequisite: **Gossamer companion PR** in
+  `hyperpolymath/gossamer` adding `gossamer-android-services` with the
+  four shim base classes.
+. The Gossamer companion design needs owner review separately — the API
+  shape for `GossamerForegroundService`, `GossamerAppWidgetProvider`,
+  `GossamerBootReceiver`, etc. has to be generic enough for future
+  estate Android consumers (not just neurophone).
+. neurophone's sub-PRs #5/#6/#7 (the Service/BootReceiver/Widget ports)
+  become consumers of the Gossamer companion — they `extend` the
+  upstream base classes rather than `extend android.app.Service` directly.
+
+Revised sequence:
+
+. **#1 (THIS PR)** — RFC, no code changes.
+. **#2a** — CI exemption (standards#341, neurophone#107). **IN FLIGHT.**
+. **#2b — NEW** — Gossamer companion PR: `gossamer-android-services`
+  module with four shim base classes + tests. Owner reviews API shape.
+. **#3** — Gossamer scaffolding in neurophone (depends on #2b).
+. **#4** — Port NativeLib to Rust (parallel-safe).
+. **#5/#6/#7** — Port Service / BootReceiver / Widget triple (depends on #2b + #3).
+. **#8** — AffineScript UI.
+. **#9** — Delete legacy Kotlin `android/`.
 
 == Acceptance criteria
 
