@@ -13,6 +13,26 @@ The following files in `.machine_readable/` contain structured project metadata:
 
 # CLAUDE.md - AI Assistant Instructions
 
+## License Policy (Hyperpolymath Standard)
+
+License is determined by repository **ownership**, not blanket-applied. NEVER flip a
+repo's license without first confirming its ownership category.
+
+| License | Applies to |
+|---|---|
+| **MPL-2.0** | Jonathan's sole repos (default for solely-owned) |
+| **All Rights Reserved** | the `007` repo |
+| **AGPL-3.0-or-later** | repos shared/co-owned with his son |
+| **PMPL-1.0-or-later (Palimpsest)** | ONLY `palimpsest-license`, `palimpsest-plasma`, and (prospectively) `consent-aware-http` — nowhere else |
+| *(do not modify)* | forks of other people's projects — leave their license untouched |
+
+Rules:
+- Do NOT apply PMPL/Palimpsest as a license anywhere except the three repos above.
+  "Palimpsest" may still appear as the ecosystem/governance **brand** (contractile
+  family, etc.) — that is not a license claim and stays.
+- Before changing any SPDX header, `LICENSE` file, or Cargo/manifest `license`
+  field, confirm the repo's ownership category. When unsure, ask — do not guess.
+
 ## Language Policy (Hyperpolymath Standard)
 
 ### ALLOWED Languages & Tools
