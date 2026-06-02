@@ -17,6 +17,7 @@
 //! 4. **LLM**: Local Llama 3.2 for reasoning, with Claude 3.5 fallback.
 
 #![forbid(unsafe_code)]
+#![cfg_attr(not(test), deny(clippy::unwrap_used, clippy::expect_used))]
 
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};

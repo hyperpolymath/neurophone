@@ -5,7 +5,8 @@
 //! This serves as the first reservoir in our neurosymbolic pipeline,
 //! processing temporal sensor data with spike-timing dynamics.
 
-#![allow(unsafe_code)]
+#![deny(unsafe_code)]
+#![cfg_attr(not(test), deny(clippy::unwrap_used, clippy::expect_used))]
 use ndarray::{Array1, Array2, Axis};
 use ndarray_rand::rand_distr::{Bernoulli, Normal, Uniform};
 use ndarray_rand::RandomExt;
@@ -186,11 +187,11 @@ impl LiquidStateMachine {
         }
 
         // Create weight matrix with distance-dependent connectivity
-        let weights = Self::create_recurrent_weights(&config, &neurons, &mut rng);
+        let weights = Self::create_recurrent_weights(&config, &neurons, &mut rng)?;
 
         // Create input weights
         let input_weights =
-            Self::create_input_weights(n_neurons, input_dim, config.input_scale, &mut rng);
+            Self::create_input_weights(n_neurons, input_dim, config.input_scale, &mut rng)?;
 
         // Initialize spike history
         let spike_history = vec![VecDeque::with_capacity(100); n_neurons];
@@ -213,13 +214,14 @@ impl LiquidStateMachine {
         config: &LsmConfig,
         neurons: &[NeuronState],
         rng: &mut impl Rng,
-    ) -> Array2<f32> {
+    ) -> Result<Array2<f32>, LsmError> {
         let n = neurons.len();
         let (nx, ny, nz) = config.dimensions;
         let max_dist = ((nx * nx + ny * ny + nz * nz) as f32).sqrt();
 
         let mut weights = Array2::<f32>::zeros((n, n));
-        let weight_dist = Normal::new(0.5, 0.2).unwrap();
+        let weight_dist = Normal::new(0.5, 0.2)
+            .map_err(|e| LsmError::InvalidConfig(format!("recurrent normal distribution: {e}")))?;
 
         for i in 0..n {
             for j in 0..n {
@@ -263,7 +265,7 @@ impl LiquidStateMachine {
             weights *= config.spectral_radius / eigenvalue_estimate;
         }
 
-        weights
+        Ok(weights)
     }
 
     /// Create input weight matrix
@@ -272,12 +274,14 @@ impl LiquidStateMachine {
         input_dim: usize,
         scale: f32,
         rng: &mut impl Rng,
-    ) -> Array2<f32> {
-        let dist = Uniform::new(-1.0, 1.0).expect("valid uniform");
+    ) -> Result<Array2<f32>, LsmError> {
+        let dist = Uniform::new(-1.0, 1.0)
+            .map_err(|e| LsmError::InvalidConfig(format!("input uniform distribution: {e}")))?;
         let mut weights = Array2::random_using((n_neurons, input_dim), dist, rng);
 
         // Sparse connectivity: only ~30% of neurons receive each input
-        let bernoulli = Bernoulli::new(0.3).unwrap();
+        let bernoulli = Bernoulli::new(0.3)
+            .map_err(|e| LsmError::InvalidConfig(format!("input bernoulli distribution: {e}")))?;
         for i in 0..n_neurons {
             for j in 0..input_dim {
                 if !rng.sample(bernoulli) {
@@ -286,7 +290,7 @@ impl LiquidStateMachine {
             }
         }
 
-        weights * scale
+        Ok(weights * scale)
     }
 
     /// Perform one simulation step

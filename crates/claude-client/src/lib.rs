@@ -11,6 +11,7 @@
 //! - Rate limiting and retry logic
 
 #![forbid(unsafe_code)]
+#![cfg_attr(not(test), deny(clippy::unwrap_used, clippy::expect_used))]
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;

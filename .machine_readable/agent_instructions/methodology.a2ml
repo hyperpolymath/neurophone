@@ -26,6 +26,19 @@ wave-cap = 2                  # Max waves before requiring user "keep going"
 spike-required = true         # Every session must ship code, not just designs
 
 # ============================================================================
+# WORK ORDERING (ALWAYS)
+# ============================================================================
+# Complete the FULL lowest tier before moving up. General precedence:
+#   lowest-tier (complete) -> proximal seam -> distal themes -> current focus -> other
+# For tiered backlogs (e.g. proof obligations): finish all of Tier 0, then all of
+# Tier 1, then Tier 2, then Tier 3, then other work. Never open a higher tier
+# while a lower tier still has open items.
+
+[methodology.work-ordering]
+rule = "full-lowest-tier-first"
+order = ["lowest-tier-complete", "proximal-seam", "distal-themes", "current-focus", "other"]
+
+# ============================================================================
 # PRIORITY WEIGHTS
 # ============================================================================
 # MUST (3x): Blocking the current work → fix immediately

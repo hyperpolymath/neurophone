@@ -6,6 +6,7 @@
 //! natural-language description suitable for prompt injection into an LLM.
 
 #![forbid(unsafe_code)]
+#![cfg_attr(not(test), deny(clippy::unwrap_used, clippy::expect_used))]
 
 use ndarray::{Array1, ArrayView1};
 use serde::{Deserialize, Serialize};
