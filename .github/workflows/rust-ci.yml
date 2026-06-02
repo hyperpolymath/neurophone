@@ -2,11 +2,6 @@
 # Rust CI — thin wrapper calling the shared estate reusable in
 # hyperpolymath/standards. Configure once, propagate everywhere.
 # See: docs/CI-REUSABLE-WORKFLOWS.adoc in standards.
-#
-# Ref: tracks @main (matching governance.yml). The previous SHA pin
-# (cc5a372) was stale — the estate's rust-ci-reusable moved, so the run
-# failed at startup with 0 jobs. Re-pin to a verified SHA once standards
-# publishes one (estate propagation should automate this).
 name: Rust CI
 
 on:
@@ -19,7 +14,7 @@ permissions:
 
 jobs:
   rust-ci:
-    uses: hyperpolymath/standards/.github/workflows/rust-ci-reusable.yml@main
+    uses: hyperpolymath/standards/.github/workflows/rust-ci-reusable.yml@cc5a372af1af1b202c17f1b21efd954e6c038bef
     with:
       enable_audit: true
       enable_coverage: true
