@@ -1,7 +1,3 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
-// NeuroPhone - High-Assurance Hardware Orchestration
-// Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
-
 //! Claude API Client - Cloud Connection
 //!
 //! Connects to Claude (Anthropic's AI) for advanced reasoning

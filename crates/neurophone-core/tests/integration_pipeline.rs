@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // SPDX-FileCopyrightText: 2025 Jonathan D.A. Jewell
 //! Cross-crate integration: sensor → LSM → ESN → bridge → LLM mock.
 //! This is the closest thing to a true end-to-end test we can run on the host.

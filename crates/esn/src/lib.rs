@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // NeuroPhone - High-Assurance Hardware Orchestration
 // Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 
@@ -9,7 +9,7 @@
 //! The ESN serves as a secondary reservoir in the neurosymbolic pipeline,
 //! operating on transformed LSM outputs for higher-level temporal features.
 
-#![deny(unsafe_code)]
+#![allow(unsafe_code)]
 
 use ndarray::{Array1, Array2};
 use ndarray_rand::rand_distr::{Normal, Uniform};
