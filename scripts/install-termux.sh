@@ -1,5 +1,5 @@
 #!/data/data/com.termux/files/usr/bin/bash
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # SPDX-FileCopyrightText: 2025 Jonathan D.A. Jewell
 #
 # install-termux.sh — Install NeuroPhone CLI inside Termux on the phone.

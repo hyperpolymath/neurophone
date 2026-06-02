@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // NeuroPhone - High-Assurance Hardware Orchestration
 // Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 
@@ -175,17 +175,54 @@ impl EchoStateNetwork {
         weights * scale
     }
 
-    /// Scale matrix to achieve target spectral radius
-    fn scale_to_spectral_radius(weights: &Array2<f32>, target_radius: f32) -> Array2<f32> {
-        // Simplified: compute maximum absolute row sum as approximation
-        let max_row_sum = weights
-            .rows()
-            .into_iter()
-            .map(|row| row.iter().map(|x| x.abs()).sum::<f32>())
-            .fold(0.0f32, f32::max);
+    /// Estimate the spectral radius (largest eigenvalue magnitude) of a square
+    /// matrix via power iteration.
+    ///
+    /// This is the quantity that actually governs the Echo State Property. The
+    /// previous implementation used the matrix infinity-norm (max absolute row
+    /// sum), which only *bounds* the spectral radius from above — so the
+    /// configured `spectral_radius` was never the value truly realised.
+    fn estimate_spectral_radius(weights: &Array2<f32>) -> f32 {
+        let n = weights.nrows();
+        if n == 0 || weights.ncols() != n {
+            return 0.0;
+        }
 
-        if max_row_sum > 0.0 {
-            weights * (target_radius / max_row_sum)
+        // Deterministic, non-degenerate start vector (a constant vector can be
+        // orthogonal to the dominant eigenvector and stall the iteration).
+        let mut v: Array1<f32> = Array1::from_shape_fn(n, |i| ((i % 7) as f32) + 1.0);
+        let norm = v.dot(&v).sqrt();
+        if norm == 0.0 {
+            return 0.0;
+        }
+        v /= norm;
+
+        let mut lambda = 0.0f32;
+        for _ in 0..1000 {
+            let w = weights.dot(&v);
+            let w_norm = w.dot(&w).sqrt();
+            if w_norm == 0.0 {
+                return 0.0; // nilpotent / zero matrix
+            }
+            // With ||v|| == 1, the growth factor ||Wv|| estimates |λ_max|.
+            let next = w_norm;
+            v = w / w_norm;
+            if (next - lambda).abs() <= 1e-6 * next.max(1.0) {
+                return next;
+            }
+            lambda = next;
+        }
+        lambda
+    }
+
+    /// Scale a matrix so that its spectral radius equals `target_radius`.
+    ///
+    /// Scales by the true (power-iteration-estimated) spectral radius, so the
+    /// configured `spectral_radius` is the value actually achieved.
+    fn scale_to_spectral_radius(weights: &Array2<f32>, target_radius: f32) -> Array2<f32> {
+        let rho = Self::estimate_spectral_radius(weights);
+        if rho > 0.0 {
+            weights * (target_radius / rho)
         } else {
             weights.clone()
         }
@@ -303,6 +340,30 @@ mod tests {
             ..Default::default()
         };
         assert!(EchoStateNetwork::new(config).is_err());
+    }
+
+    #[test]
+    fn test_spectral_radius_estimate_diagonal() {
+        // Diagonal matrix: spectral radius = max |diagonal entry|.
+        let mut w = Array2::<f32>::zeros((3, 3));
+        w[[0, 0]] = 0.5;
+        w[[1, 1]] = -0.3;
+        w[[2, 2]] = 0.1;
+        let rho = EchoStateNetwork::estimate_spectral_radius(&w);
+        assert!((rho - 0.5).abs() < 1e-3, "expected ~0.5, got {rho}");
+    }
+
+    #[test]
+    fn test_scale_to_spectral_radius_achieves_target() {
+        // After scaling, the *realised* spectral radius must equal the target,
+        // not merely be bounded by it (the old infinity-norm behaviour).
+        let mut w = Array2::<f32>::zeros((3, 3));
+        w[[0, 0]] = 2.0;
+        w[[1, 1]] = -1.0;
+        w[[2, 2]] = 0.5;
+        let scaled = EchoStateNetwork::scale_to_spectral_radius(&w, 0.9);
+        let rho = EchoStateNetwork::estimate_spectral_radius(&scaled);
+        assert!((rho - 0.9).abs() < 1e-3, "expected spectral radius 0.9, got {rho}");
     }
 
     #[test]
