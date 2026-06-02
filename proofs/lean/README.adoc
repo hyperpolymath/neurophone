@@ -1,0 +1,16 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= Lean / Coq proofs
+
+Obligations discharged here (see issue #84):
+
+* *1.1 Echo State Property* — the ESN update map
+  `x' = (1-a)·x + a·tanh(W·x + W_in·u)` is a contraction whenever the
+  recurrent matrix satisfies `‖W‖∞ < 1` (the sufficient condition the code
+  currently enforces via `scale_to_spectral_radius`). tanh is 1-Lipschitz and
+  the leaking-rate convex combination is non-expansive, so the composite map is
+  a contraction in the ∞-norm ⇒ the Echo State (fading-memory) Property holds.
+* *1.3 Bridge soundness* — the neural→symbolic encoding in `crates/bridge` is
+  total and deterministic, and round-trips within tolerance.
+
+No `sorry` / `admit` is permitted (enforced by `MUST.contractile`); a file lands
+here only when its theorems are fully proved.

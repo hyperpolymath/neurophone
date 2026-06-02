@@ -9,7 +9,7 @@
 //! The ESN serves as a secondary reservoir in the neurosymbolic pipeline,
 //! operating on transformed LSM outputs for higher-level temporal features.
 
-#![allow(unsafe_code)]
+#![deny(unsafe_code)]
 
 use ndarray::{Array1, Array2};
 use ndarray_rand::rand_distr::{Normal, Uniform};

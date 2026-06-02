@@ -1,0 +1,41 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= NeuroPhone Usage
+:toc:
+
+== Usage
+
+=== Kotlin API
+
+```kotlin
+// Initialize
+NativeLib.init()
+NativeLib.start()
+
+// Query with neural context
+val response = NativeLib.query("What's my current activity?", preferLocal = true)
+
+// Get raw neural state
+val context = NativeLib.getNeuralContext()
+// Returns: [NEURAL_STATE] Description: ... [/NEURAL_STATE]
+
+// Cleanup
+NativeLib.stop()
+```
+
+=== Rust API
+
+```rust
+use neurophone_core::{NeuroSymbolicSystem, SystemConfig};
+
+let mut system = NeuroSymbolicSystem::with_config(config)?;
+let _rx = system.start().await?;
+
+// Send sensor data
+system.send_sensor(reading).await?;
+
+// Query
+let response = system.query("What's happening?", true).await?;
+
+// Get neural context
+let context = system.get_neural_context().await;
+```
