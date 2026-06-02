@@ -33,18 +33,20 @@ not edit `PALIMPSEST.adoc`, citations, or governance philosophy docs.
    `enable_audit`/`enable_coverage` inputs). *Cannot be fixed from neurophone.*
 ** `hypatia-scan` — same class (estate scanner reusable/infra).
 ** `Instant Sync` / `Mirror` / `Scorecard` — infra/external-forge/token, ignore.
-* *LATENT BUILD BREAK (fixed by PR #129, not yet merged):* workspace `Cargo.toml`
-  declares `rand 0.10` / `rand_distr 0.6` (dependabot #49/#67) which are
+* *LATENT BUILD BREAK — FIXED via PR #129 (MERGED):* workspace `Cargo.toml`
+  declared `rand 0.10` / `rand_distr 0.6` (dependabot #49/#67) which are
   incompatible with `ndarray-rand 0.16` (needs `rand 0.9`); only masked by the
-  committed `Cargo.lock`. A lockfile refresh breaks `esn`/`lsm`.
+  committed `Cargo.lock`. #129 reverted to 0.9/0.5 and is now on `main`, so the
+  workspace builds cleanly. (Downstream: #130 carried the same revert — its hunk
+  is now redundant and rebases cleanly.)
 
 == 3. My open PRs — recommended merge order
 
 . *#129* `fix/esn-lsm-rand-0.10` — revert `rand`→0.9 / `rand_distr`→0.5;
-  un-breaks the workspace build. Verified `cargo build/test --workspace` green.
-  *MERGE FIRST* (everything else rebases on it).
+  un-breaks the workspace build. *MERGED ✓* (was merge-first; everything rebases
+  on it).
 . *#125* `chore/ignore-agent-worktrees` — gitignore `.claude/worktrees/`; also
-  carries this `HANDOVER.adoc`.
+  carries this `HANDOVER.adoc`. *Next.*
 . *#119* `chore/consolidate-cicd-docs` — README licence badge PMPL→MPL only (the
   rust-ci repin attempt was reverted: `@main` also startup-fails). The PR will
   still show `rust-ci` red — that is pre-existing/upstream, not from this PR.
