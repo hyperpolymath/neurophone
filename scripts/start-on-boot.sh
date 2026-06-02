@@ -1,5 +1,5 @@
 #!/data/data/com.termux/files/usr/bin/bash
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # SPDX-FileCopyrightText: 2025 Jonathan D.A. Jewell
 #
 # start-on-boot.sh — Termux:Boot hook to keep the CLI side of NeuroPhone

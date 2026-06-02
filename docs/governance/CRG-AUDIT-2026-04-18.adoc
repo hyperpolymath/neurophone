@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 
 = Neurophone — CRG Audit (2026-04-18)
@@ -77,7 +77,7 @@ Publication requires B+. Long alpha is discipline, not shame.
 | Very thin relative to gossamer/boj-server annotation bars
 
 | `LICENSE` + `LICENSES/` directory
-| PRESENT (`LICENSE`, `LICENSES/PMPL-1.0-or-later.txt`)
+| PRESENT (`LICENSE`, `LICENSES/MPL-2.0.txt`)
 | Good licence hygiene structurally, but *see merge conflicts below*
 
 | `guix.scm` + `flake.nix`
@@ -142,7 +142,7 @@ Sample (`.github/workflows/rust-ci.yml` lines 1-5):
 [source,yaml]
 ----
 <<<<<<< HEAD
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 =======
 # SPDX-License-Identifier: <non-canonical variant injected by parent-repo sync>
 >>>>>>> 0a372d5 (chore: sync from parent repo automation)
@@ -153,7 +153,7 @@ A YAML file cannot parse with `<<<<<<< HEAD` as its first token. This
 means every affected workflow (including `rust-ci.yml`, `codeql.yml`,
 `scorecard.yml`, `quality.yml`, `security-policy.yml`) is *syntactically
 invalid* and cannot have run successfully since the merge. The README
-badge "image:https://img.shields.io/…[License: PMPL-1.0]" is in a
+badge "image:https://img.shields.io/…[License: MPL-2.0]" is in a
 conflict block — GitHub's adoc renderer will display the conflict
 markers verbatim to any visitor.
 
@@ -385,7 +385,7 @@ What blocks *immediate* promotion to D (do these first):
   hand-merge of each file, delete all `<<<<<<< HEAD` / `=======` /
   `>>>>>>> ` marker lines. Verify with
   `rg '^<<<<<<< HEAD|^>>>>>>> '` returns zero. Keep the
-  PMPL-1.0-or-later SPDX line (drop the non-canonical variant per
+  MPL-2.0 SPDX line (drop the non-canonical variant per
   Rule 1 of the licence policy).
 . **Make `rust-ci.yml` actually run.** Once conflicts are resolved,
   trigger a CI run and record the green SHA in STATE.a2ml.

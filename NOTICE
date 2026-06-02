@@ -2,12 +2,12 @@ Licensing Notice
 ================
 
 This project is authored by Jonathan D.A. Jewell (hyperpolymath) and
-is licensed under the Palimpsest License (PMPL-1.0-or-later).
+is licensed under the Mozilla Public License, version 2.0 (MPL-2.0).
 
-The full license text is in LICENSE and LICENSES/PMPL-1.0-or-later.txt.
+The full license text is in LICENSE and LICENSES/MPL-2.0.txt.
 All source files carry the SPDX identifier:
 
-  SPDX-License-Identifier: PMPL-1.0-or-later
+  SPDX-License-Identifier: MPL-2.0
 
-For more information about the Palimpsest License:
-  https://github.com/hyperpolymath/palimpsest-license
+For more information about the MPL-2.0:
+  https://www.mozilla.org/en-US/MPL/2.0/

@@ -1,8 +1,8 @@
-image:https://img.shields.io/badge/License-PMPL--1.0-blue.svg[License: PMPL-1.0,link="https://github.com/hyperpolymath/palimpsest-license"]
+image:https://img.shields.io/badge/License-MPL--2.0-blue.svg[License: MPL-2.0,link="https://www.mozilla.org/en-US/MPL/2.0/"]
 image:https://img.shields.io/badge/Philosophy-Palimpsest-indigo.svg[Palimpsest,link="https://github.com/hyperpolymath/palimpsest-license"]
 
 
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // SPDX-FileCopyrightText: 2025 Jonathan D.A. Jewell
 = NeuroPhone - Neurosymbolic AI Android Application
 :toc:
@@ -180,7 +180,7 @@ Contributions welcome! See link:CONTRIBUTING.md[CONTRIBUTING.md].
 
 == License
 
-Palimpsest-MPL-1.0 License - See LICENSE file
+MPL-2.0 License - See LICENSE file
 
 == Citation
 
