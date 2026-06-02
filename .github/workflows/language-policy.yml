@@ -84,14 +84,11 @@ jobs:
           fi
           echo "✓ No npm runtime dependencies found"
 
-      - name: Check for Java/Kotlin files
-        run: |
-          if find . -name "*.java" -o -name "*.kt" -o -name "*.kts" | head -1 | grep -q .; then
-            echo "::error::Java/Kotlin files found. Use Rust/Tauri/Dioxus instead."
-            find . -name "*.java" -o -name "*.kt" -o -name "*.kts"
-            exit 1
-          fi
-          echo "✓ No Java/Kotlin files found"
+      # Java/Kotlin check is delegated to hyperpolymath/standards
+      # governance-reusable.yml `language-policy` job (which honours the
+      # estate-wide android/**/src/**/*.java carve-out for platform-required
+      # JVM shims — see standards#341). Keeping a local copy here drifts
+      # the policy. Single source of truth.
 
       - name: Check for Swift files
         run: |
