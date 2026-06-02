@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// NeuroPhone - High-Assurance Hardware Orchestration
+// Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+
 //! Liquid State Machine (LSM) - Spiking Neural Network Reservoir
 //!
 //! Implements a biologically-inspired spiking neural network using
