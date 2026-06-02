@@ -7,6 +7,7 @@
 //! proximity). Output feeds the LSM at 50 Hz.
 
 #![forbid(unsafe_code)]
+#![cfg_attr(not(test), deny(clippy::unwrap_used, clippy::expect_used))]
 
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
@@ -274,7 +275,11 @@ impl SensorPipeline {
     pub fn reset(&mut self) {
         self.low_pass.reset();
         self.high_pass.reset();
-        self.window = WindowedFeatures::new(self.kind.arity(), self.window.capacity).unwrap();
+        // arity()/capacity are the same valid values used to build the window in
+        // new(), so reconstruction cannot fail; retain the window rather than panic.
+        if let Ok(w) = WindowedFeatures::new(self.kind.arity(), self.window.capacity) {
+            self.window = w;
+        }
         self.last_ts = None;
     }
 }

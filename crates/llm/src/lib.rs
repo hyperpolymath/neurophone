@@ -7,6 +7,7 @@
 //! of the workspace can be tested end-to-end without a 700 MB model file.
 
 #![forbid(unsafe_code)]
+#![cfg_attr(not(test), deny(clippy::unwrap_used, clippy::expect_used))]
 
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicU64, Ordering};
