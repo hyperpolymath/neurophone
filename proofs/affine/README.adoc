@@ -1,0 +1,36 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= Affine resource-lifecycle proofs (obligation 2.3, #93)
+:toc:
+
+== Obligation
+
+Sensor/hardware handles must be acquired and released *exactly once* — no leak,
+no double-release, no use-after-release.
+
+== What Rust ownership already guarantees
+
+Rust's affine ownership discharges most of this for any resource modelled as an
+owned `Drop` type in safe Rust (this crate tree is `forbid`/`deny(unsafe_code)`):
+
+* A handle implementing `Drop` releases its resource exactly once when it leaves
+  scope (RAII); the compiler rejects use-after-move.
+* Moving a handle transfers the release obligation — it cannot be released twice.
+
+So *acquire → use → release-exactly-once* holds today for owned handle types,
+and the lifecycle typestate (2.1) extends the same move-once discipline to the
+orchestrator (`shutdown` consumes the system).
+
+== Deferred formalisation (AffineScript) — design spec
+
+The stronger machine-checked guarantee — *linear* (must-use) handles the
+compiler refuses to silently drop, not merely refuses to double-free — is the
+AffineScript vehicle. Per the Tier-2 decision this is recorded as a spec, not
+implemented in-repo yet. When the concrete hardware/sensor handle layer lands,
+model each handle as an affine/linear resource and discharge this obligation
+against that model.
+
+== Cross-references
+
+* 2.1 lifecycle typestate (`proofs/tla/Lifecycle.tla`, `neurophone-core`).
+* 3.1 data-egress and the conative-gating gate (#98) share the
+  "capability/resource used within declared bounds" theme.
