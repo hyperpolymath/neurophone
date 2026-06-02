@@ -14,7 +14,7 @@ members = [
 [workspace.package]
 version = "1.0.0"
 edition = "2021"
-license = "PMPL-1.0-or-later"
+license = "MPL-2.0"
 authors = ["Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>"]
 repository = "https://github.com/hyperpolymath/neurophone"
 
@@ -22,8 +22,8 @@ repository = "https://github.com/hyperpolymath/neurophone"
 # Core neural network
 ndarray = { version = "0.17", features = ["rayon", "serde"] }
 ndarray-rand = "0.16"
-rand = "0.9"
-rand_distr = "0.5"
+rand = "0.10"
+rand_distr = "0.6"
 rayon = "1.12"
 
 # Serialization

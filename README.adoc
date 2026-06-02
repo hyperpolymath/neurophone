@@ -16,8 +16,118 @@ image:https://img.shields.io/badge/RSR-Bronze-cd7f32[RSR Compliance]
 ====
 **AI-Assisted Install:** Just tell any AI: +
 `Set up NeuroPhone on my Android from https://github.com/hyperpolymath/neurophone` +
-It reads this repo, asks a few questions, and does everything. See link:docs/installation.adoc[Installation].
+It reads this repo, asks a few questions, and does everything. <<ai-install,Details below>>.
 ====
+
+[[ai-install]]
+== AI-Assisted Installation (Recommended)
+
+=== Just Say It
+
+**You don't need to read this README.** Just say this to any AI assistant:
+
+[source,text]
+----
+Set up NeuroPhone on my Android from https://github.com/hyperpolymath/neurophone
+----
+
+**That's it. You don't type commands, install packages, or configure anything.** The AI fetches this repo, reads the installation guide inside it, figures out your device, and does everything. You just answer a few questions and confirm the privacy notice.
+
+The URL is the key -- it points the AI to this repo where `docs/AI_INSTALLATION_GUIDE.adoc` contains the complete step-by-step recipe. Any AI that can read a URL and run commands (or generate commands for you to paste) can do this.
+
+The AI handles all of this automatically:
+
+* Checking your device and storage
+* Installing Termux (if needed), Rust, Git, and dependencies
+* Cloning and building NeuroPhone for your specific hardware
+* Downloading the right LLM model for your device's RAM/storage
+* Creating your configuration with sensible defaults
+* Running the setup wizard
+* Giving you a working NeuroPhone
+
+=== Other Ways to Say It
+
+If your AI already knows about NeuroPhone (e.g. it can search the web), even shorter versions work:
+
+* "Make my phone a NeuroPhone"
+* "Install NeuroPhone on my Android"
+* "Turn my Oppo Reno 13 into a NeuroPhone"
+
+If it doesn't know the project, just include the URL:
+
+* "Set up https://github.com/hyperpolymath/neurophone on my phone"
+* "I want neurosymbolic AI on my phone -- install from https://github.com/hyperpolymath/neurophone"
+
+=== What You'll Be Asked
+
+Your AI will ask you:
+
+1. **What device?** (so it picks the right thread count and model size)
+2. **Privacy confirmation** -- what sensors are used and how data stays on-device
+3. **Cloud fallback?** (optional Claude API for complex queries -- default is local-only)
+
+That's it. Everything else is automatic. No package managers, no build flags, no config files.
+
+=== Privacy & Security Notice
+
+[IMPORTANT]
+====
+**What NeuroPhone does:**
+
+* Reads phone sensors (accelerometer, gyroscope, magnetometer, light, proximity)
+* Processes everything on-device using Rust neural networks + local Llama LLM
+* Stores neural states locally in `~/.local/share/neurophone/` (never uploaded)
+* Optionally uses Claude API for complex queries (you control this)
+
+**What NeuroPhone does NOT do:**
+
+* Upload sensor data to any server (unless you enable cloud fallback)
+* Track you or collect analytics
+* Access camera, microphone, contacts, or personal data
+
+**You control everything:** cloud fallback toggle, all config in `~/.config/neurophone/`, uninstall anytime.
+====
+
+=== After Install
+
+Once your AI finishes setup, just use it:
+
+[source,bash]
+----
+neurophone                                       # Start NeuroPhone
+neurophone query "What am I doing right now?"    # Ask a question
+neurophone status                                # Check system status
+----
+
+=== Uninstall
+
+Tell your AI: "Uninstall NeuroPhone from my phone"
+
+=== Troubleshooting
+
+Tell your AI what went wrong -- it can read the troubleshooting docs in this repo. Common issues:
+
+[cols="1,3"]
+|===
+|Problem |Solution
+
+|"Termux not found"
+|AI will guide you to install from F-Droid (NOT Google Play)
+
+|Build takes too long
+|Normal for first build (5-10 min). AI adjusts thread count for your device.
+
+|"Model download failed"
+|AI will try alternate download methods or suggest `adb push` from PC
+
+|"LSM crashes"
+|Low RAM. AI will reduce model size or neuron count for your device.
+|===
+
+[[manual-installation]]
+For manual installation without AI assistance, see the <<getting-started,Getting Started>> section below.
+
+'''
 
 == What This Is
 
@@ -94,24 +204,242 @@ Also compatible with Android 8.0+ devices with 4GB+ RAM.
 | Often sent to cloud
 |===
 
-== Installation
+== Architecture
 
-The fastest way: tell any AI assistant to set it up for you. See link:docs/AI_INSTALLATION_GUIDE.adoc[AI Installation Guide] for the full recipe, and link:docs/installation.adoc[Installation] for the step-by-step walkthrough (privacy notice, troubleshooting, uninstall).
+=== Rust Crates (8 modules)
 
-[source,text]
-----
-Set up NeuroPhone on my Android from https://github.com/hyperpolymath/neurophone
-----
+|===
+| Crate | Purpose | Key Features
 
-For manual installation, see link:docs/build.adoc[Building NeuroPhone].
+| `lsm`
+| Liquid State Machine
+| 512 spiking neurons, 3D grid, 1kHz processing
 
-== Documentation
+| `esn`
+| Echo State Network
+| 300-neuron reservoir, ridge regression
 
-* link:docs/architecture.adoc[Architecture] -- Rust crates, Android app, components, performance, topology
-* link:docs/usage.adoc[Usage] -- Kotlin and Rust APIs
-* link:docs/build.adoc[Building NeuroPhone] -- prerequisites, build, model download, configuration, development
-* link:docs/installation.adoc[Installation] -- AI-assisted install, privacy, troubleshooting
-* link:docs/AI_INSTALLATION_GUIDE.adoc[AI Installation Guide] -- machine-readable install recipe
+| `bridge`
+| Neural ↔ Symbolic
+| State encoding, context generation
+
+| `sensors`
+| Phone Sensors
+| Accel, gyro, magnetometer, light, proximity
+
+| `llm`
+| Local Inference
+| Llama 3.2 via llama.cpp, streaming
+
+| `claude-client`
+| Cloud Fallback
+| Claude API, retry logic, context injection
+
+| `neurophone-core`
+| Orchestration
+| Main coordinator, query routing
+
+| `neurophone-android`
+| Android JNI
+| Kotlin ↔ Rust bridge
+|===
+
+=== Android App (Kotlin)
+
+```
+android/
+├── app/src/main/
+│   ├── java/ai/neurophone/
+│   │   ├── MainActivity.kt
+│   │   ├── NativeLib.kt          # JNI interface
+│   │   ├── SensorManager.kt      # Sensor collection
+│   │   └── ui/                   # Compose UI
+│   └── res/
+└── build.gradle.kts
+```
+
+== Components
+
+=== LSM (Liquid State Machine)
+
+Spiking neural network for temporal sensor processing:
+
+* 3D grid: 8×8×8 = 512 Leaky Integrate-and-Fire neurons
+* Distance-dependent connectivity
+* Excitatory/inhibitory balance
+* Real-time spike processing at 1kHz
+
+=== ESN (Echo State Network)
+
+Reservoir for state prediction:
+
+* 300-neuron reservoir
+* Spectral radius: 0.95
+* Leaky integrator dynamics
+* Ridge regression output
+
+=== Sensors
+
+Phone sensor integration:
+
+* Accelerometer, gyroscope, magnetometer
+* Light and proximity sensors
+* IIR filtering (low-pass, high-pass)
+* Feature extraction at 50Hz
+
+=== Bridge
+
+Neural ↔ Symbolic translation:
+
+* Integrates LSM + ESN states
+* Generates natural language context for LLMs
+* Temporal pattern detection
+* Salience and urgency computation
+
+=== Local LLM
+
+On-device language model:
+
+* Llama 3.2 1B/3B via llama.cpp
+* Optimized for Dimensity 8350
+* Q4_K_M quantization (~700MB)
+* Neural context injection
+
+=== Claude Client
+
+Cloud fallback for complex queries:
+
+* Messages API integration
+* Automatic retry with exponential backoff
+* Hybrid inference (local/cloud decision)
+* Neural state context injection
+
+[[getting-started]]
+== Getting Started
+
+=== Prerequisites
+
+* Rust 1.75+
+* Android NDK 26+
+* Android Studio (for app development)
+* Oppo Reno 13 or Android 8.0+ device
+
+=== Build
+
+```bash
+# Clone
+git clone https://github.com/hyperpolymath/neurophone
+cd neurophone
+
+# Setup
+./scripts/setup.sh
+
+# Build native libraries for Android
+./scripts/build-android.sh
+
+# Open android/ in Android Studio
+```
+
+=== Download LLM Model
+
+```bash
+# Download Llama 3.2 1B Instruct (Q4_K_M, ~700MB)
+# From: https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF
+
+# Push to device
+adb push llama-3.2-1b-instruct-q4_k_m.gguf /data/local/tmp/
+```
+
+=== Configure
+
+Set Claude API key (for cloud fallback):
+
+```bash
+export ANTHROPIC_API_KEY="your-api-key"
+```
+
+Or in `config/default.toml`:
+
+```toml
+[claude]
+api_key = "your-api-key"
+model = "claude-sonnet-4-20250514"
+
+[llm]
+model_path = "/data/local/tmp/llama-3.2-1b-q4_k_m.gguf"
+n_threads = 4
+context_size = 2048
+```
+
+== Usage
+
+=== Kotlin API
+
+```kotlin
+// Initialize
+NativeLib.init()
+NativeLib.start()
+
+// Query with neural context
+val response = NativeLib.query("What's my current activity?", preferLocal = true)
+
+// Get raw neural state
+val context = NativeLib.getNeuralContext()
+// Returns: [NEURAL_STATE] Description: ... [/NEURAL_STATE]
+
+// Cleanup
+NativeLib.stop()
+```
+
+=== Rust API
+
+```rust
+use neurophone_core::{NeuroSymbolicSystem, SystemConfig};
+
+let mut system = NeuroSymbolicSystem::with_config(config)?;
+let _rx = system.start().await?;
+
+// Send sensor data
+system.send_sensor(reading).await?;
+
+// Query
+let response = system.query("What's happening?", true).await?;
+
+// Get neural context
+let context = system.get_neural_context().await;
+```
+
+== Performance
+
+Optimized for Oppo Reno 13 (Dimensity 8350):
+
+|===
+| Component | Latency | Notes
+
+| Sensor processing
+| <1ms
+| 50Hz loop
+
+| LSM step
+| <2ms
+| 512 neurons
+
+| ESN step
+| <1ms
+| 300 neurons
+
+| Bridge integration
+| <1ms
+| Per step
+
+| Local LLM (1B)
+| 50-100ms/token
+| Q4 quantized
+
+| Claude API
+| 500-2000ms
+| Network dependent
+|===
 
 == Relationship to mobile-ai-orchestrator
 
@@ -174,6 +502,19 @@ Bronze-level RSR (Rhodium Standard Repository) compliance:
 * Build automation
 * Security policy
 
+== Development
+
+```bash
+# Run tests
+cargo test
+
+# Build for Android
+./scripts/build-android.sh
+
+# Generate docs
+cargo doc --open
+```
+
 == Contributing
 
 Contributions welcome! See link:CONTRIBUTING.md[CONTRIBUTING.md].
@@ -202,3 +543,8 @@ Palimpsest-MPL-1.0 License - See LICENSE file
 ---
 
 *Android Application • On-Device Neural Processing • Spiking Networks • Local LLM*
+
+
+== Architecture
+
+See link:TOPOLOGY.md[TOPOLOGY.md] for a visual architecture map and completion dashboard.
