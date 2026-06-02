@@ -7,7 +7,7 @@
 
 #![deny(unsafe_code)]
 #![cfg_attr(not(test), deny(clippy::unwrap_used, clippy::expect_used))]
-use ndarray::{Array1, Array2, Axis};
+use ndarray::{Array1, Array2};
 use ndarray_rand::rand_distr::{Bernoulli, Normal, Uniform};
 use ndarray_rand::RandomExt;
 use rand::Rng;
@@ -209,6 +209,35 @@ impl LiquidStateMachine {
         })
     }
 
+    /// Estimate the spectral radius (largest eigenvalue magnitude) via power iteration.
+    fn estimate_spectral_radius(weights: &Array2<f32>) -> f32 {
+        let n = weights.nrows();
+        if n == 0 || weights.ncols() != n {
+            return 0.0;
+        }
+        let mut v: Array1<f32> = Array1::from_shape_fn(n, |i| ((i % 7) as f32) + 1.0);
+        let norm = v.dot(&v).sqrt();
+        if norm == 0.0 {
+            return 0.0;
+        }
+        v /= norm;
+        let mut lambda = 0.0f32;
+        for _ in 0..1000 {
+            let w = weights.dot(&v);
+            let w_norm = w.dot(&w).sqrt();
+            if w_norm == 0.0 {
+                return 0.0;
+            }
+            let next = w_norm;
+            v = w / w_norm;
+            if (next - lambda).abs() <= 1e-6 * next.max(1.0) {
+                return next;
+            }
+            lambda = next;
+        }
+        lambda
+    }
+
     /// Create recurrent weight matrix with distance-dependent connectivity
     fn create_recurrent_weights(
         config: &LsmConfig,
@@ -254,15 +283,11 @@ impl LiquidStateMachine {
             }
         }
 
-        // Scale weights to achieve target spectral radius
-        let eigenvalue_estimate = weights
-            .mapv(|x| x.abs())
-            .sum_axis(Axis(1))
-            .into_iter()
-            .fold(0.0f32, |a, b| a.max(b));
-
-        if eigenvalue_estimate > 0.0 {
-            weights *= config.spectral_radius / eigenvalue_estimate;
+        // Scale to the target spectral radius using the TRUE spectral radius
+        // (power iteration), not the infinity-norm which only bounds it above.
+        let rho = Self::estimate_spectral_radius(&weights);
+        if rho > 0.0 {
+            weights *= config.spectral_radius / rho;
         }
 
         Ok(weights)
@@ -460,6 +485,26 @@ impl LiquidStateMachine {
     /// Get current simulation time
     pub fn current_time(&self) -> f64 {
         self.current_time
+    }
+
+    /// Membrane potentials of all neurons (for verification/inspection).
+    pub fn membrane_potentials(&self) -> Vec<f32> {
+        self.neurons.iter().map(|n| n.v).collect()
+    }
+
+    /// LIF parameters currently in effect.
+    pub fn lif_params(&self) -> &LifParameters {
+        &self.lif_params
+    }
+
+    /// Spike-history retention window (ms).
+    pub fn history_window_ms(&self) -> f64 {
+        self.history_window
+    }
+
+    /// Longest per-neuron spike history (number of retained spikes).
+    pub fn max_spike_history_len(&self) -> usize {
+        self.spike_history.iter().map(|h| h.len()).max().unwrap_or(0)
     }
 }
 
