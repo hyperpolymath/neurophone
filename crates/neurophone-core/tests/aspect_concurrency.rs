@@ -56,6 +56,39 @@ fn aspect_concurrent_sensor_events() {
     }
 }
 
+// Concurrency safety (obligation 2.2): data-race freedom is compiler-guaranteed
+// (the crate is `forbid`/`deny(unsafe_code)`, so shared state is only reached
+// through the `Mutex`); deadlock freedom follows from a single lock with no lock
+// ordering and no condvars. The remaining property worth proving is *no lost
+// updates* under contention — the mutex must serialise each read-modify-write.
+#[test]
+fn aspect_no_lost_updates_under_contention() {
+    const THREADS: u64 = 8;
+    const PER_THREAD: u64 = 250;
+    let sys = Arc::new(Mutex::new(
+        NeuroSymbolicSystem::new(SystemConfig::default())
+            .unwrap()
+            .initialize()
+            .unwrap(),
+    ));
+    let mut handles = vec![];
+    for t in 0..THREADS {
+        let sys = sys.clone();
+        handles.push(thread::spawn(move || {
+            for j in 0..PER_THREAD {
+                let q = format!("t{t}-q{j}");
+                sys.lock().unwrap().query(&q, true).unwrap();
+            }
+        }));
+    }
+    for h in handles {
+        h.join().unwrap();
+    }
+    // No lost updates: every query is counted exactly once. (Completion also
+    // demonstrates no deadlock.)
+    assert_eq!(sys.lock().unwrap().query_count(), THREADS * PER_THREAD);
+}
+
 #[test]
 fn aspect_query_under_one_second() {
     let sys = NeuroSymbolicSystem::new(SystemConfig::default()).unwrap();
