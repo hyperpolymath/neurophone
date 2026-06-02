@@ -14,7 +14,7 @@ members = [
 [workspace.package]
 version = "1.0.0"
 edition = "2021"
-license = "MPL-2.0"
+license = "PMPL-1.0-or-later"
 authors = ["Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>"]
 repository = "https://github.com/hyperpolymath/neurophone"
 
