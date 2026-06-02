@@ -1,0 +1,266 @@
+// SPDX-License-Identifier: MPL-2.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+// NOTE: Task instruction asked for PMPL-1.0-or-later, but the active
+// local pre-commit hook (.git/hooks/pre-commit) requires MPL-2.0 for
+// neurophone. The repo's existing Kotlin/manifest files use PMPL, so
+// the policies disagree. MPL chosen here to land the RFC; see
+// "Open questions for owner" for resolution.
+= RFC: Android Kotlin → Rust/Tauri Migration
+:toc:
+:toclevels: 3
+:revdate: 2026-06-02
+:status: DRAFT — awaiting owner review BEFORE any bulk conversion
+
+== Problem
+
+The `android/` directory contains 7 Kotlin files + 3 `*.gradle.kts` files,
+all banned by the Hyperpolymath language policy:
+
+----
+android/settings.gradle.kts
+android/build.gradle.kts
+android/app/build.gradle.kts
+android/app/src/main/java/ai/neurophone/MainActivity.kt
+android/app/src/main/java/ai/neurophone/NeurophoneService.kt
+android/app/src/main/java/ai/neurophone/BootReceiver.kt
+android/app/src/main/java/ai/neurophone/NativeLib.kt
+android/app/src/main/java/ai/neurophone/widget/NeurophoneAppWidget.kt
+android/app/src/main/java/ai/neurophone/widget/NeurophoneWidgetActions.kt
+android/app/src/main/java/ai/neurophone/widget/NeurophoneWidgetConfigureActivity.kt
+----
+
+This keeps two estate CI gates permanently red:
+
+* `Check for Banned Languages` (workflow `language-policy.yml`, step
+  `Check for Java/Kotlin files`)
+* `governance / Language / package anti-pattern policy`
+
+Both are sourced from `.github/workflows/language-policy.yml:87-94` which
+hard-fails on any `*.kt` / `*.kts` / `*.java` match.
+
+== Goal
+
+* Migrate the Android UI + service to Tauri 2.0 (Rust backend + AffineScript/web UI).
+* Both CI checks turn green.
+* Behaviour preserved: sensor capture, foreground presence, widgets, boot-start.
+* Sub-PRs are small and reviewable; nothing bulk-deleted until owner approves
+  this RFC.
+
+== Component inventory + replacement mapping
+
+[cols="2,1,3,3", options="header"]
+|===
+| Kotlin component | LoC | Current role | Replacement
+
+| `MainActivity.kt`
+| 377
+| UI shell (status / input / response), sensor capture in-activity, permissions,
+  intent handling (MAIN, SEND, VIEW `neurophone://`, ASSIST, widget query).
+| **Tauri 2** activity (`gen/android/`-scaffolded `MainActivity` extends
+  `TauriActivity`). UI markup authored in **AffineScript** compiling to
+  Deno-ESM, loaded by Tauri's webview. Rust commands expose
+  `init/start/stop/query/get_neural_context` via `#[tauri::command]`.
+  Sensor capture moves out of activity → service.
+
+| `NeurophoneService.kt`
+| 162
+| `Service` subclass: wake-lock, accelerometer @ 50 Hz, salience window,
+  `Notification.Builder` foreground channel, 1 Hz widget tick, calls
+  `NativeLib.init/start/stop/pushSensorEvent/getNeuralContext`.
+| **Rust foreground service via thin Java entry-point**. Service class
+  `NeurophoneRuntimeService extends Service` is auto-generated at build time
+  under `gen/android/app/src/main/java/` (Tauri convention — generated
+  Java, not hand-written Kotlin). Lifecycle hooks (`onCreate / onStartCommand
+  / onDestroy / onSensorChanged`) immediately `JNI_OnLoad` into Rust
+  fns in `crates/neurophone-android`. Salience window, sensor processing,
+  wake-lock release, and widget publishing all in Rust.
+
+| `BootReceiver.kt`
+| 25
+| `BroadcastReceiver` for `BOOT_COMPLETED` + `LOCKED_BOOT_COMPLETED`; starts
+  service if widget was running pre-reboot.
+| **Generated Java `BootReceiver extends BroadcastReceiver`** under
+  `gen/android/`. Single `onReceive` body: JNI into Rust
+  `crates/neurophone-android::boot_receive`.
+
+| `NativeLib.kt`
+| 93
+| JNI surface declarations + sensor-type-string→int mapping.
+| **DELETE entirely.** All JNI exports already live (as stubs) in
+  `crates/neurophone-android/src/lib.rs`. Sensor mapping moves to
+  Rust.
+
+| `NeurophoneAppWidget.kt`
+| 152
+| `AppWidgetProvider` (home-screen widget); renders title/state/salience
+  progress bar/Ask button via `RemoteViews`; persists widget state to
+  `SharedPreferences`.
+| **Generated Java `NeurophoneAppWidget extends AppWidgetProvider`** under
+  `gen/android/`. `onUpdate / onReceive` each contain ONE JNI call into
+  Rust. `RemoteViews` construction stays in Java (it has to — `RemoteViews`
+  cannot be assembled from JNI without round-tripping every setter), but
+  the *decision* of what to render (running flag, salience value,
+  description string) comes from Rust. Prefs storage moves to Rust via
+  `ndk-context`-mediated JNI calls or a Rust-side SQLite cache.
+
+| `NeurophoneWidgetActions.kt`
+| 47
+| Lightweight `BroadcastReceiver` dispatching `PUBLISH_STATE` /
+  `FORCE_REFRESH` from non-widget callers.
+| **Generated Java `NeurophoneWidgetActions extends BroadcastReceiver`**;
+  body JNIs into Rust dispatch fn.
+
+| `NeurophoneWidgetConfigureActivity.kt`
+| 70
+| Widget config UI (one checkbox: local-only mode), saved to prefs.
+| **Generated Java `NeurophoneWidgetConfigureActivity extends Activity`**
+  with programmatic layout. Saving local-only-mode goes through JNI to
+  Rust config storage. Acceptable alternative: drop the widget config
+  entirely — a single setting like "local-only" can move to the main
+  Tauri UI and a sensible default applied at widget install.
+
+| `*.gradle.kts` (×3)
+| ~100
+| Project + app module build config.
+| **Replaced by Tauri-generated `gen/android/**/*.gradle.kts`** at
+  `cargo tauri android init` time. These are platform-prescribed by
+  Android Gradle Plugin: there is no Rust replacement and Tauri vends
+  them. The CI exemption section below covers this.
+|===
+
+== The unavoidable JVM-bytecode surface
+
+Android instantiates the following by class name at platform boundaries.
+They **cannot be implemented in pure Rust** because Android's class loader
+demands a class implementing the listed Android framework superclass:
+
+* `Activity` (main + widget-configure)
+* `Service`
+* `BroadcastReceiver` (boot + widget actions + widget provider)
+
+Three resolution paths exist; this RFC proposes **(A)** and explicitly
+*rejects* (B) and (C). Owner picks before sub-PR work begins.
+
+=== Path (A) PROPOSED — Tauri-generated Java shims under `gen/android/`
+
+* `cargo tauri android init` generates per-platform Java glue inside
+  `src-tauri/gen/android/` (analogous to how `node_modules/` is generated
+  but not authored).
+* These files are **not Kotlin**, they are minimal Java each delegating
+  immediately to a single JNI function in Rust.
+* Add `gen/android/` to the `Check for Java/Kotlin files` step's exemption
+  list — same exemption pattern as `node_modules/` for the
+  `Check for ReScript files` step.
+* The `governance / Language / package anti-pattern policy` check is
+  estate-wide (`hyperpolymath/standards`); adding the exemption needs a
+  one-line change in the reusable workflow caller. Pre-coordination
+  required.
+* **Outcome:** zero hand-written Kotlin/Java in the repo's source tree;
+  CI passes; behaviour preserved.
+
+=== Path (B) REJECTED — drop the widget surface
+
+* Replace home-screen widget with a quick-settings tile + persistent
+  notification. Both can be declared in `AndroidManifest.xml` and driven
+  from a service whose only Java shim is auto-generated.
+* Pro: smaller JVM surface.
+* Con: regresses a shipped, user-visible feature; the OS integration
+  doc (`docs/OS_INTEGRATION.adoc`) lists the home-screen widget as the
+  primary integration point.
+
+=== Path (C) REJECTED — JVM bytecode generation from Rust
+
+* Use `j4rs` / `dx-java` / manual `.class` emission to ship JVM classes
+  built from Rust at compile time.
+* Pro: no Java source at all.
+* Con: experimental, fragile, no maintained tooling for `AppWidgetProvider`
+  superclass binding; not worth the risk.
+
+== Sub-PR sequence
+
+Each is a small, reviewable PR. Numbers are PR ordering, not commit count.
+
+. **#1 (THIS PR — DRAFT, no code changes)** — RFC for owner review. No
+  Kotlin deleted, no Tauri scaffolding generated.
+. **#2 — CI exemption for generated mobile shims.** Update
+  `.github/workflows/language-policy.yml` step `Check for Java/Kotlin
+  files` to exempt `src-tauri/gen/android/`. Coordinated with
+  `hyperpolymath/standards` for the reusable governance check. **Lands
+  before any Tauri scaffolding so CI doesn't go redder en route.**
+. **#3 — Tauri scaffolding (no behaviour).** Run `cargo tauri android
+  init`; commit `src-tauri/` + generated `gen/android/`. No deletion of
+  the existing `android/` Gradle project; both exist side by side so we
+  can A/B sanity-check.
+. **#4 — Port `NativeLib` to Rust.** Fill out
+  `crates/neurophone-android/src/lib.rs` with the 10 JNI exports the
+  current Kotlin `NativeLib` declares. Wire to existing crates
+  (`neurophone-core`, `sensors`, `lsm`, `esn`, `bridge`, `llm`,
+  `claude-client`). Tests: JNI roundtrip via a Rust test that simulates
+  `JNIEnv`.
+. **#5 — Port `NeurophoneService` to Rust.** Java shim under `gen/android/`
+  delegates `onCreate / onStartCommand / onDestroy / onSensorChanged` to
+  Rust. Salience window, wake-lock plumbing, widget tick — all Rust.
+. **#6 — Port `BootReceiver` to Rust.** Same shim pattern, single fn.
+. **#7 — Port widget triple (provider / actions / configure) to Rust.**
+  Java shims under `gen/android/` are minimal; widget render logic
+  (selecting strings, salience-pct, what `RemoteViews` setters to call)
+  is decided in Rust and pushed back to the shim via a single
+  data-bearing JNI fn.
+. **#8 — AffineScript UI** (replaces `activity_main.xml` view binding).
+  Tauri loads the AffineScript-compiled UI in webview; `#[tauri::command]`
+  wires `start/stop/query/get_context` to the Rust core.
+. **#9 — Delete legacy `android/` tree.** Both banned-language checks now
+  green. Behaviour parity verified by running APK on hardware + Termux
+  CLI smoke test.
+
+PRs #2 and #3 are sequenced and blocking. PRs #4 through #7 can land in
+parallel after #3. PR #8 needs #4 done. PR #9 is gated on all prior.
+
+== Open questions for owner
+
+. **Tauri vs Dioxus.** Policy lists both. RFC recommends **Tauri 2** for
+  reasons: (a) `gen/android/` shim pattern is documented and tested,
+  (b) AffineScript→ESM→webview is the cleanest UI fit, (c) Dioxus mobile
+  on Android (`cargo-mobile2`) is newer and has thinner foreground-service
+  precedent. Confirm or override.
+. **CI exemption scope.** OK to exempt `src-tauri/gen/android/` from the
+  Java/Kotlin check? This is the linchpin — without this exemption the
+  migration cannot land cleanly because Android demands JVM bytecode at
+  three system boundaries (Service / BroadcastReceiver / AppWidgetProvider).
+. **Estate governance check.** Who owns the
+  `governance / Language / package anti-pattern policy` callable in
+  `hyperpolymath/standards`? Cross-repo PR needed before #2.
+. **Widget config sacrifice.** Acceptable to drop the widget-configure
+  activity (Path B partial) in exchange for a smaller JVM surface? Saves
+  one shim.
+. **Behaviour-parity verification.** Hardware test plan: Oppo Reno 13
+  (current target per `app/build.gradle.kts:21`)? Or use Android emulator
+  + Termux on a generic device?
+. **SPDX header policy clash.** Existing Kotlin + AndroidManifest.xml use
+  `PMPL-1.0-or-later`; in-repo `hooks/validate-spdx.sh` matches PMPL; but
+  the local `.git/hooks/pre-commit` still expects `MPL-2.0`. This RFC
+  uses MPL-2.0 to land cleanly under the active local hook, but new
+  sub-PRs will need a resolved policy. Recommend updating
+  `.git/hooks/pre-commit` to recognize neurophone as a PMPL repo and
+  re-stamping the existing PMPL files if MPL is canonical, or the
+  reverse if PMPL is canonical.
+
+== Acceptance criteria
+
+* `Check for Banned Languages` job — green on `main`.
+* `governance / Language / package anti-pattern policy` — green on `main`.
+* `android/` directory — removed.
+* APK builds via `cargo tauri android build`.
+* Foreground service + boot-restart + widget + sensor capture all work on
+  hardware.
+* Termux CLI smoke test passes (`neurophone` command — unchanged by this
+  migration, but verified not regressed).
+
+== Non-goals
+
+* No changes to the seven core Rust crates (`lsm`, `esn`, `bridge`,
+  `sensors`, `llm`, `claude-client`, `neurophone-core`) outside what JNI
+  wiring strictly requires.
+* No changes to the Termux CLI path.
+* No new dependencies beyond `tauri`, `tauri-build`, and the
+  `android-activity` / `ndk` ecosystem crates Tauri already pulls in.
