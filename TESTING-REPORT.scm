@@ -1,4 +1,4 @@
-;; SPDX-License-Identifier: PMPL-1.0-or-later
+;; SPDX-License-Identifier: MPL-2.0
 ;; Neurophone Testing Report - Guile Scheme Format
 ;; Generated: 2025-12-29
 

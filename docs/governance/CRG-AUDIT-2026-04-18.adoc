@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 
 = Neurophone — CRG Audit (2026-04-18)
@@ -142,9 +142,9 @@ Sample (`.github/workflows/rust-ci.yml` lines 1-5):
 [source,yaml]
 ----
 <<<<<<< HEAD
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 =======
-# SPDX-License-Identifier: MPL-2.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 >>>>>>> 0a372d5 (chore: sync from parent repo automation)
 name: Rust CI
 ----
