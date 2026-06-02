@@ -1,0 +1,10 @@
+[
+  {
+    "severity": "high",
+    "rule_module": "cicd_rules",
+    "type": "banned_language_file",
+    "file_pattern": "android/**",
+    "note": "Android/Kotlin scaffold is being migrated to Gossamer; see RFC PR #97. The android/ tree is owner-authored work-in-flight, not vendored upstream. Exempt until the Gossamer migration lands and android/ is removed.",
+    "tracking_issue": "hyperpolymath/neurophone#97"
+  }
+]
