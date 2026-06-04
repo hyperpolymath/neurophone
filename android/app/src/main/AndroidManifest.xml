@@ -52,6 +52,29 @@ SPDX-FileCopyrightText: 2025 Jonathan D.A. Jewell
             </intent-filter>
         </activity>
 
+        <!--
+        Gossamer entry-point Activity (epic #83, RFC #97, sub-issue #109).
+        ai.neurophone.gossamer.NeurophoneMainActivity extends
+        io.gossamer.GossamerActivity (webview shell). Left commented in
+        sub-PR #3 because the Gossamer Android library is not yet resolvable
+        (see app/build.gradle.kts) — registering it now would fail manifest
+        merge / class resolution. The legacy .MainActivity above stays the
+        LAUNCHER for now.
+
+        TODO(#83 sub-PR #4): once the gossamer dependency is wired, enable this,
+        move the LAUNCHER intent-filter here, and retire .MainActivity.
+
+        <activity
+            android:name="ai.neurophone.gossamer.NeurophoneMainActivity"
+            android:exported="true"
+            android:screenOrientation="portrait">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        -->
+
         <!-- Long-running foreground service that owns the sensor → LSM → ESN loop -->
         <service
             android:name=".NeurophoneService"
