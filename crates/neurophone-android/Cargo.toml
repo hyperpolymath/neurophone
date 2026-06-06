@@ -9,6 +9,8 @@ crate-type = ["cdylib"]
 
 [dependencies]
 neurophone-core = { path = "../neurophone-core" }
+claude-client = { path = "../claude-client" }
+llm = { path = "../llm" }
 sensors = { path = "../sensors" }
 
 jni = { workspace = true }
