@@ -21,9 +21,20 @@ repository = "https://github.com/hyperpolymath/neurophone"
 [workspace.dependencies]
 # Core neural network
 ndarray = { version = "0.17", features = ["rayon", "serde"] }
+# NOTE(#83): rand/rand_distr are held at 0.9/0.5 to stay compatible with
+# ndarray-rand 0.16 (which depends on rand 0.9). The earlier dependabot bumps
+# to rand 0.10 / rand_distr 0.6 (PRs #49, #67) are incompatible with
+# ndarray-rand 0.16 and break `esn`/`lsm` once the lockfile is refreshed; the
+# committed Cargo.lock still pinned rand 0.9.4, which masked the regression.
+# Revert keeps `cargo build --workspace` green. Re-bump only alongside an
+# ndarray-rand upgrade that supports rand 0.10.
 ndarray-rand = "0.16"
+# rand pinned to 0.9 / rand_distr 0.5 to match ndarray-rand 0.16 (which bundles
+# rand 0.9). A dependabot bump to rand 0.10 broke the build: rand 0.10 is a
+# separate, incompatible rand in the tree (Distribution/Rng traits don't match
+# ndarray-rand's). Revert until ndarray-rand ships a rand-0.10-compatible release.
 rand = "0.10"
-rand_distr = "0.6"
+rand_distr = "0.5"
 rayon = "1.12"
 
 # Serialization
@@ -49,8 +60,13 @@ chrono = { version = "0.4", features = ["serde"] }
 thiserror = "2.0"
 anyhow = "1.0"
 
-# Android JNI
-jni = "0.22"
+# Android JNI.
+# Pinned to 0.21 (the stable, widely-used native-method API: `JNIEnv` as the
+# first argument with direct `get_string`/`new_string`/array helpers). jni 0.22
+# reworked the native-method entry points around `EnvUnowned::with_env` and is
+# still settling; the simpler 0.21 surface keeps the FFI boundary small and
+# auditable. Only `neurophone-android` consumes this dependency.
+jni = "0.21"
 
 # Configuration
 config = "0.14"

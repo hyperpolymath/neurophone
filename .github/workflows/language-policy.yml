@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v4
 
       # TypeScript check delegated to rsr-antipattern.yml (which honours the
       # universal allowlist and the .claude/CLAUDE.md exemptions table). The
@@ -84,24 +84,28 @@ jobs:
           fi
           echo "✓ No npm runtime dependencies found"
 
-      - name: Check for Java/Kotlin files
-        run: |
-          # Carve-out: the android/ subtree is owner-authored Kotlin/Gradle
-          # code currently being migrated to Gossamer (RFC PR #97). It is
-          # not vendored upstream — it is intentional work-in-flight. Once
-          # the Gossamer migration lands and android/ is removed, this
-          # exclusion should be removed too. Mirrors the .hypatia-ignore /
-          # .hypatia-baseline.json carve-out consumed by the standards
-          # governance-reusable workflow.
-          VIOLATIONS=$(find . \
-            \( -path './android' -o -path './android/*' -o -path './.git/*' \) -prune -o \
-            \( -name "*.java" -o -name "*.kt" -o -name "*.kts" \) -type f -print)
-          if [ -n "$VIOLATIONS" ]; then
-            echo "::error::Java/Kotlin files found. Use Rust/Tauri/Dioxus instead."
-            echo "$VIOLATIONS"
-            exit 1
-          fi
-          echo "✓ No Java/Kotlin files found (android/ exempt — Gossamer migration in flight, RFC PR #97)"
+      # Java/Kotlin check is delegated to the estate-wide standards
+      # `governance-reusable.yml language-policy` job (called from this
+      # repo's governance.yml). That reusable already:
+      #   - reads `.hypatia-baseline.json` and honours `file_pattern`
+      #     entries (governance-reusable.yml:91-285);
+      #   - uses `git ls-files` (which respects .gitignore correctly,
+      #     unlike `find` — see governance-reusable.yml:331-337);
+      #   - emits an explicit "exempt" line per skipped match for audit
+      #     trail.
+      #
+      # The neurophone-local `.hypatia-baseline.json` already declares
+      # the android/** carve-out for the Gossamer migration (PR #97).
+      # That single source of truth is enough; the previous local
+      # duplicate find-based check both (a) duplicated the policy and
+      # (b) used the brittle `find` mechanism that the reusable comment
+      # explicitly warned against.
+      #
+      # When the Gossamer migration completes and android/ is removed,
+      # the baseline entry will become stale — the reusable's
+      # `Detect stale baseline entries` job (governance-reusable.yml:127
+      # onward) will warn, and the entry can be removed in the same PR
+      # that deletes android/.
 
       - name: Check for Swift files
         run: |
@@ -157,7 +161,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v4
 
       - name: Check for .machine_readable directory
         run: |
