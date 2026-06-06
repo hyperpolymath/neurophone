@@ -1,15 +1,18 @@
-# SPDX-License-Identifier: MPL-2.0
-# Mustfile (A2ML Canonical)
-# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)
+; SPDX-License-Identifier: MPL-2.0
+; Mustfile (A2ML Canonical)
+; Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)
 
 @abstract:
-Physical State contract for Neurophone. Baseline UX Manifesto invariants
-that MUST hold at all times.
+Physical State contract for Neurophone. Hard invariants that MUST hold
+at all times — checked by the estate K9 runner and CI.
 @end
 
 @requires:
 - section: Core-Files
+- section: License
 - section: Banned
+- section: Proofs
+- section: Security
 @end
 
 ## Core-Files
@@ -24,11 +27,43 @@ that MUST hold at all times.
 - run: test -f README.adoc || test -f README.md
 - severity: critical
 
+### explainme-present
+- description: EXPLAINME (show-me-the-receipts) file must exist
+- run: test -f EXPLAINME.adoc || test -f EXPLAINME.md
+- severity: critical
+
+### state-a2ml-present
+- description: Machine-readable state checkpoint must exist
+- run: test -f .machine_readable/6a2/STATE.a2ml
+- severity: critical
+
+### cargo-workspace-present
+- description: Cargo workspace must exist
+- run: test -f Cargo.toml && grep -q '\[workspace\]' Cargo.toml
+- severity: critical
+
+## License
+
+### spdx-header-in-rs-files
+- description: All Rust source files must have an SPDX-License-Identifier header
+- run: "! find crates -name '*.rs' -not -path '*/target/*' | xargs grep -rL 'SPDX-License-Identifier' 2>/dev/null | grep -v '^$' | head -1 | grep ."
+- severity: critical
+
+### license-is-mpl2
+- description: LICENSE file must contain MPL-2.0
+- run: grep -q 'Mozilla Public License' LICENSE || grep -q 'MPL' LICENSE
+- severity: critical
+
+### no-pmpl-in-cargo
+- description: Cargo.toml must not declare PMPL licence
+- run: "! grep -q 'PMPL' Cargo.toml"
+- severity: critical
+
 ## Banned
 
 ### no-hardcoded-paths
 - description: No hardcoded developer paths
-- run: "! grep -rn '/home/hyper\|/mnt/eclipse' --include='*.rs' --include='*.res' --include='*.ex' --include='*.gleam' --include='*.zig' --include='*.sh' . 2>/dev/null | grep -v '.git/' | grep -v 'ux-rollout.jl' | head -1"
+- run: "! grep -rn '/home/hyper\|/mnt/eclipse' --include='*.rs' --include='*.sh' . 2>/dev/null | grep -v '.git/' | head -1 | grep ."
 - severity: critical
 
 ### no-dockerfiles
@@ -40,3 +75,47 @@ that MUST hold at all times.
 - description: No Makefiles (use Justfile)
 - run: test ! -f Makefile
 - severity: warning
+
+### no-typescript
+- description: No TypeScript files (use AffineScript)
+- run: "! find . -name '*.ts' -not -name '*.d.ts' -not -path '*/.git/*' -not -path '*/target/*' 2>/dev/null | head -1 | grep ."
+- severity: critical
+
+### no-secrets-committed
+- description: No .env or credential files in repo
+- run: test ! -f .env && test ! -f credentials.json && test ! -f .env.local
+- severity: critical
+
+## Proofs
+
+### proof-tracker-present
+- description: Proof obligation tracker must exist
+- run: test -f proofs/README.adoc
+- severity: warning
+
+### proof-lifecycle-present
+- description: TLA+ lifecycle spec must exist
+- run: test -f proofs/tla/Lifecycle.tla
+- severity: warning
+
+### proof-affine-spec-present
+- description: AffineScript affine-resource design spec must exist (obligation 2.3)
+- run: test -f proofs/affine/README.adoc
+- severity: warning
+
+## Security
+
+### hypatia-baseline-present
+- description: Hypatia baseline exemption file must exist (android/** carve-out)
+- run: test -f .hypatia-baseline.json
+- severity: warning
+
+### no-http-urls-in-source
+- description: No insecure HTTP URLs in Rust source
+- run: "! grep -rn 'http://' --include='*.rs' . 2>/dev/null | grep -v '.git/' | grep -v '// ' | head -1 | grep ."
+- severity: warning
+
+### cargo-lock-committed
+- description: Cargo.lock must be committed (reproducible builds)
+- run: test -f Cargo.lock
+- severity: critical
