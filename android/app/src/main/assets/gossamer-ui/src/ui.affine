@@ -1,0 +1,159 @@
+// SPDX-License-Identifier: MPL-2.0
+// face: JaffaScript
+//
+// AffineScript webview UI for the NeuroSymbolic Phone, loaded by the Gossamer
+// Android shell. This reimplements the view/controller logic previously in
+// `ai.neurophone.MainActivity` (android/.../MainActivity.kt) and the layout in
+// `res/layout/activity_main.xml`.
+//
+// Responsibilities (ported 1:1 from MainActivity):
+//   - Initialise the native system on load (bridge.init).
+//   - Start/Stop toggle for the neural processing loop (bridge.start/stop).
+//   - Poll and render the neural context every 500ms while running.
+//   - Send a query (smart / local / claude) and render the response.
+//   - "Prefer Local" toggle drives query routing.
+//
+// Sensor acquisition (SensorManager / SensorEventListener in Kotlin) is NOT
+// owned by this UI layer anymore: under the migration the foreground Rust
+// service (sub-PR #4) registers sensors natively and feeds the core directly.
+// The UI only drives the user-facing controls and `processSensor` is exposed on
+// the bridge for parity / manual injection.
+//
+// TODO(#83 rebase): wire the DOM-host binding (`Dom.*` below) to whatever the
+//   Gossamer webview runtime actually exposes; confirm event-loop / timer APIs.
+
+import bridge
+
+// --- DOM host (provided by the webview runtime) --------------------------
+// TODO(#83): These are thin typed wrappers over the document API the Gossamer
+//   webview exposes. Names assumed; reconcile with #3's host on rebase.
+extern module Dom {
+  fn byId(id: String): Element
+  fn on(el: Element, event: String, handler: () -> Promise<Unit>): Unit
+  fn setText(el: Element, text: String): Unit
+  fn getValue(el: Element): String
+  fn setValue(el: Element, v: String): Unit
+  fn setEnabled(el: Element, enabled: Bool): Unit
+  fn setVisible(el: Element, visible: Bool): Unit
+  fn isChecked(el: Element): Bool
+  fn focus(el: Element): Unit
+  fn setTimeout(ms: Int, handler: () -> Promise<Unit>): TimerId
+  fn clearTimeout(id: TimerId): Unit
+}
+
+// --- UI element handles (affine: each bound once at startup) --------------
+let statusText       = Dom.byId("statusText")
+let neuralContextText = Dom.byId("neuralContextText")
+let inputField       = Dom.byId("inputField")
+let responseText     = Dom.byId("responseText")
+let startButton      = Dom.byId("startButton")
+let sendButton       = Dom.byId("sendButton")
+let localSwitch      = Dom.byId("localSwitch")
+let activityIndicator = Dom.byId("activityIndicator")
+
+// --- Mutable UI state -----------------------------------------------------
+let mut isSystemRunning: Bool = false
+let mut contextTimer: Option<TimerId> = None
+
+// updateUI(): mirrors MainActivity.updateUI()
+fn updateUI(): Unit = {
+  Dom.setText(startButton, if isSystemRunning { "Stop" } else { "Start" })
+  Dom.setEnabled(sendButton, isSystemRunning)
+  Dom.setEnabled(inputField, isSystemRunning)
+}
+
+// initializeSystem(): mirrors MainActivity.initializeSystem()
+fn initializeSystem(): Promise<Unit> = {
+  Dom.setText(statusText, "Initializing...")
+  try {
+    let ok = await bridge.init(bridge.defaultConfig)
+    Dom.setText(statusText, if ok { "System initialized" } else { "Initialization failed" })
+  } catch e {
+    Dom.setText(statusText, "Error: " + e.message)
+  }
+  return unit
+}
+
+// startContextUpdates(): mirrors MainActivity.startContextUpdates()
+// Poll getNeuralContext every 500ms. Re-arms itself while running.
+fn pollContextOnce(): Promise<Unit> = {
+  if !isSystemRunning { return unit }
+  try {
+    let ctx = await bridge.getNeuralContext()
+    Dom.setText(neuralContextText, ctx)
+  } catch e {
+    // Non-fatal: keep polling (matches Kotlin's Log.w + continue).
+  }
+  contextTimer = Some(Dom.setTimeout(500, pollContextOnce))
+  return unit
+}
+
+fn startContextUpdates(): Unit = {
+  contextTimer = Some(Dom.setTimeout(500, pollContextOnce))
+}
+
+fn stopContextUpdates(): Unit = {
+  match contextTimer {
+    Some(id) => { Dom.clearTimeout(id); contextTimer = None }
+    None     => unit
+  }
+}
+
+// startSystem(): mirrors MainActivity.startSystem()
+fn startSystem(): Promise<Unit> = {
+  let ok = await bridge.start()
+  if ok {
+    isSystemRunning = true
+    startContextUpdates()
+    updateUI()
+    Dom.setText(statusText, "System running")
+  } else {
+    Dom.setText(statusText, "Failed to start")
+  }
+  return unit
+}
+
+// stopSystem(): mirrors MainActivity.stopSystem()
+fn stopSystem(): Promise<Unit> = {
+  await bridge.stop()
+  isSystemRunning = false
+  stopContextUpdates()
+  updateUI()
+  Dom.setText(statusText, "System stopped")
+  return unit
+}
+
+// toggleSystem(): mirrors MainActivity.toggleSystem()
+fn toggleSystem(): Promise<Unit> =
+  if isSystemRunning { stopSystem() } else { startSystem() }
+
+// sendQuery(): mirrors MainActivity.sendQuery()
+fn sendQuery(): Promise<Unit> = {
+  let message = String.trim(Dom.getValue(inputField))
+  if message == "" {
+    Dom.setText(responseText, "Please enter a message")
+    return unit
+  }
+  Dom.setVisible(activityIndicator, true)
+  Dom.setEnabled(sendButton, false)
+  try {
+    let preferLocal = Dom.isChecked(localSwitch)
+    let response = await bridge.query(message, preferLocal)
+    Dom.setText(responseText, if response == "" { "No response received" } else { response })
+  } catch e {
+    Dom.setText(responseText, "Error: " + e.message)
+  } finally {
+    Dom.setVisible(activityIndicator, false)
+    Dom.setEnabled(sendButton, true)
+  }
+  return unit
+}
+
+// main(): wire handlers and boot. Mirrors MainActivity.onCreate().
+pub fn main(): Promise<Unit> = {
+  Dom.on(startButton, "click", toggleSystem)
+  Dom.on(sendButton, "click", sendQuery)
+  updateUI()
+  await initializeSystem()
+  return unit
+}
