@@ -1,0 +1,53 @@
+# SPDX-License-Identifier: MPL-2.0
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)
+#
+# NeuroPhone Android — Gossamer backend scaffold.
+# Epic #83, RFC PR #97, sub-issue #109, sub-PR #3. Scaffolding ONLY.
+#
+# This is a STANDALONE manifest, deliberately NOT a member of the root Cargo
+# workspace (note the empty `[workspace]` table below, which detaches it). It is
+# kept out of `members` in the root Cargo.toml so that `cargo build --workspace`
+# and `cargo test --workspace` stay green even though `gossamer-rs` is not yet
+# resolvable in a neurophone checkout (see the dependency note below).
+#
+# RESOLVABILITY OUTCOME (verified 2026-06): `gossamer-rs` v0.1.0 is NOT published
+# to crates.io. In the estate it is consumed as a PATH dependency from the
+# sibling `hyperpolymath/gossamer` repo at `bindings/rust` — precedent:
+# hyperpolymath/panll uses `gossamer-rs = { path = "../gossamer/bindings/rust" }`.
+# That sibling checkout does not exist in neurophone's tree, so wiring it as a
+# hard dependency would break the build. It is therefore left COMMENTED OUT below
+# with a TODO until the gossamer Android build wiring lands (sub-PR #8).
+
+[package]
+name = "neurophone-gossamer"
+version = "1.0.0"
+edition = "2021"
+description = "NeuroPhone Android Gossamer webview backend (scaffold)"
+authors = ["Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>"]
+license = "MPL-2.0"
+repository = "https://github.com/hyperpolymath/neurophone"
+publish = false
+
+# Empty workspace table: detaches this manifest from the root workspace so it is
+# NOT built by `cargo build --workspace`. Build it explicitly from this dir.
+[workspace]
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+# TODO(#83 sub-PR #8): enable the Gossamer webview shell once the sibling
+# gossamer checkout / Android build wiring is available. Form mirrors panll:
+#   gossamer-rs = { path = "../../../gossamer/bindings/rust" }
+# `gossamer-rs` links libgossamer.so (Zig FFI) at runtime and provides the
+# webview + JSON IPC bridge (replacing Tauri). Until then this crate is an
+# inert placeholder so CI stays green.
+
+# Serialisation — used by every future IPC command handler (mirrors panll).
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# TODO(#83 sub-PR #4): bridge the 11 NativeLib JNI methods
+# (init/start/stop/processSensor/queryLocal/queryClaude/query/getNeuralContext/
+#  getState/reset/isRunning) into Gossamer IPC command handlers, calling the
+# existing Rust core in crates/neurophone-core via the neurophone-android crate.
