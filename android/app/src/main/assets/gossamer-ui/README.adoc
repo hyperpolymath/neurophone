@@ -1,0 +1,100 @@
+// SPDX-License-Identifier: MPL-2.0
+= Gossamer webview UI (AffineScript)
+:toc:
+
+NeuroSymbolic Phone user interface, reimplemented in *AffineScript* and loaded by
+the Gossamer Android shell's webview. This is sub-PR #8 of the Android
+Kotlin→Rust/Gossamer migration (epic #83, RFC PR #97, sub-issue #114).
+
+It replaces the Kotlin UI that lived in:
+
+* `android/app/src/main/java/ai/neurophone/MainActivity.kt` (view/controller)
+* `android/app/src/main/res/layout/activity_main.xml` (layout)
+
+The Kotlin sources are left in place for now; this PR only adds the replacement
+web UI + build wiring. Removal of the Kotlin UI happens on the migration's cutover.
+
+== Layout
+
+[source]
+----
+gossamer-ui/
+  index.html        webview entry; element ids match ui.affine queries
+  styles.css        visual parity with activity_main.xml
+  deno.json         Deno build/check/fmt tasks (no npm/Node)
+  build.sh          AffineScript -> Deno-ESM build wiring
+  src/
+    bridge.affine   typed bridge to the native Rust core (was NativeLib JNI)
+    ui.affine       view/controller logic (was MainActivity)
+  dist/
+    ui.mjs          GENERATED-OUTPUT STUB (see "Build wiring")
+----
+
+== What the UI does (ported 1:1 from MainActivity)
+
+* On load: `bridge.init(defaultConfig)` — config ported verbatim from
+  `MainActivity.createConfig()` (loop 20ms; sensor 50Hz/buf100/dim32;
+  LSM 8×8×8 / ρ0.9; ESN 300 / ρ0.95).
+* Start/Stop button toggles the neural loop (`bridge.start` / `bridge.stop`).
+* While running: polls `bridge.getNeuralContext()` every 500ms and renders it.
+* Query box + Send: `bridge.query(message, preferLocal)`; "Prefer Local" toggle
+  routes smart/local/cloud. `queryLocal` / `queryClaude` / `getState` are also
+  exposed on the bridge for parity with the JNI surface.
+
+Sensor *acquisition* is intentionally NOT in this UI: under the migration the
+foreground Rust service (sub-PR #4) registers Android sensors natively and feeds
+the core. `bridge.processSensor` remains exposed for parity / manual injection.
+
+== Bridge assumptions (TODO(#83 rebase))
+
+The native bridge contract is owned by parallel, *not-yet-merged* sub-PRs:
+
+* *#3* — Gossamer scaffolding / webview host (how assets load; what host object
+  is injected).
+* *#4* — NativeLib → Rust JNI (the native command implementations).
+
+Until those merge, this UI assumes:
+
+. Gossamer injects a global host object `globalThis.gossamer` into the webview.
+. `gossamer.invoke(cmd: string, args: object): Promise<string>` does one typed,
+  async IPC round-trip to the Rust core and resolves with its string/JSON reply.
+. Command names are the snake_case forms of the old `NativeLib` methods:
+  `init`, `start`, `stop`, `process_sensor`, `query`, `query_local`,
+  `query_claude`, `get_neural_context`, `get_state`, `reset`, `is_running`.
+. The host serves `index.html` as the webview root and runs module scripts after
+  injecting the bridge.
+
+Every such assumption is also marked inline with `TODO(#83 rebase)` /
+`TODO(#83)`. Reconcile against #3/#4 on rebase.
+
+== Build wiring
+
+AffineScript (`.affine`) compiles to Deno-ESM via the estate `affinescript`
+toolchain (OCaml/Dune CLI: `check` / `fmt` / `compile --target deno-esm`). Driven
+through Deno tasks (no npm/Node):
+
+[source,sh]
+----
+deno task check:ui     # affine/ownership + type check (bridge.affine, ui.affine)
+deno task build:ui     # compile src/ui.affine -> dist/ui.mjs
+deno task fmt:ui        # format sources
+----
+
+`build.sh` is the single entry point and is CI-ready.
+
+=== The dist/ui.mjs stub
+
+The `affinescript` compiler is *not yet vendored* in this repo or CI. So
+`dist/ui.mjs` is currently a hand-written *generated-output stub* that faithfully
+mirrors `src/ui.affine` + `src/bridge.affine`, so the webview is loadable and
+reviewable today. `build.sh` falls back to the committed stub when the compiler
+is absent (and says so loudly). TODO(#83): vendor/pin the toolchain, flip
+`USE_STUB=0` in `build.sh`, regenerate `dist/ui.mjs`, delete the stub, and wire
+`deno task build:ui` into CI.
+
+== Language policy
+
+AffineScript (primary app language) + HTML/CSS + a Deno-run Bash build script.
+No TypeScript, Node, or npm. The single `.mjs` is a *compiler-output stub*, not
+hand-authored application logic — it is replaced by real compiled output once the
+toolchain lands.
