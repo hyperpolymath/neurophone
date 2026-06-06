@@ -1,9 +1,59 @@
-# SPDX-License-Identifier: MPL-2.0
-# META.a2ml — Project meta-information
-# Converted from META.scm on 2026-03-15
+; SPDX-License-Identifier: MPL-2.0
+; META.a2ml — Project meta-information
+; Updated 2026-06-02
 
-[metadata]
-project = "neurophone"
-author = "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>"
-license = "PMPL-1.0-or-later"
-standard = "RSR 2026"
+(meta
+  (metadata
+    (project "neurophone")
+    (version "1.0.0")
+    (last-updated "2026-06-02"))
+
+  (identity
+    (name "neurophone")
+    (full-name "NeuroPhone — Neurosymbolic AI Android Application")
+    (author "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>")
+    (github "https://github.com/hyperpolymath/neurophone")
+    (license "MPL-2.0")
+    (standard "RSR 2026 — Silver/Gold track"))
+
+  (architecture
+    (type "Rust/Spark multi-crate workspace (8 crates) + Android shell")
+    (crates "lsm esn bridge sensors llm claude-client neurophone-core neurophone-android")
+    (android-shell "Kotlin/Compose (migration to gossamer in progress — epic #83)")
+    (primary-language "Rust/Spark")
+    (mobile-target "Android 8.0+ (primary: Oppo Reno 13, MediaTek Dimensity 8350, 12GB RAM)")
+    (cross-platform-target "gossamer (estate shell — long-term roadmap)"))
+
+  (language-policy
+    (primary "Rust/Spark — performance-critical, systems, WASM")
+    (mobile-ui "gossamer (Idris2 + Zig) — replacing Kotlin")
+    (scripts "Bash/POSIX shell")
+    (config "Nickel / TOML")
+    (metadata "Guile Scheme (a2ml format)")
+    (banned "TypeScript Node.js npm Bun Go Python-general Kotlin Swift React-Native Flutter Tauri Dioxus"))
+
+  (development-practices
+    (version-control "git — conventional commits, small reviewable PRs")
+    (package-management "Guix primary, Nix fallback, Cargo for Rust deps")
+    (ci "GitHub Actions via hyperpolymath/standards reusable workflows")
+    (testing "cargo test — unit/property/aspect/smoke/e2e/contract")
+    (proofs "proofs/ corpus — TLA+ lifecycle, proptest bounds, typestate compile-time")
+    (safety "forbid(unsafe_code) in all non-JNI crates; JNI crate uses deny + documented allows")
+    (secrets "no hardcoded secrets; ANTHROPIC_API_KEY via env or config file")
+    (dependencies "SHA-pinned external actions; dependabot for cargo/actions/maven"))
+
+  (conventions
+    (terminology "Rust always means Rust/Spark per owner directive")
+    (spdx "MPL-2.0 header on all files; REUSE-compliant")
+    (owner-territory "PALIMPSEST.adoc, citations, governance philosophy — do not edit")
+    (commit-style "feat/fix/chore/docs/ci/proof/perf with scope")
+    (branch-style "chore/ feat/ fix/ ci/ docs/ proof/ per change type"))
+
+  (adr-decisions
+    (license "MPL-2.0 canonical — PMPL reverted in #102/#118")
+    (mobile-shell "gossamer — NOT Tauri/Dioxus (owner directive)")
+    (typestate "strict compile-time lifecycle enforcement — illegal transitions are compile errors")
+    (spectral-radius "true rho via power iteration — NOT infinity-norm")
+    (rand-version "rand 0.9 / rand_distr 0.5 pinned for ndarray-rand 0.16 compatibility")
+    (android-exemption "android/** in .hypatia-baseline.json — exempt until gossamer migration")
+    (windows-phone "dropped — dead since 2020")))

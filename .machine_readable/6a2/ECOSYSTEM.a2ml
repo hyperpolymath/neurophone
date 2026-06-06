@@ -1,10 +1,52 @@
-# SPDX-License-Identifier: MPL-2.0
-# ECOSYSTEM.a2ml — Ecosystem position
-# Converted from ECOSYSTEM.scm on 2026-03-15
+; SPDX-License-Identifier: MPL-2.0
+; ECOSYSTEM.a2ml — Ecosystem position and related projects
+; Updated 2026-06-02
 
-[metadata]
-project = "neurophone"
-ecosystem = "hyperpolymath"
+(ecosystem
+  (metadata
+    (project "neurophone")
+    (last-updated "2026-06-02"))
 
-[position]
-type = "component"
+  (position
+    (type "application")
+    (estate "hyperpolymath")
+    (role "Primary mobile neurosymbolic AI application — sensor pipeline + local LLM + cloud fallback")
+    (crg-grade "C (progressing to Silver/Gold)")
+    (rsr-level "Bronze achieved; Silver/Gold in progress"))
+
+  (estate-projects
+    (upstream
+      (standards "https://github.com/hyperpolymath/standards — reusable CI/CD workflows; neurophone consumes rust-ci-reusable, hypatia-scan-reusable, language-policy, governance")
+      (gossamer "https://github.com/hyperpolymath/gossamer — estate cross-platform shell (Idris2 + Zig); neurophone migration target for Android UI")
+      (affinescript "https://github.com/hyperpolymath/affinescript — estate primary language; obligation 2.3 deferred to AffineScript vehicle"))
+
+    (related
+      (heterogenous-mobile-computing "https://github.com/hyperpolymath/heterogenous-mobile-computing — complementary platform-agnostic AI routing library")
+      (project-wharf "https://github.com/hyperpolymath/project-wharf — shares Rust/Spark multi-crate workspace pattern")
+      (protocol-squisher "https://github.com/hyperpolymath/protocol-squisher — shares Rust/Spark workspace + Claude API pattern")
+      (ephapax "https://github.com/hyperpolymath/ephapax — 17-crate workspace, similar structure")
+      (maa-framework "https://github.com/hyperpolymath/maa-framework — shares Claude API fallback pattern")
+      (boj-server "https://github.com/hyperpolymath/boj-server — shares Claude API pattern")
+      (raze-tui "https://github.com/hyperpolymath/raze-tui — shares Cargo.toml workspace layout")
+      (oblibeny "https://github.com/hyperpolymath/oblibeny — safety-critical programming concepts")
+      (burble "https://github.com/hyperpolymath/burble — shares Rust/Spark workspace pattern"))
+
+    (stale-links
+      (echomesh "https://github.com/hyperpolymath/echomesh — README link present but repo 404/inaccessible")))
+
+  (downstream-dependents
+    (heterogenous-mobile-computing "0 open issues — referenced in README")
+    (oblibeny "0 open issues — referenced in README"))
+
+  (nextgen-languages-alignment
+    (position "compliant — primary application code target is AffineScript (estate language policy 2026-05-25)")
+    (current-primary "Rust/Spark (compliant)")
+    (target "AffineScript compiling to typed-wasm or Deno-ESM")
+    (kotlin-status "legacy Android shell; exempt under .hypatia-baseline.json; migration to gossamer in progress")
+    (affinescript-obligation "obligation 2.3 (linear resource handles) is the AffineScript vehicle for neurophone"))
+
+  (integrations
+    (feedback-o-tron ".machine_readable/integrations/feedback-o-tron.a2ml declared — wiring pending (Workstream D)")
+    (proven ".machine_readable/integrations/proven.a2ml")
+    (verisimdb ".machine_readable/integrations/verisimdb.a2ml")
+    (vexometer ".machine_readable/integrations/vexometer.a2ml")))

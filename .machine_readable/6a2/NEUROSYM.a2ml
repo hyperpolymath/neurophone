@@ -1,14 +1,70 @@
-# SPDX-License-Identifier: MPL-2.0
-# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
-#
-# NEUROSYM.a2ml — Neurosymbolic integration metadata
-# Configuration for Hypatia scanning and symbolic reasoning.
+; SPDX-License-Identifier: MPL-2.0
+; NEUROSYM.a2ml — Neurosymbolic integration metadata
+; Updated 2026-06-02
 
-[metadata]
-version = "0.1.0"
-last-updated = "2026-03-16"
+(neurosym
+  (metadata
+    (version "0.2.0")
+    (last-updated "2026-06-02"))
 
-[hypatia-config]
-scan-enabled = true
-scan-depth = "standard"
-report-format = "logtalk"
+  (architecture
+    (paradigm "hybrid neurosymbolic — spiking neural reservoir + local LLM + symbolic query routing")
+    (neural-substrate "LSM (Liquid State Machine) + ESN (Echo State Network)")
+    (symbolic-substrate "local Llama 3.2 1B/3B + Claude API cloud fallback")
+    (integration-point "bridge crate — encode_neural_state() produces natural language context injected into LLM prompts"))
+
+  (lsm
+    (type "Liquid State Machine")
+    (neurons 512)
+    (topology "8x8x8 3D grid, distance-dependent connectivity")
+    (neuron-model "Leaky Integrate-and-Fire (LIF)")
+    (processing-rate "1kHz")
+    (dynamics "excitatory/inhibitory balance")
+    (proof-obligation "1.2 — bounded dynamics: proptest verified membrane <= threshold, spike history bounded"))
+
+  (esn
+    (type "Echo State Network")
+    (neurons 300)
+    (spectral-radius "0.95 — true rho via power iteration (obligation 1.1 — NOT infinity-norm)")
+    (dynamics "leaky integrator")
+    (output-layer "ridge regression")
+    (proof-obligation "1.1 — spectral radius < 1 enforced by SpectralRadius wrapper type"))
+
+  (llm
+    (local-model "Llama 3.2 1B/3B via llama.cpp")
+    (quantization "Q4_K_M (~700MB for 1B variant)")
+    (primary-target "Oppo Reno 13 (MediaTek Dimensity 8350, 12GB RAM)")
+    (context-window 2048)
+    (threads 4)
+    (cloud-fallback "Claude API (claude-client crate) — activated on prefer_local=false or low LSM confidence"))
+
+  (sensor-pipeline
+    (sensors "accelerometer gyroscope magnetometer light proximity")
+    (sample-rate "50Hz with IIR filtering")
+    (android-ids
+      (accelerometer 1)
+      (magnetometer 2)
+      (gyroscope 4)
+      (light 5)
+      (proximity 8))
+    (processing "sensors → IIR filter → LSM step → ESN step → bridge context"))
+
+  (orchestration
+    (crate "neurophone-core")
+    (pattern "typestate lifecycle — NeuroSymbolicSystem<phase::Created|Active|Down>")
+    (lifecycle "new() → initialize() → [process_sensor_event | query]* → shutdown()")
+    (safety "compile-time enforcement: query/process_sensor_event only available on Active phase"))
+
+  (hypatia-config
+    (scan-enabled true)
+    (scan-depth "standard")
+    (report-format "logtalk")
+    (baseline ".hypatia-baseline.json")
+    (exemptions "android/** — Kotlin scaffold pending gossamer migration"))
+
+  (proof-status
+    (obligations-discharged "0.1 0.2 1.1 1.2 2.1 2.2 3.1 3.2")
+    (obligations-deferred "2.3 — AffineScript linear resource handles (design spec)")
+    (tracker "proofs/README.adoc")
+    (tla-spec "proofs/tla/Lifecycle.tla")
+    (affine-spec "proofs/affine/README.adoc")))
