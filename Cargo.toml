@@ -26,8 +26,8 @@ ndarray-rand = "0.16"
 # rand 0.9). A dependabot bump to rand 0.10 broke the build: rand 0.10 is a
 # separate, incompatible rand in the tree (Distribution/Rng traits don't match
 # ndarray-rand's). Revert until ndarray-rand ships a rand-0.10-compatible release.
-rand = "0.9"
-rand_distr = "0.6"
+rand = "0.10"
+rand_distr = "0.5"
 rayon = "1.12"
 
 # Serialization
