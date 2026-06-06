@@ -81,7 +81,10 @@ SPDX-FileCopyrightText: 2025 Jonathan D.A. Jewell
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
-        <!-- Boot receiver: optionally restart service on phone reboot -->
+        <!-- Boot receiver: restart the foreground service on phone reboot.
+             Hand-written Java shim (Gossamer migration, epic #83); class name
+             unchanged so this registration is migration-transparent.
+             TODO(#83 rebase): align with sub-PRs #4/#5 once they merge. -->
         <receiver
             android:name=".BootReceiver"
             android:enabled="true"
