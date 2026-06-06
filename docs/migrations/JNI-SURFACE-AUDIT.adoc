@@ -1,0 +1,225 @@
+// SPDX-License-Identifier: MPL-2.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= JNI Surface Audit: `NativeLib.kt` ↔ `crates/neurophone-android`
+:toc:
+:toclevels: 2
+:revdate: 2026-06-02
+:status: Head-start audit for sub-PR #4 of [[RFC-ANDROID-KOTLIN-TO-RUST]]
+
+Companion to `RFC-ANDROID-KOTLIN-TO-RUST.adoc`. Maps every `external fun`
+in `android/app/src/main/java/ai/neurophone/NativeLib.kt` to (a) the
+Rust function we'll export from `crates/neurophone-android/src/lib.rs`
+and (b) the underlying `neurophone-core` API it composes. Surfaces
+gaps that need new methods on `NeuroSymbolicSystem` before sub-PR #4
+can finish.
+
+== Current state
+
+* `crates/neurophone-android/src/lib.rs` = 6-line stub (`pub fn hello() -> &'static str`). No JNI exports yet.
+* `crates/neurophone-android/Cargo.toml` already declares `crate-type =
+  ["cdylib"]`, depends on `jni`, `neurophone-core`, `sensors`,
+  `serde_json`, `tokio`, `chrono`. Foundation is correct.
+* `neurophone-core::NeuroSymbolicSystem` has 9 public methods. Coverage
+  vs the Kotlin JNI surface is partial (table below).
+
+== The mapping table
+
+[cols="2,3,3,2", options="header"]
+|===
+| Kotlin `external fun` | JNI export (Rust) | Underlying `neurophone-core` | Gap
+
+| `init(configJson: String?): Boolean`
+| `Java_ai_neurophone_NativeLib_init`
+| `serde_json::from_str::<SystemConfig>(json)` →
+  `NeuroSymbolicSystem::new(cfg)?.initialize()?`
+| **None** — core supports this directly. JNI layer holds the system in
+  a `OnceLock<Mutex<Option<NeuroSymbolicSystem>>>`.
+
+| `start(): Boolean`
+| `Java_ai_neurophone_NativeLib_start`
+| **MISSING on core.** Need `NeuroSymbolicSystem::start(&mut self)`.
+| **Gap 1**: core has no `start`/`stop`/lifecycle methods. Either add
+  them to `neurophone-core` or let "running" be a JNI-layer concept
+  (a `bool` flag in the static state holder). RFC recommends the
+  latter to keep `neurophone-core` ABI lean.
+
+| `stop()`
+| `Java_ai_neurophone_NativeLib_stop`
+| Companion to `start` — same gap.
+| **Gap 1** (same).
+
+| `processSensor(sensorType: Int, values: FloatArray, timestamp: Long, accuracy: Int): Boolean`
+| `Java_ai_neurophone_NativeLib_processSensor`
+| `NeuroSymbolicSystem::process_sensor_event(SensorEvent { sensor_type, timestamp_ms, values })`
+| **Gap 2**: sensor-type int→string mapping. Kotlin's `NativeLib.pushSensorEvent`
+  wrapper maps `1 → "accelerometer"`, `4 → "gyroscope"`, `2 → "magnetometer"`,
+  `5 → "light"`, `8 → "proximity"`. This mapping moves into the Rust JNI
+  layer as a `const ID_TO_NAME: &[(jint, &str)]` lookup.
+  `accuracy` argument in the Kotlin signature is currently unused by
+  `process_sensor_event` — either drop it from the JNI signature (breaks
+  Kotlin ABI) or accept and ignore (preserves ABI; recommended).
+
+| `queryLocal(message: String): String`
+| `Java_ai_neurophone_NativeLib_queryLocal`
+| `NeuroSymbolicSystem::query(message, prefer_local=true, force_local=true)`
+| **Gap 3**: `query` signature. Current core
+  `query()` exists at line 206 of `neurophone-core/src/lib.rs` but its
+  exact signature isn't visible from the public-surface grep — needs
+  verification. Likely needs a `force_local` flag added.
+
+| `queryClaude(message: String): String`
+| `Java_ai_neurophone_NativeLib_queryClaude`
+| `NeuroSymbolicSystem::query(message, prefer_local=false, force_cloud=true)`
+| **Gap 3** (same — force_cloud flag).
+
+| `query(message: String, preferLocal: Boolean): String`
+| `Java_ai_neurophone_NativeLib_query`
+| `NeuroSymbolicSystem::query(message, prefer_local)`
+| Should match core directly if the existing signature is
+  `query(&mut self, message: &str, prefer_local: bool)`. Verify.
+
+| `getNeuralContext(): String`
+| `Java_ai_neurophone_NativeLib_getNeuralContext`
+| **MISSING on core.** No `get_neural_context()` method.
+| **Gap 4**: `neurophone-core` exposes `get_state()` (returns
+  `SystemState` struct) but not a stringified neural-context summary.
+  The Kotlin service expects the format
+  `"[NEURAL_STATE] salience=N.NN (synthetic) [/NEURAL_STATE]"`
+  (per `NeurophoneService.kt:113`). Need a new method on
+  `NeuroSymbolicSystem` or compose in the JNI layer from `get_state()`.
+
+| `getState(): String`
+| `Java_ai_neurophone_NativeLib_getState`
+| `serde_json::to_string(&system.get_state())`
+| **None** — `SystemState` already `Serialize` (line 78 of
+  `neurophone-core/src/lib.rs`). JNI layer just calls
+  `serde_json::to_string`.
+
+| `reset()`
+| `Java_ai_neurophone_NativeLib_reset`
+| **MISSING on core.** No `reset()` method.
+| **Gap 5**: requires either (a) replace the held instance with a
+  fresh `NeuroSymbolicSystem::new(config)` or (b) add a
+  `reset(&mut self)` method to core that re-initialises LSM/ESN/Bridge
+  state in-place without losing the config. (a) is simpler.
+
+| `isRunning(): Boolean`
+| `Java_ai_neurophone_NativeLib_isRunning`
+| Reads the JNI-layer "running" flag from **Gap 1**.
+| Resolves via Gap 1.
+|===
+
+== Summary of gaps
+
+[cols="1,3,3", options="header"]
+|===
+| # | Gap | Resolution
+
+| 1 | No `start`/`stop`/`is_running` lifecycle on `NeuroSymbolicSystem`.
+  | Keep as JNI-layer concept: a `bool` in the static state holder.
+    Do NOT add lifecycle methods to `neurophone-core` (keeps the crate
+    framework-agnostic). Sub-PR #4 includes this in
+    `crates/neurophone-android/src/state.rs`.
+
+| 2 | Sensor-type int→string mapping currently in Kotlin
+  (`NativeLib.kt:83-90`).
+  | Move into Rust JNI layer as a `const SENSOR_TYPE_NAMES: &[(i32, &str)]`
+    lookup. Same 5 mappings (`1→accelerometer`, `4→gyroscope`,
+    `2→magnetometer`, `5→light`, `8→proximity`).
+
+| 3 | `query` signature **VERIFIED** as
+    `query(&mut self, message: &str, prefer_local: bool) -> Result<InferenceResult, NeurophoneError>`
+    (`neurophone-core/src/lib.rs:206`). The Kotlin `queryLocal` / `queryClaude` callers
+    expect HARD routing; current `prefer_local` is a heuristic flag combined with a
+    word-count complexity threshold (`should_use_local = prefer_local && complexity < local_threshold`).
+  | Recommend: introduce
+    `enum QueryRoute { Auto, ForceLocal, ForceCloud }` and refactor `query`
+    to take it. `queryLocal` → `QueryRoute::ForceLocal`, `queryClaude` →
+    `QueryRoute::ForceCloud`, `query(..., prefer_local)` →
+    `if prefer_local { QueryRoute::Auto } else { QueryRoute::Auto }` with
+    the prefer flag passed through. Single small refactor to `neurophone-core`.
+    Alternative if owner wants zero core change: implement `queryLocal` /
+    `queryClaude` purely in the JNI layer by toggling
+    `system.config.local_threshold` before each call (1.0 = always local,
+    0.0 = always cloud) then restoring — hacky but ABI-stable.
+
+| 4 | No `get_neural_context()` on `NeuroSymbolicSystem`.
+  | Add method that returns
+    `format!("[NEURAL_STATE] salience={:.2} (synthetic) [/NEURAL_STATE]", state.salience)`
+    — i.e. compose from `get_state()` in core. Keeps the format
+    contract owned by Rust, not the Kotlin shim.
+
+| 5 | No `reset()` on `NeuroSymbolicSystem`.
+  | JNI-layer approach: replace the held instance via
+    `*system_guard = Some(NeuroSymbolicSystem::new(saved_config)?)`. No
+    core change required if we also stash the original `SystemConfig`
+    in the static state holder.
+|===
+
+== Suggested file layout for sub-PR #4
+
+----
+crates/neurophone-android/src/
+├── lib.rs              -- #[no_mangle] JNI exports only, one per Java method
+├── state.rs            -- OnceLock<Mutex<Option<RuntimeState>>> + RuntimeState
+├── sensor_map.rs       -- ID_TO_NAME table + name_from_id() helper
+└── error.rs            -- JniError → jboolean / JString conversions
+----
+
+`state.rs::RuntimeState`:
+
+[source,rust]
+----
+pub struct RuntimeState {
+    pub system: NeuroSymbolicSystem,
+    pub config: SystemConfig,   // for reset()
+    pub running: bool,           // for start()/stop()/isRunning()
+}
+----
+
+== JNI signature mapping cheat-sheet
+
+[cols="2,3", options="header"]
+|===
+| Kotlin `external fun` | Rust `#[no_mangle] pub extern "system"`
+
+| `init(configJson: String?): Boolean`
+| `Java_ai_neurophone_NativeLib_init(env: JNIEnv, _cls: JClass, json: JString) -> jboolean`
+
+| `start(): Boolean`
+| `Java_ai_neurophone_NativeLib_start(env: JNIEnv, _cls: JClass) -> jboolean`
+
+| `stop()`
+| `Java_ai_neurophone_NativeLib_stop(env: JNIEnv, _cls: JClass)`
+
+| `processSensor(Int, FloatArray, Long, Int): Boolean`
+| `Java_ai_neurophone_NativeLib_processSensor(env: JNIEnv, _cls: JClass, sensor_type: jint, values: jfloatArray, timestamp: jlong, accuracy: jint) -> jboolean`
+
+| `query(String, Boolean): String`
+| `Java_ai_neurophone_NativeLib_query(env: JNIEnv, _cls: JClass, message: JString, prefer_local: jboolean) -> jstring`
+
+| `getNeuralContext(): String` / `getState(): String`
+| `Java_ai_neurophone_NativeLib_getNeuralContext(env: JNIEnv, _cls: JClass) -> jstring`
+|===
+
+== Estimated size of sub-PR #4
+
+* `crates/neurophone-android/src/lib.rs` — ~150 LoC (11 JNI exports × ~10-15 LoC each, mostly env↔Rust string conversion + lock acquisition + error mapping).
+* `crates/neurophone-android/src/state.rs` — ~40 LoC.
+* `crates/neurophone-android/src/sensor_map.rs` — ~25 LoC.
+* `crates/neurophone-android/src/error.rs` — ~30 LoC.
+* New methods on `neurophone-core`: `get_neural_context()` (~10 LoC).
+* Tests: at least one JNI roundtrip test simulating `JNIEnv` for each
+  string-returning fn.
+
+**Total estimate**: ~250 LoC new Rust + ~10 LoC change to
+`neurophone-core` + tests. Manageable single PR.
+
+== What this audit does NOT block
+
+* Sub-PR #4 cannot start until sub-PRs #2 (CI exemption) and #3
+  (Gossamer scaffolding) land, per the RFC sequence. This audit is a
+  head-start so #4 is shovel-ready when its turn comes.
+* `NeuroSymbolicSystem::query` signature verified — see Gap 3 above.
+* No outstanding research items before sub-PR #4 can begin (apart from
+  it being gated on #2 + #3 per the RFC).
