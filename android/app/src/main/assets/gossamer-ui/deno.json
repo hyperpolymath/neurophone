@@ -1,0 +1,18 @@
+{
+  "//": "SPDX-License-Identifier: MPL-2.0",
+  "//license": "deno.json carries SPDX via this key; JSON has no comment syntax.",
+  "//purpose": "Deno-based build/check tasks for the AffineScript Gossamer UI. No npm/Node — Deno only, per estate language policy.",
+  "tasks": {
+    "build:ui": "bash build.sh",
+    "check:ui": "bash build.sh --check-only",
+    "fmt:ui": "bash build.sh --fmt"
+  },
+  "fmt": {
+    "include": ["dist/", "index.html", "styles.css"],
+    "exclude": ["dist/ui.mjs"]
+  },
+  "lint": {
+    "include": ["dist/"]
+  },
+  "//toolchain": "AffineScript compiler (OCaml/Dune) is invoked by build.sh, not by Deno. See README.adoc. TODO(#83): vendor/pin the affinescript compiler and wire into CI."
+}

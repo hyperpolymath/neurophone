@@ -1,0 +1,334 @@
+// SPDX-License-Identifier: MPL-2.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= RFC: Android Kotlin → Rust/Gossamer Migration
+:toc:
+:toclevels: 3
+:revdate: 2026-06-02
+:status: Q1-Q6 RESOLVED 2026-06-02; sub-PR #2 in flight (neurophone#107 + standards#341)
+
+== Problem
+
+The `android/` directory contains 7 Kotlin files + 3 `*.gradle.kts` files,
+all banned by the Hyperpolymath language policy:
+
+----
+android/settings.gradle.kts
+android/build.gradle.kts
+android/app/build.gradle.kts
+android/app/src/main/java/ai/neurophone/MainActivity.kt
+android/app/src/main/java/ai/neurophone/NeurophoneService.kt
+android/app/src/main/java/ai/neurophone/BootReceiver.kt
+android/app/src/main/java/ai/neurophone/NativeLib.kt
+android/app/src/main/java/ai/neurophone/widget/NeurophoneAppWidget.kt
+android/app/src/main/java/ai/neurophone/widget/NeurophoneWidgetActions.kt
+android/app/src/main/java/ai/neurophone/widget/NeurophoneWidgetConfigureActivity.kt
+----
+
+This keeps two estate CI gates permanently red:
+
+* `Check for Banned Languages` (`.github/workflows/language-policy.yml:87-94`)
+* `governance / Language / package anti-pattern policy` (estate-wide reusable)
+
+Both hard-fail on any `*.kt` / `*.kts` / `*.java` match.
+
+== Goal
+
+* Migrate the Android UI + service to **Gossamer** (Hyperpolymath's
+  estate-canonical mobile framework: Zig FFI + Ephapax linear types +
+  webview shell, replaces Tauri across the estate).
+* Both CI checks turn green.
+* Behaviour preserved: sensor capture, foreground presence, widgets, boot-start.
+* Sub-PRs are small and reviewable; nothing bulk-deleted until owner
+  approves this RFC.
+
+== Estate context
+
+* **Gossamer** lives at `hyperpolymath/gossamer`. Webview shell on Android
+  via `GossamerActivity` (`android/src/main/java/io/gossamer/GossamerActivity.java`,
+  MPL-2.0) which loads `libgossamer.so` and bridges JS↔native via
+  `GossamerBridge`.
+* **Precedent**: `panll` migrated `src-tauri/` → `src-gossamer/`; webview UI
+  unchanged, swapped `tauri` crate for `gossamer-rs`, `tauri.conf.json` for
+  `gossamer.conf.json`, `cargo tauri build` for `deno task build` invoking
+  the `gossamer` CLI. **Desktop only** — panll did not migrate a
+  foreground service or home-screen widget; this neurophone migration is
+  the first estate consumer to exercise that surface.
+* **Gossamer Android maturity**: ROADMAP Phase 3 ("Mobile") lists Android
+  as *Partially Implemented*. Only `GossamerActivity` + `GossamerBridge`
+  exist upstream today. Foreground service, `AppWidgetProvider`,
+  `BroadcastReceiver`, `SensorManager` integration — **none exist
+  upstream**. No open Gossamer GH issues file these gaps.
+
+== Component inventory + replacement mapping
+
+[cols="2,1,3,3", options="header"]
+|===
+| Kotlin component | LoC | Current role | Replacement
+
+| `MainActivity.kt`
+| 377
+| UI shell (status / input / response), sensor capture in-activity,
+  permissions, intent handling (MAIN, SEND, VIEW `neurophone://`, ASSIST,
+  widget query).
+| **`NeurophoneMainActivity extends GossamerActivity`** — Java subclass
+  (MPL-2.0) under `android/src/main/java/ai/neurophone/`. Overrides
+  `getInitialUrl()` to load the AffineScript-compiled UI bundle. Sensor
+  capture moves out of activity → service. Intent handling
+  (`onNewIntent`) dispatches into Rust via the existing `GossamerBridge`
+  JNI surface.
+
+| `NeurophoneService.kt`
+| 162
+| `Service` subclass: wake-lock, accelerometer @ 50 Hz, salience window,
+  `Notification.Builder` foreground channel, 1 Hz widget tick, calls
+  `NativeLib.init/start/stop/pushSensorEvent/getNeuralContext`.
+| **`NeurophoneRuntimeService extends Service`** — hand-written Java shim
+  under `android/src/main/java/ai/neurophone/` (MPL-2.0).
+  `onCreate / onStartCommand / onDestroy / onSensorChanged` each one-line
+  bodies into Rust JNI fns in `crates/neurophone-android`. Salience
+  window, sensor processing, wake-lock logic — all Rust.
+
+| `BootReceiver.kt`
+| 25
+| `BroadcastReceiver` for `BOOT_COMPLETED` / `LOCKED_BOOT_COMPLETED`;
+  starts service if widget was running pre-reboot.
+| **`NeurophoneBootReceiver extends BroadcastReceiver`** — minimal Java
+  shim. Single `onReceive` body: JNI into Rust
+  `crates/neurophone-android::boot_receive`.
+
+| `NativeLib.kt`
+| 93
+| JNI surface declarations + sensor-type-string→int mapping.
+| **DELETE entirely.** All JNI exports already stubbed in
+  `crates/neurophone-android/src/lib.rs`. Fill the stubs; sensor mapping
+  moves to Rust.
+
+| `NeurophoneAppWidget.kt`
+| 152
+| `AppWidgetProvider` (home-screen widget); renders title/state/salience
+  progress bar/Ask button via `RemoteViews`; persists widget state to
+  `SharedPreferences`.
+| **`NeurophoneAppWidget extends AppWidgetProvider`** — Java shim.
+  `onUpdate / onReceive` each one JNI call into Rust. `RemoteViews`
+  setters stay in Java (cannot be assembled cleanly from JNI), but
+  which strings / which progress value / which intents come from Rust
+  via a single data-bearing JNI fn.
+
+| `NeurophoneWidgetActions.kt`
+| 47
+| Lightweight `BroadcastReceiver` dispatching `PUBLISH_STATE` /
+  `FORCE_REFRESH` from non-widget callers.
+| **`NeurophoneWidgetActions extends BroadcastReceiver`** — Java shim,
+  body JNIs into Rust dispatch fn.
+
+| `NeurophoneWidgetConfigureActivity.kt`
+| 70
+| Widget config UI (one checkbox: local-only mode), saved to prefs.
+| **`NeurophoneWidgetConfigureActivity extends Activity`** — Java shim
+  with programmatic layout. Saving goes through JNI to Rust config
+  storage. Acceptable alternative: drop the widget config entirely and
+  surface "local-only" in the main Gossamer UI; saves one shim.
+
+| `*.gradle.kts` (×3)
+| ~100
+| Android Gradle Plugin build config.
+| **Converted to `*.gradle` (Groovy DSL) or kept as `*.gradle.kts` under
+  a CI exemption.** Gossamer's existing `android/` directory uses raw
+  Gradle (no Kotlin DSL in current upstream). Recommend matching upstream:
+  Groovy `*.gradle` files. Banned-language check already accepts these.
+|===
+
+== The unavoidable JVM-bytecode surface
+
+Android instantiates the following by class name at platform boundaries.
+They **cannot be implemented in pure Rust** because Android's class loader
+demands a class implementing the listed Android framework superclass:
+
+* `Activity` (main + widget-configure)
+* `Service`
+* `BroadcastReceiver` (boot + widget actions)
+* `AppWidgetProvider` (extends `BroadcastReceiver`)
+
+Three resolution paths exist; this RFC proposes **(A)** and explicitly
+*rejects* (B) and (C). Owner picks before sub-PR work begins.
+
+=== Path (A) PROPOSED — hand-written **Java** shims under `android/`
+
+* All shims are Java (MPL-2.0), one file per Android system surface
+  (Service, BootReceiver, AppWidget, WidgetActions, WidgetConfigure,
+  MainActivity).
+* Each shim is a **single class, single delegating method body** — typically
+  3-10 lines — that immediately JNIs into Rust. No business logic in
+  Java.
+* The estate-wide language-policy CI currently blocks all `*.java` and
+  `*.kt`. The Java check has to either (i) gain an exemption for
+  `android/**/*.java` *across the estate* via the reusable governance
+  workflow in `hyperpolymath/standards`, OR (ii) gain a neurophone-local
+  exemption only. Pre-PR coordination on which scope is acceptable.
+* **Outcome:** zero Kotlin in the tree; small audited Java shim surface
+  (estimated < 250 LoC total across all shims combined, vs. current 926
+  LoC of Kotlin); CI passes once exemption lands.
+
+=== Path (B) REJECTED — drop the widget surface
+
+* Replace home-screen widget with a quick-settings tile + persistent
+  notification.
+* Pro: smaller JVM shim surface (no AppWidgetProvider + no WidgetActions
+  + no WidgetConfigureActivity = 3 fewer shims).
+* Con: regresses the user-visible home-screen widget feature. The
+  `docs/OS_INTEGRATION.adoc` doc lists the home-screen widget as the
+  primary Android integration surface.
+
+=== Path (C) REJECTED — JVM bytecode emission from Rust / Zig
+
+* `j4rs` or hand-emitted `.class` files for the Service/Receiver/Provider
+  superclass bindings.
+* Pro: zero Java in the source tree.
+* Con: experimental, fragile, no maintained tooling for
+  `AppWidgetProvider`; not worth the risk.
+
+== Upstream-vs-downstream scope (RESOLVED — UPSTREAM)
+
+Per Gossamer ROADMAP Phase 3 (Mobile, partially implemented) — the seven
+missing platform-integration capabilities (service, widget, receivers,
+sensors, intent dispatch, prefs, deep-links) are not in Gossamer's
+current scope. Gossamer is today a webview shell.
+
+**Owner decision 2026-06-02 (Q6):** contribute the missing surface
+**upstream** to `hyperpolymath/gossamer` as a `gossamer-android-services`
+companion module. The four shim base classes (Service, BroadcastReceiver,
+AppWidgetProvider, Activity-with-bridge) land in Gossamer upstream so
+future estate Android consumers inherit them.
+
+**Implications:**
+
+* Sub-PR #3 (neurophone Gossamer scaffolding) blocks on the Gossamer
+  upstream PR landing.
+* The Gossamer companion API shape needs owner review — generic enough
+  for future consumers (idaptik-ums Android port, etc.), not just
+  neurophone-shaped.
+* neurophone-side shims (Service / BootReceiver / Widget triple) become
+  thin subclasses extending the Gossamer base classes rather than
+  Android framework classes directly.
+
+== Sub-PR sequence
+
+Each is a small, reviewable PR. Numbers are PR ordering, not commit count.
+
+. **#1 (THIS PR — DRAFT, no code changes)** — RFC for owner review.
+  No Kotlin deleted, no Gossamer scaffolding generated.
+. **#2 — CI exemption for hand-written Java mobile shims.** Update
+  `.github/workflows/language-policy.yml` step `Check for Java/Kotlin
+  files` to exempt `android/**/*.java`. Coordinated with
+  `hyperpolymath/standards` for the reusable governance check.
+  **Lands before any Gossamer scaffolding so CI doesn't go redder en route.**
+. **#3 — Gossamer scaffolding (no behaviour).** Add `gossamer-rs` to the
+  Rust workspace; create `gossamer.conf.json`; add an `android/` Java
+  shim for `NeurophoneMainActivity extends GossamerActivity` loading a
+  placeholder HTML page. Keep the existing Kotlin `android/` directory
+  side-by-side so we can A/B sanity-check (rename to `android-legacy/` if
+  the build system can't tolerate both).
+. **#4 — Port `NativeLib` to Rust.** Fill out
+  `crates/neurophone-android/src/lib.rs` with the 10 JNI exports the
+  current Kotlin `NativeLib` declares. Wire to existing crates
+  (`neurophone-core`, `sensors`, `lsm`, `esn`, `bridge`, `llm`,
+  `claude-client`). Tests: JNI roundtrip via a Rust test that simulates
+  `JNIEnv`.
+. **#5 — Port `NeurophoneService`.** Java shim
+  (`NeurophoneRuntimeService extends Service`) → JNI into Rust. Salience
+  window, wake-lock plumbing, widget tick — all Rust.
+. **#6 — Port `BootReceiver`.** Java shim → single JNI fn.
+. **#7 — Port widget triple** (provider / actions / configure). Java
+  shims; widget render decisions in Rust pushed back via one
+  data-bearing JNI fn.
+. **#8 — AffineScript UI** (replaces `activity_main.xml` view-binding
+  layout). AffineScript compiles to JS, bundles to
+  `android/src/main/assets/` (or wherever Gossamer loads from), loaded
+  in `GossamerActivity`. `gossamer_rs::App::command()` registrations
+  wire `start/stop/query/get_context` to the Rust core.
+. **#9 — Delete legacy Kotlin `android/` tree.** Both banned-language
+  checks now green. Behaviour parity verified on emulator AND Oppo Reno
+  13 hardware (per Q5 — emulator for development, hardware for the
+  final close-out) + Termux CLI smoke test.
+
+PRs #2 and #3 are sequenced and blocking. PRs #4 through #7 can land in
+parallel after #3. PR #8 needs #4 done. PR #9 is gated on all prior.
+
+**Note**: the section above is the *original* sequence. The
+**revised sequence per Q6** lives in `Sequencing implications of Q6`
+below — read that for the post-2026-06-02 plan.
+
+== Owner decisions (all resolved 2026-06-02)
+
+[cols="1,5,3", options="header"]
+|===
+| # | Question | Resolution
+
+| Q1 | **CI exemption scope** — estate-wide via `hyperpolymath/standards` or neurophone-local?
+| **Estate-wide.** Filed as `hyperpolymath/standards#341` (open). Glob `(^|/)android/.*/src/.*\.java$`; Kotlin (.kt, .kts) stays banned. neurophone auto-consumes via `@main` pin on the reusable.
+
+| Q2 | **Standards reusable owner** — who reviews the cross-repo PR?
+| Self-answered. Owner approves directly; no third-party gatekeeper.
+
+| Q3 | **Widget-configure activity** — keep or drop?
+| **DROP.** The single setting (local-only mode) moves into the main Gossamer UI; widget gets sensible default at install. Saves one Java shim (`NeurophoneWidgetConfigureActivity`).
+
+| Q4 | **Gradle DSL** — Groovy `*.gradle` or Kotlin `*.gradle.kts`?
+| **Groovy `*.gradle`.** Matches Gossamer upstream's `android/` tree. Banned-language check accepts Groovy out of the box. Single estate convention.
+
+| Q5 | **Hardware test plan** — Oppo Reno 13 or emulator + Termux?
+| **Both.** Emulator + Termux smoke test during sub-PR development (faster iteration); Oppo Reno 13 hardware verification before sub-PR #9 deletes the legacy Kotlin tree.
+
+| Q6 | **Shim location** — neurophone-local or factor `gossamer-android-services` upstream?
+| **Contribute upstream NOW.** Build the four shim base classes (`Service` / `BroadcastReceiver` / `AppWidgetProvider` / `Activity`) as a `gossamer-android-services` companion in `hyperpolymath/gossamer`. neurophone consumes them. **Coupled ordering**: sub-PR #3 BLOCKS on the Gossamer upstream companion landing.
+|===
+
+== Sequencing implications of Q6
+
+Q6's "contribute upstream now" choice **changes the sub-PR sequence**:
+
+. The original sub-PR #3 (Gossamer scaffolding in neurophone) now depends
+  on a NEW prerequisite: **Gossamer companion PR** in
+  `hyperpolymath/gossamer` adding `gossamer-android-services` with the
+  four shim base classes.
+. The Gossamer companion design needs owner review separately — the API
+  shape for `GossamerForegroundService`, `GossamerAppWidgetProvider`,
+  `GossamerBootReceiver`, etc. has to be generic enough for future
+  estate Android consumers (not just neurophone).
+. neurophone's sub-PRs #5/#6/#7 (the Service/BootReceiver/Widget ports)
+  become consumers of the Gossamer companion — they `extend` the
+  upstream base classes rather than `extend android.app.Service` directly.
+
+Revised sequence:
+
+. **#1 (THIS PR)** — RFC, no code changes.
+. **#2a** — CI exemption (standards#341, neurophone#107). **IN FLIGHT.**
+. **#2b — NEW** — Gossamer companion PR: `gossamer-android-services`
+  module with four shim base classes + tests. Owner reviews API shape.
+. **#3** — Gossamer scaffolding in neurophone (depends on #2b).
+. **#4** — Port NativeLib to Rust (parallel-safe).
+. **#5/#6/#7** — Port Service / BootReceiver / Widget triple (depends on #2b + #3).
+. **#8** — AffineScript UI.
+. **#9** — Delete legacy Kotlin `android/`.
+
+== Acceptance criteria
+
+* `Check for Banned Languages` job — green on `main`.
+* `governance / Language / package anti-pattern policy` — green on `main`.
+* `android/` directory — contains only Java shims + Groovy Gradle + XML
+  resources; no `*.kt` / `*.kts` files.
+* APK builds via the Gossamer Android build command (per Gossamer Phase 3
+  conventions).
+* Foreground service + boot-restart + widget + sensor capture all work
+  on hardware.
+* Termux CLI smoke test passes (`neurophone` command — unchanged by this
+  migration, but verified not regressed).
+
+== Non-goals
+
+* No changes to the seven core Rust crates (`lsm`, `esn`, `bridge`,
+  `sensors`, `llm`, `claude-client`, `neurophone-core`) outside what JNI
+  wiring strictly requires.
+* No changes to the Termux CLI path.
+* No upstream Gossamer changes in this neurophone migration. Gossamer
+  mobile Phase 3 advances on its own track.
