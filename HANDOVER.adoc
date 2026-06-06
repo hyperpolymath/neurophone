@@ -1,0 +1,122 @@
+// SPDX-License-Identifier: MPL-2.0
+= Session Handover — neurophone (post-compaction continuity)
+:toc:
+
+Snapshot for continuing work after context compaction. `main` HEAD at time of
+writing: `5245a66`.
+
+NOTE: Terminology — *"Rust" always means "Rust/Spark"* (owner directive).
+Licence/SPDX and the *Palimpsest* philosophy files are *owner territory* — do
+not edit `PALIMPSEST.adoc`, citations, or governance philosophy docs.
+
+== 1. Done & merged to main
+
+* *Proof-obligation map (#84), Tiers 0–3* — merged via *#106* (and *#101* for
+  obligation 1.1). Sub-issues #86,#87,#89–#92,#94,#95 closed; *#93* (2.3 affine)
+  intentionally left open as an AffineScript design spec (`proofs/affine/README.adoc`).
+  `proofs/README.adoc` tracks status.
+* *Typestate lifecycle refactor* — `NeuroSymbolicSystem<S>` with phase markers
+  `phase::Created`, `phase::Active`, `phase::Down`. Illegal lifecycle transitions
+  are compile errors. All tests migrated to strict typestate API.
+* *ESN + LSM spectral radius fix* — was ∞-norm, now true ρ via power iteration.
+  `SpectralRadius` wrapper enforces ρ < 1 at construction time.
+* *`claude-client` backoff fix* — `2u64.pow` overflow replaced with
+  `saturating_pow(attempt.min(16)).min(60_000)`.
+* *rand 0.9 pin* — `rand 0.10`/`rand_distr 0.6` incompatible with `ndarray-rand 0.16`;
+  reverted to 0.9/0.5 via *#129* (MERGED). Dependabot ignore rules added.
+* *Licence = MPL-2.0* (PMPL reverted in #102/#118). All files now MPL.
+* *Banned-language CI GREEN* — `android/**` carve-out via *#105* +
+  `.hypatia-baseline.json`. Estate reusable DRY-ed up in *#117*.
+* *Documentation pass (2026-06-02)* — README, EXPLAINME, all 6 a2ml files,
+  contractiles updated to Gold standard. Tauri/Dioxus → gossamer references fixed.
+  Rust API example updated to typestate. RSR badge Bronze → Silver/Gold-track.
+
+== 2. `main` state
+
+* *License = MPL-2.0* — `Cargo.toml`, `LICENSE`, SPDX headers all MPL-2.0.
+* *Banned-language CI GREEN* — language-policy and governance pass.
+* *Two CI reds remain, both UPSTREAM / out of neurophone scope:*
+** `rust-ci` — thin wrapper for `hyperpolymath/standards/.github/workflows/rust-ci-reusable.yml`.
+   Fails at startup with 0 jobs on the pinned SHA `cc5a372` *and* on `@main`.
+   Root cause is in `standards` (reusable moved, or it rejects the
+   `enable_audit`/`enable_coverage` inputs). *Cannot be fixed from neurophone.*
+   Tracked: standards#321.
+** `hypatia-scan` — same class (estate scanner reusable/infra). Tracked: standards#303.
+** `Instant Sync` / `Mirror` / `Scorecard` — infra/external-forge/token, ignore.
+* *workspace builds cleanly* after rand 0.9 pin (#129 merged).
+* *Dependabot* — ignore rules for `rand >=0.10` and `rand_distr >=0.6` prevent
+  re-introduction of the incompatible bump.
+
+== 3. Open PRs — recommended merge order
+
+. *#125* `chore/ignore-agent-worktrees` — gitignore `.claude/worktrees/`; carries
+  this `HANDOVER.adoc`. *Ready — merge first.*
+. *#119* `chore/consolidate-cicd-docs` — README MPL badge only. *Ready — merge second.*
+. *claude/neurophone-repo-cDOyQ* (this branch) — comprehensive documentation pass
+  (README, EXPLAINME, 6a2, contractiles, dependabot). *Ready — merge third.*
+
+== 4. Gossamer Android migration (epic #83)
+
+Decomposed into linked sub-issues *#108–#115*. RFC is PR *#97* — recommends
+*neurophone-local Java shims*, NOT growing gossamer. Migration target is
+*gossamer* (estate Idris2 + Zig shell), NOT Tauri or Dioxus.
+*Decisions captured:* drop the widget configure-activity (#113); `NativeLib`
+logic → `crates/neurophone-android` in Rust/Spark via JNI (#110); gossamer
+Android is WebView+JNI only (no Service/Receiver/Widget host upstream).
+
+*Sub-PRs (all DRAFT, branched off `main`):*
+
+[cols="1,2,3",options="header"]
+|===
+| Step | PR | Branch / notes
+| #4 NativeLib→Rust/Spark | *#130* | `chore/gossamer-nativelib-port` — full 11-method JNI surface, 7 tests; strong.
+| #3 scaffolding | #121 + #126 | `chore/gossamer-scaffold-a` / `-b` — *DUPLICATES, pick one*. Depend on unpublished `gossamer-rs`.
+| #5 Service | #123 | `chore/gossamer-service`
+| #6 BootReceiver | #122 | `chore/gossamer-bootreceiver`
+| #7 Widgets | #128 | `chore/gossamer-widgets`
+| #8 UI | #127 | `chore/gossamer-ui`
+| #9 delete legacy `android/` | #124 | `chore/gossamer-delete-legacy` — *BLOCKED*, gated on all above
+|===
+
+*JNI contract* (class `ai.neurophone.NativeLib`, lib `neurophone_android`):
+`init(String?)→bool`, `start()→bool`, `stop()`, `processSensor(int,float[],long-ns,int)→bool`,
+`queryLocal/queryClaude/query(String[,bool])→String`, `getNeuralContext()→String`,
+`getState()→JSON`, `reset()`, `isRunning()→bool`. Sensor ids: accel=1, magneto=2,
+gyro=4, light=5, prox=8.
+
+== 5. BLOCKED — needs owner decision
+
+* *`gossamer-rs` licence (AGPL) vs neurophone MPL-2.0* — compatibility call.
+* *`gossamer-rs` is unpublished* (not on crates.io) — how do scaffold PRs source
+  it (git dep? path? vendored?).
+* *`rust-ci` + `hypatia-scan` reusables broken in `hyperpolymath/standards`* —
+  fix must land there; a standards prompt is drafted in conversation history.
+* *Merge approvals* for #125 → #119 → claude/neurophone-repo-cDOyQ and the
+  gossamer chain (once unblocked).
+
+== 6. Dispatchable prompts (written in conversation history)
+
+Ready to send to separate sessions; not yet dispatched:
+
+* Gossamer Android *assessment + grow native component support* (Service/
+  Receiver/Widget), with the NativeLib JNI surface as the reference contract.
+* *CI banned-language exemption* for the generated shim dir (neurophone + standards).
+* *Q6* — `standards` anti-pattern policy ownership + add a path-exclusion input.
+* *Q7* — neurophone Android migration *test plan* (Oppo Reno 13 / Dimensity 8350
+  vs emulator/Termux).
+
+== 7. Next actions (when unblocked)
+
+. Merge *#125* → *#119* → *claude/neurophone-repo-cDOyQ* (documentation pass).
+. Resolve `gossamer-rs` licence + sourcing, then run the chain: pick one scaffold
+  PR, merge *#130*, then #5–#8 (parallelisable), rebase + merge *#9*.
+. Get `standards` to fix `rust-ci-reusable` + `hypatia` → `rust-ci`/`hypatia-scan`
+  go green (standards#321 / standards#303).
+. Delete stale remote branches once their PRs close.
+
+== 8. Stale branches cleaned up (2026-06-02)
+
+Local-only branches deleted:
+
+* `fix/esn-lsm-rand-0.10` (merged to main as #129)
+* `worktree-agent-*` (8 transient harness branches from parallel agent sessions)
