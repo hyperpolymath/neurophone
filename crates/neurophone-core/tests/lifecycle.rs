@@ -14,52 +14,39 @@ fn make_event(ts: u64) -> SensorEvent {
 
 #[test]
 fn full_lifecycle_init_run_shutdown() {
-    let mut sys = NeuroSymbolicSystem::new(SystemConfig::default()).unwrap();
-    sys.initialize().unwrap();
+    let sys = NeuroSymbolicSystem::new(SystemConfig::default()).unwrap();
+    let mut sys = sys.initialize().unwrap();
     for i in 0..10 {
         sys.process_sensor_event(&make_event(i * 20)).unwrap();
     }
     sys.query("status?", true).unwrap();
-    sys.shutdown().unwrap();
+    let sys = sys.shutdown();
     assert!(!sys.get_state().is_active);
 }
 
-#[test]
-fn restart_after_shutdown_works() {
-    let mut sys = NeuroSymbolicSystem::new(SystemConfig::default()).unwrap();
-    sys.initialize().unwrap();
-    sys.shutdown().unwrap();
-    sys.initialize().unwrap();
-    assert!(sys.get_state().is_active);
-}
+// NOTE: `restart_after_shutdown_works` removed — shutdown is terminal in the
+// typestate API. A `Down` system has no `initialize`, so restart cannot be
+// expressed (compile-time enforced).
+
+// NOTE: `process_after_shutdown_errors` removed — using the system after
+// shutdown is now a compile-time error (`process_sensor_event` exists only on
+// `phase::Active`), so there is no runtime error path left to test.
 
 #[test]
-fn process_after_shutdown_errors() {
-    let mut sys = NeuroSymbolicSystem::new(SystemConfig::default()).unwrap();
-    sys.initialize().unwrap();
-    sys.shutdown().unwrap();
-    assert!(sys.process_sensor_event(&make_event(100)).is_err());
-}
-
-#[test]
-fn query_count_persists_across_state_transitions() {
-    let mut sys = NeuroSymbolicSystem::new(SystemConfig::default()).unwrap();
+fn query_count_counts_queries_while_active() {
+    let sys = NeuroSymbolicSystem::new(SystemConfig::default()).unwrap();
+    let mut sys = sys.initialize().unwrap();
     sys.query("a", true).unwrap();
-    sys.initialize().unwrap();
     sys.query("b", true).unwrap();
-    sys.shutdown().unwrap();
     sys.query("c", true).unwrap();
+    let sys = sys.shutdown();
+    // Count persists into the Down phase (getter available in every phase).
     assert_eq!(sys.query_count(), 3);
 }
 
-#[test]
-fn shutdown_idempotent() {
-    let mut sys = NeuroSymbolicSystem::new(SystemConfig::default()).unwrap();
-    sys.initialize().unwrap();
-    sys.shutdown().unwrap();
-    sys.shutdown().unwrap();
-    assert!(!sys.get_state().is_active);
-}
+// NOTE: `shutdown_idempotent` removed — double shutdown is impossible in the
+// typestate API (`shutdown` consumes the `Active` system and returns `Down`,
+// which has no `shutdown`); compile-time enforced.
 
 #[test]
 fn uptime_monotonically_nondecreasing() {

@@ -11,6 +11,7 @@
 //! - Rate limiting and retry logic
 
 #![forbid(unsafe_code)]
+#![cfg_attr(not(test), deny(clippy::unwrap_used, clippy::expect_used))]
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -260,16 +261,8 @@ impl ClaudeClient {
         content: &str,
         neural_context: &str,
     ) -> Result<String, ClaudeError> {
-        // Prepend neural context to system prompt
-        let system = if self.config.include_neural_context {
-            let base_system = self.config.system_prompt.as_deref().unwrap_or(
-                "You are a helpful AI assistant integrated with a neurosymbolic system on the user's phone. \
-                 You have access to neural state information derived from phone sensors and reservoir computing."
-            );
-            Some(format!("{}\n\n{}", neural_context, base_system))
-        } else {
-            self.config.system_prompt.clone()
-        };
+        // Prepend neural context to the system prompt (only when enabled).
+        let system = self.build_system(neural_context);
 
         let messages = vec![Message::user(content)];
         let response = self.create_message(messages, system).await?;
@@ -331,7 +324,7 @@ impl ClaudeClient {
 
         for attempt in 0..=self.config.max_retries {
             if attempt > 0 {
-                let delay = Duration::from_millis(1000 * 2u64.pow(attempt as u32));
+                let delay = Self::backoff_delay(attempt as u32);
                 debug!("Retry attempt {} after {:?}", attempt, delay);
                 tokio::time::sleep(delay).await;
             }
@@ -396,6 +389,29 @@ impl ClaudeClient {
         }
 
         Err(last_error.unwrap_or(ClaudeError::Timeout))
+    }
+
+    /// Build the system prompt, prepending neural context ONLY when enabled.
+    /// When `include_neural_context` is false, the (sensor-derived) neural
+    /// context is never placed on the wire (obligation 3.1).
+    fn build_system(&self, neural_context: &str) -> Option<String> {
+        if self.config.include_neural_context {
+            let base = self.config.system_prompt.as_deref().unwrap_or(
+                "You are a helpful AI assistant integrated with a neurosymbolic system on the user's phone. \
+                 You have access to neural state information derived from phone sensors and reservoir computing."
+            );
+            Some(format!("{}\n\n{}", neural_context, base))
+        } else {
+            self.config.system_prompt.clone()
+        }
+    }
+
+    /// Exponential backoff for retry `attempt`, saturating and capped at 60s so
+    /// it can never overflow or wait unboundedly (obligation 3.2).
+    fn backoff_delay(attempt: u32) -> Duration {
+        let factor = 2u64.saturating_pow(attempt.min(16));
+        let ms = 1000u64.saturating_mul(factor).min(60_000);
+        Duration::from_millis(ms)
     }
 
     /// Clear conversation history
@@ -563,5 +579,96 @@ mod tests {
         let complex_score = hybrid.estimate_complexity(complex);
 
         assert!(complex_score > simple_score);
+    }
+
+    // ===== Tier 3: trust boundary / egress (3.1, 3.2) =====
+
+    #[test]
+    fn egress_request_body_has_only_allowed_fields() {
+        // 3.1: the serialised request must carry ONLY declared fields — never the
+        // API key (it is a header), device identifiers, or raw sensor data.
+        let req = CreateMessageRequest {
+            model: "m".into(),
+            max_tokens: 16,
+            system: Some("sys".into()),
+            messages: vec![Message::user("hi")],
+            temperature: Some(0.7),
+            top_p: None,
+            stream: None,
+        };
+        let v = serde_json::to_value(&req).unwrap();
+        let obj = v.as_object().unwrap();
+        const ALLOWED: &[&str] = &[
+            "model",
+            "max_tokens",
+            "system",
+            "messages",
+            "temperature",
+            "top_p",
+            "stream",
+        ];
+        for k in obj.keys() {
+            assert!(ALLOWED.contains(&k.as_str()), "unexpected egress field: {k}");
+        }
+        for forbidden in ["api_key", "x-api-key", "key", "device", "sensor", "secret"] {
+            assert!(!obj.contains_key(forbidden), "sensitive field leaked: {forbidden}");
+        }
+    }
+
+    #[test]
+    fn neural_context_not_sent_when_disabled() {
+        // 3.1: include_neural_context = false => sensor-derived context never goes out.
+        let off = ClaudeClient::new(ClaudeConfig {
+            include_neural_context: false,
+            system_prompt: Some("BASE".into()),
+            api_key: Some("k".into()),
+            ..Default::default()
+        })
+        .unwrap();
+        let sys = off.build_system("SENSITIVE_NEURAL_STATE");
+        assert_eq!(sys.as_deref(), Some("BASE"));
+
+        let on = ClaudeClient::new(ClaudeConfig {
+            include_neural_context: true,
+            system_prompt: Some("BASE".into()),
+            api_key: Some("k".into()),
+            ..Default::default()
+        })
+        .unwrap();
+        assert!(on
+            .build_system("SENSITIVE_NEURAL_STATE")
+            .unwrap()
+            .contains("SENSITIVE_NEURAL_STATE"));
+    }
+
+    #[test]
+    fn backoff_is_bounded_and_monotonic() {
+        // 3.2: backoff never overflows and is capped, so the retry loop terminates.
+        let mut prev = Duration::ZERO;
+        for a in 0..40u32 {
+            let d = ClaudeClient::backoff_delay(a);
+            assert!(d >= prev, "backoff must be non-decreasing");
+            assert!(d <= Duration::from_millis(60_000), "backoff must be capped");
+            prev = d;
+        }
+    }
+
+    #[test]
+    fn user_content_cannot_inject_into_request_json() {
+        // 3.2: user content is typed JSON, so quotes/braces are escaped and cannot
+        // break out of the message structure.
+        let nasty = "\"}],\"injected\":true,\"x\":[{\"";
+        let req = CreateMessageRequest {
+            model: "m".into(),
+            max_tokens: 16,
+            system: None,
+            messages: vec![Message::user(nasty)],
+            temperature: None,
+            top_p: None,
+            stream: None,
+        };
+        let v = serde_json::to_value(&req).unwrap();
+        assert!(v.get("injected").is_none(), "content broke out of its field");
+        assert_eq!(v["messages"][0]["content"][0]["text"].as_str().unwrap(), nasty);
     }
 }

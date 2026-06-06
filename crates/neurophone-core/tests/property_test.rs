@@ -56,8 +56,9 @@ proptest! {
     fn prop_query_always_valid_result(query in arb_query_string()) {
         // Property: Any valid query should produce a valid response
         if !query.is_empty() {
-            let mut system = NeuroSymbolicSystem::new(SystemConfig::default())
+            let system = NeuroSymbolicSystem::new(SystemConfig::default())
                 .expect("system creation");
+            let mut system = system.initialize().expect("init");
 
             let result = system.query(&query, true);
             prop_assert!(result.is_ok());
@@ -76,9 +77,9 @@ proptest! {
     #[test]
     fn prop_sensor_processing_preserves_dimensions(event in arb_sensor_event()) {
         // Property: Neural output features should have same dimension as input
-        let mut system = NeuroSymbolicSystem::new(SystemConfig::default())
+        let system = NeuroSymbolicSystem::new(SystemConfig::default())
             .expect("system creation");
-        system.initialize().expect("init");
+        let mut system = system.initialize().expect("init");
 
         let result = system.process_sensor_event(&event);
         if let Ok(output) = result {
@@ -91,8 +92,9 @@ proptest! {
     #[test]
     fn prop_query_count_increases(queries in prop::collection::vec(arb_query_string(), 1..20)) {
         // Property: Query count should increase with each query
-        let mut system = NeuroSymbolicSystem::new(SystemConfig::default())
+        let system = NeuroSymbolicSystem::new(SystemConfig::default())
             .expect("system creation");
+        let mut system = system.initialize().expect("init");
 
         for (i, query) in queries.iter().filter(|q| !q.is_empty()).enumerate() {
             system.query(query, true).ok();
@@ -120,9 +122,9 @@ proptest! {
     #[test]
     fn prop_state_clone_equal(event in arb_sensor_event()) {
         // Property: Cloned state should equal original
-        let mut system = NeuroSymbolicSystem::new(SystemConfig::default())
+        let system = NeuroSymbolicSystem::new(SystemConfig::default())
             .expect("system creation");
-        system.initialize().expect("init");
+        let mut system = system.initialize().expect("init");
 
         system.process_sensor_event(&event).ok();
 
@@ -136,16 +138,18 @@ proptest! {
     #[test]
     fn prop_model_selection_deterministic(queries in prop::collection::vec(arb_query_string(), 5..15)) {
         // Property: Given same query, model selection should be deterministic
-        let mut system = NeuroSymbolicSystem::new(SystemConfig::default())
+        let system = NeuroSymbolicSystem::new(SystemConfig::default())
             .expect("system creation");
+        let mut system = system.initialize().expect("init");
 
         for query in queries.iter().filter(|q| !q.is_empty()) {
             let r1 = system.query(query, true);
             let model1 = r1.ok().map(|r| r.model);
 
             // Reset system and try again
-            let mut system2 = NeuroSymbolicSystem::new(SystemConfig::default())
+            let system2 = NeuroSymbolicSystem::new(SystemConfig::default())
                 .expect("system creation");
+            let mut system2 = system2.initialize().expect("init");
             let r2 = system2.query(query, true);
             let model2 = r2.ok().map(|r| r.model);
 
@@ -156,8 +160,9 @@ proptest! {
     #[test]
     fn prop_empty_query_always_errors(_empty in Just("")) {
         // Property: Empty query should always produce error
-        let mut system = NeuroSymbolicSystem::new(SystemConfig::default())
+        let system = NeuroSymbolicSystem::new(SystemConfig::default())
             .expect("system creation");
+        let mut system = system.initialize().expect("init");
 
         let result = system.query("", true);
         prop_assert!(result.is_err());
@@ -175,9 +180,9 @@ proptest! {
             values: values.clone(),
         };
 
-        let mut system = NeuroSymbolicSystem::new(SystemConfig::default())
+        let system = NeuroSymbolicSystem::new(SystemConfig::default())
             .expect("system creation");
-        system.initialize().expect("init");
+        let mut system = system.initialize().expect("init");
 
         let result = system.process_sensor_event(&event);
         if let Ok(output) = result {
@@ -190,8 +195,9 @@ proptest! {
         _config in arb_system_config()
     ) {
         // Property: Latency should be non-negative and reasonable
-        let mut system = NeuroSymbolicSystem::new(SystemConfig::default())
+        let system = NeuroSymbolicSystem::new(SystemConfig::default())
             .expect("system creation");
+        let mut system = system.initialize().expect("init");
 
         let result = system.query("test", true);
         if let Ok(r) = result {
@@ -216,9 +222,9 @@ proptest! {
         events in prop::collection::vec(arb_sensor_event(), 5..20)
     ) {
         // Property: Multiple different sensor types should be processable
-        let mut system = NeuroSymbolicSystem::new(SystemConfig::default())
+        let system = NeuroSymbolicSystem::new(SystemConfig::default())
             .expect("system creation");
-        system.initialize().expect("init");
+        let mut system = system.initialize().expect("init");
 
         let mut success_count = 0;
         for event in events {
@@ -237,8 +243,9 @@ proptest! {
     ) {
         // Property: Confidence should always be normalized
         if !query.is_empty() {
-            let mut system = NeuroSymbolicSystem::new(SystemConfig::default())
+            let system = NeuroSymbolicSystem::new(SystemConfig::default())
                 .expect("system creation");
+            let mut system = system.initialize().expect("init");
 
             let result = system.query(&query, true);
             if let Ok(r) = result {
@@ -253,18 +260,16 @@ proptest! {
         config in arb_system_config()
     ) {
         // Property: State transitions should always be valid
-        let mut system = NeuroSymbolicSystem::new(config)
+        let system = NeuroSymbolicSystem::new(config)
             .expect("system creation");
 
-        // Transition 1: inactive -> active
-        let init_result = system.initialize();
-        prop_assert!(init_result.is_ok());
+        // Transition 1: Created -> Active
+        let system = system.initialize().expect("init");
         let state = system.get_state();
         prop_assert!(state.is_active);
 
-        // Transition 2: active -> inactive
-        let shutdown_result = system.shutdown();
-        prop_assert!(shutdown_result.is_ok());
+        // Transition 2: Active -> Down (terminal; shutdown is infallible)
+        let system = system.shutdown();
         let state = system.get_state();
         prop_assert!(!state.is_active);
     }

@@ -181,15 +181,19 @@ fn bench_esn_process_sequence(c: &mut Criterion) {
 
 fn bench_system_query(c: &mut Criterion) {
     c.bench_function("system_query_short", |b| {
-        let mut system =
-            NeuroSymbolicSystem::new(SystemConfig::default()).expect("system creation");
+        let mut system = NeuroSymbolicSystem::new(SystemConfig::default())
+            .expect("system creation")
+            .initialize()
+            .expect("init");
 
         b.iter(|| system.query(black_box("hello world"), true).ok())
     });
 
     c.bench_function("system_query_long", |b| {
-        let mut system =
-            NeuroSymbolicSystem::new(SystemConfig::default()).expect("system creation");
+        let mut system = NeuroSymbolicSystem::new(SystemConfig::default())
+            .expect("system creation")
+            .initialize()
+            .expect("init");
 
         let long_query = "word ".repeat(50);
 
@@ -199,9 +203,10 @@ fn bench_system_query(c: &mut Criterion) {
 
 fn bench_system_sensor_processing(c: &mut Criterion) {
     c.bench_function("system_sensor_processing", |b| {
-        let mut system =
-            NeuroSymbolicSystem::new(SystemConfig::default()).expect("system creation");
-        system.initialize().expect("init");
+        let mut system = NeuroSymbolicSystem::new(SystemConfig::default())
+            .expect("system creation")
+            .initialize()
+            .expect("init");
 
         let event = SensorEvent {
             sensor_type: "accelerometer".to_string(),
@@ -216,10 +221,10 @@ fn bench_system_sensor_processing(c: &mut Criterion) {
 fn bench_system_lifecycle(c: &mut Criterion) {
     c.bench_function("system_create_init_shutdown", |b| {
         b.iter(|| {
-            let mut system =
+            let system =
                 NeuroSymbolicSystem::new(SystemConfig::default()).expect("system creation");
-            system.initialize().expect("init");
-            system.shutdown().expect("shutdown");
+            let system = system.initialize().expect("init");
+            let _ = system.shutdown();
         })
     });
 }
@@ -272,9 +277,10 @@ fn bench_serialization(c: &mut Criterion) {
 fn bench_end_to_end(c: &mut Criterion) {
     c.bench_function("e2e_sensor_to_query", |b| {
         b.iter(|| {
-            let mut system =
-                NeuroSymbolicSystem::new(SystemConfig::default()).expect("system creation");
-            system.initialize().expect("init");
+            let mut system = NeuroSymbolicSystem::new(SystemConfig::default())
+                .expect("system creation")
+                .initialize()
+                .expect("init");
 
             let event = SensorEvent {
                 sensor_type: "accelerometer".to_string(),

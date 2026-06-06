@@ -17,8 +17,10 @@
 //! 4. **LLM**: Local Llama 3.2 for reasoning, with Claude 3.5 fallback.
 
 #![forbid(unsafe_code)]
+#![cfg_attr(not(test), deny(clippy::unwrap_used, clippy::expect_used))]
 
 use ndarray::Array1;
+use std::marker::PhantomData;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::time::Instant;
@@ -134,15 +136,34 @@ impl fmt::Display for InferenceModel {
     }
 }
 
-/// SYSTEM ORCHESTRATOR: Manages the lifecycle of neural and symbolic components.
-pub struct NeuroSymbolicSystem {
+/// Lifecycle phase markers (typestate). Illegal transitions are compile errors.
+pub mod phase {
+    /// Constructed but not yet initialised.
+    #[derive(Debug)]
+    pub struct Created;
+    /// Initialised and running.
+    #[derive(Debug)]
+    pub struct Active;
+    /// Shut down — terminal, no restart.
+    #[derive(Debug)]
+    pub struct Down;
+}
+
+/// SYSTEM ORCHESTRATOR: manages the lifecycle of neural and symbolic components.
+///
+/// The lifecycle is enforced at compile time by the typestate parameter `S`:
+/// `new() -> Created`, then `initialize() -> Active`, then `shutdown() -> Down`.
+/// `process_sensor_event` and `query` exist only on `Active`, so using the system
+/// before initialisation or after shutdown does not compile. Shutdown is terminal.
+pub struct NeuroSymbolicSystem<S = phase::Active> {
     config: SystemConfig,
     state: SystemState,
     start_time: Instant,
     query_count: u64,
+    _phase: PhantomData<S>,
 }
 
-impl NeuroSymbolicSystem {
+impl NeuroSymbolicSystem<phase::Created> {
     /// Create a new NeuroSymbolicSystem
     pub fn new(config: SystemConfig) -> Result<Self, NeurophoneError> {
         if config.sample_rate <= 0.0 {
@@ -166,25 +187,31 @@ impl NeuroSymbolicSystem {
             state: SystemState::default(),
             start_time: Instant::now(),
             query_count: 0,
+            _phase: PhantomData,
         })
     }
 
-    /// Initialize the system
-    pub fn initialize(&mut self) -> Result<(), NeurophoneError> {
+    /// Initialise the system, transitioning `Created -> Active`.
+    pub fn initialize(mut self) -> Result<NeuroSymbolicSystem<phase::Active>, NeurophoneError> {
         debug!("Initializing NeuroPhone system");
         self.state.is_active = true;
-        Ok(())
+        Ok(NeuroSymbolicSystem {
+            config: self.config,
+            state: self.state,
+            start_time: self.start_time,
+            query_count: self.query_count,
+            _phase: PhantomData,
+        })
     }
+}
+
+impl NeuroSymbolicSystem<phase::Active> {
 
     /// Process a sensor event
     pub fn process_sensor_event(
         &mut self,
         event: &SensorEvent,
     ) -> Result<NeuralOutput, NeurophoneError> {
-        if !self.state.is_active {
-            return Err(NeurophoneError::RuntimeError("System not active".into()));
-        }
-
         let start = Instant::now();
 
         // Simulate neural processing
@@ -246,12 +273,22 @@ impl NeuroSymbolicSystem {
         })
     }
 
-    /// Shutdown the system
-    pub fn shutdown(&mut self) -> Result<(), NeurophoneError> {
+    /// Shut down the system, transitioning `Active -> Down` (terminal).
+    pub fn shutdown(mut self) -> NeuroSymbolicSystem<phase::Down> {
         debug!("Shutting down NeuroPhone");
         self.state.is_active = false;
-        Ok(())
+        NeuroSymbolicSystem {
+            config: self.config,
+            state: self.state,
+            start_time: self.start_time,
+            query_count: self.query_count,
+            _phase: PhantomData,
+        }
     }
+}
+
+/// Inspectors available in every lifecycle phase.
+impl<S> NeuroSymbolicSystem<S> {
 
     /// Get current system state
     pub fn get_state(&self) -> SystemState {
@@ -307,18 +344,16 @@ mod tests {
 
     #[test]
     fn test_system_initialization() {
-        let mut system =
-            NeuroSymbolicSystem::new(SystemConfig::default()).expect("system creation");
-        system.initialize().expect("init");
+        let system = NeuroSymbolicSystem::new(SystemConfig::default()).expect("system creation");
+        let system = system.initialize().expect("init");
         assert!(system.state.is_active);
     }
 
     #[test]
     fn test_system_shutdown() {
-        let mut system =
-            NeuroSymbolicSystem::new(SystemConfig::default()).expect("system creation");
-        system.initialize().expect("init");
-        system.shutdown().expect("shutdown");
+        let system = NeuroSymbolicSystem::new(SystemConfig::default()).expect("system creation");
+        let system = system.initialize().expect("init");
+        let system = system.shutdown();
         assert!(!system.state.is_active);
     }
 
@@ -335,9 +370,8 @@ mod tests {
 
     #[test]
     fn test_process_sensor_event() {
-        let mut system =
-            NeuroSymbolicSystem::new(SystemConfig::default()).expect("system creation");
-        system.initialize().expect("init");
+        let system = NeuroSymbolicSystem::new(SystemConfig::default()).expect("system creation");
+        let mut system = system.initialize().expect("init");
 
         let event = SensorEvent {
             sensor_type: "accelerometer".to_string(),
@@ -352,16 +386,16 @@ mod tests {
 
     #[test]
     fn test_query_empty() {
-        let mut system =
-            NeuroSymbolicSystem::new(SystemConfig::default()).expect("system creation");
+        let system = NeuroSymbolicSystem::new(SystemConfig::default()).expect("system creation");
+        let mut system = system.initialize().expect("init");
         let result = system.query("", true);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_query_local_preference() {
-        let mut system =
-            NeuroSymbolicSystem::new(SystemConfig::default()).expect("system creation");
+        let system = NeuroSymbolicSystem::new(SystemConfig::default()).expect("system creation");
+        let mut system = system.initialize().expect("init");
 
         let result = system.query("hello world", true).expect("query");
         assert_eq!(result.model, InferenceModel::LocalLlama);
@@ -369,11 +403,12 @@ mod tests {
 
     #[test]
     fn test_query_cloud_fallback() {
-        let mut system = NeuroSymbolicSystem::new(SystemConfig {
+        let system = NeuroSymbolicSystem::new(SystemConfig {
             local_threshold: 0.5,
             ..Default::default()
         })
         .expect("system creation");
+        let mut system = system.initialize().expect("init");
 
         let long_query = "hello ".repeat(50);
         let result = system.query(&long_query, true).expect("query");
@@ -382,8 +417,8 @@ mod tests {
 
     #[test]
     fn test_query_count() {
-        let mut system =
-            NeuroSymbolicSystem::new(SystemConfig::default()).expect("system creation");
+        let system = NeuroSymbolicSystem::new(SystemConfig::default()).expect("system creation");
+        let mut system = system.initialize().expect("init");
 
         assert_eq!(system.query_count(), 0);
         system.query("test", true).ok();
@@ -435,9 +470,9 @@ mod tests {
     #[test]
     fn test_system_lifecycle() {
         let config = SystemConfig::default();
-        let mut system = NeuroSymbolicSystem::new(config).expect("system creation");
+        let system = NeuroSymbolicSystem::new(config).expect("system creation");
 
-        system.initialize().expect("init");
+        let mut system = system.initialize().expect("init");
         assert!(system.state.is_active);
 
         let event = SensorEvent {
@@ -449,14 +484,14 @@ mod tests {
 
         system.query("what's happening", true).ok();
 
-        system.shutdown().expect("shutdown");
+        let system = system.shutdown();
         assert!(!system.state.is_active);
     }
 
     #[test]
     fn test_multiple_queries() {
-        let mut system =
-            NeuroSymbolicSystem::new(SystemConfig::default()).expect("system creation");
+        let system = NeuroSymbolicSystem::new(SystemConfig::default()).expect("system creation");
+        let mut system = system.initialize().expect("init");
 
         for i in 0..5 {
             let query = format!("query {}", i);
@@ -468,9 +503,8 @@ mod tests {
 
     #[test]
     fn test_multiple_sensor_events() {
-        let mut system =
-            NeuroSymbolicSystem::new(SystemConfig::default()).expect("system creation");
-        system.initialize().expect("init");
+        let system = NeuroSymbolicSystem::new(SystemConfig::default()).expect("system creation");
+        let mut system = system.initialize().expect("init");
 
         for i in 0..10 {
             let event = SensorEvent {
@@ -493,8 +527,8 @@ mod tests {
             max_response_time_ms: 2000,
         };
 
-        let mut system = NeuroSymbolicSystem::new(config).expect("system creation");
-        system.initialize().expect("init");
+        let system = NeuroSymbolicSystem::new(config).expect("system creation");
+        let mut system = system.initialize().expect("init");
 
         // Sensor -> Feature extraction
         let event = SensorEvent {
@@ -516,9 +550,8 @@ mod tests {
 
     #[test]
     fn test_e2e_sequence_processing() {
-        let mut system =
-            NeuroSymbolicSystem::new(SystemConfig::default()).expect("system creation");
-        system.initialize().expect("init");
+        let system = NeuroSymbolicSystem::new(SystemConfig::default()).expect("system creation");
+        let mut system = system.initialize().expect("init");
 
         let sensor_types = ["accelerometer", "gyroscope", "magnetometer"];
         let mut last_output = None;
@@ -542,9 +575,8 @@ mod tests {
 
     #[test]
     fn test_state_preservation() {
-        let mut system =
-            NeuroSymbolicSystem::new(SystemConfig::default()).expect("system creation");
-        system.initialize().expect("init");
+        let system = NeuroSymbolicSystem::new(SystemConfig::default()).expect("system creation");
+        let mut system = system.initialize().expect("init");
 
         let event = SensorEvent {
             sensor_type: "test".to_string(),
@@ -564,8 +596,8 @@ mod tests {
 
     #[test]
     fn test_deterministic_inference() {
-        let mut system =
-            NeuroSymbolicSystem::new(SystemConfig::default()).expect("system creation");
+        let system = NeuroSymbolicSystem::new(SystemConfig::default()).expect("system creation");
+        let mut system = system.initialize().expect("init");
 
         let query = "deterministic test";
         let r1 = system.query(query, true).expect("query 1");
@@ -578,11 +610,12 @@ mod tests {
 
     #[test]
     fn test_model_selection_consistency() {
-        let mut system = NeuroSymbolicSystem::new(SystemConfig {
+        let system = NeuroSymbolicSystem::new(SystemConfig {
             local_threshold: 0.5,
             ..Default::default()
         })
         .expect("system creation");
+        let mut system = system.initialize().expect("init");
 
         // Short query should use local
         let short = "hi";
@@ -599,8 +632,8 @@ mod tests {
 
     #[test]
     fn test_query_response_validity() {
-        let mut system =
-            NeuroSymbolicSystem::new(SystemConfig::default()).expect("system creation");
+        let system = NeuroSymbolicSystem::new(SystemConfig::default()).expect("system creation");
+        let mut system = system.initialize().expect("init");
 
         let result = system.query("test", true).expect("query");
 
@@ -614,9 +647,8 @@ mod tests {
 
     #[test]
     fn test_sensor_event_validity() {
-        let mut system =
-            NeuroSymbolicSystem::new(SystemConfig::default()).expect("system creation");
-        system.initialize().expect("init");
+        let system = NeuroSymbolicSystem::new(SystemConfig::default()).expect("system creation");
+        let mut system = system.initialize().expect("init");
 
         let event = SensorEvent {
             sensor_type: "test".to_string(),
@@ -636,9 +668,8 @@ mod tests {
 
     #[test]
     fn test_security_malformed_input() {
-        let mut system =
-            NeuroSymbolicSystem::new(SystemConfig::default()).expect("system creation");
-        system.initialize().expect("init");
+        let system = NeuroSymbolicSystem::new(SystemConfig::default()).expect("system creation");
+        let mut system = system.initialize().expect("init");
 
         let event = SensorEvent {
             sensor_type: "".to_string(),
@@ -653,8 +684,8 @@ mod tests {
 
     #[test]
     fn test_performance_latency_bound() {
-        let mut system =
-            NeuroSymbolicSystem::new(SystemConfig::default()).expect("system creation");
+        let system = NeuroSymbolicSystem::new(SystemConfig::default()).expect("system creation");
+        let mut system = system.initialize().expect("init");
 
         let start = Instant::now();
         system.query("test", true).ok();
@@ -664,29 +695,19 @@ mod tests {
         assert!(elapsed < 1000);
     }
 
-    #[test]
-    fn test_error_handling_inactive_system() {
-        let mut system =
-            NeuroSymbolicSystem::new(SystemConfig::default()).expect("system creation");
-
-        let event = SensorEvent {
-            sensor_type: "test".to_string(),
-            timestamp_ms: 100,
-            values: vec![1.0],
-        };
-
-        // Should error when system not active
-        let result = system.process_sensor_event(&event);
-        assert!(result.is_err());
-    }
+    // NOTE: "process before init" is now a compile-time guarantee of the
+    // typestate API (`process_sensor_event`/`query` exist only on
+    // `NeuroSymbolicSystem<phase::Active>`), so the old runtime-error test
+    // `test_error_handling_inactive_system` has been removed.
 
     #[test]
     fn test_graceful_degradation() {
-        let mut system = NeuroSymbolicSystem::new(SystemConfig {
+        let system = NeuroSymbolicSystem::new(SystemConfig {
             max_response_time_ms: 10,
             ..Default::default()
         })
         .expect("system creation");
+        let mut system = system.initialize().expect("init");
 
         // Even with tight timing, should complete
         let result = system.query("test query", true);

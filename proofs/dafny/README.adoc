@@ -1,0 +1,14 @@
+// SPDX-License-Identifier: MPL-2.0
+= Dafny / F* proofs
+
+Obligations discharged here (see issue #84):
+
+* *1.2 LSM bounded dynamics* — the discretised Leaky Integrate-and-Fire update
+  keeps the membrane potential within `[reset, threshold + ε]`, respects the
+  refractory period, bounds the firing rate given bounded input, and keeps the
+  spike-history ring buffers within capacity.
+* *0.2 Numeric containment* — the sensor and reservoir kernels neither produce
+  nor propagate NaN/Inf, and integer indexing/accumulation does not overflow.
+
+Models are written against the algorithm; the Rust implementation is tied back
+to them with Kani harnesses and `proptest` properties in the respective crates.

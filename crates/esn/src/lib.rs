@@ -9,7 +9,8 @@
 //! The ESN serves as a secondary reservoir in the neurosymbolic pipeline,
 //! operating on transformed LSM outputs for higher-level temporal features.
 
-#![allow(unsafe_code)]
+#![deny(unsafe_code)]
+#![cfg_attr(not(test), deny(clippy::unwrap_used, clippy::expect_used))]
 
 use ndarray::{Array1, Array2};
 use ndarray_rand::rand_distr::{Normal, Uniform};
@@ -114,7 +115,7 @@ impl EchoStateNetwork {
 
         // Create recurrent weight matrix with sparsity
         let recurrent_weights =
-            Self::create_recurrent_weights(config.reservoir_size, config.sparsity, &mut rng);
+            Self::create_recurrent_weights(config.reservoir_size, config.sparsity, &mut rng)?;
 
         // Scale to achieve target spectral radius
         let recurrent_weights =
@@ -126,7 +127,7 @@ impl EchoStateNetwork {
             config.input_dim,
             config.input_scale,
             &mut rng,
-        );
+        )?;
 
         // Initialize state
         let state = Array1::zeros(config.reservoir_size);
@@ -146,9 +147,14 @@ impl EchoStateNetwork {
     }
 
     /// Create sparse recurrent weight matrix
-    fn create_recurrent_weights(size: usize, sparsity: f32, rng: &mut impl Rng) -> Array2<f32> {
+    fn create_recurrent_weights(
+        size: usize,
+        sparsity: f32,
+        rng: &mut impl Rng,
+    ) -> Result<Array2<f32>, EsnError> {
         let mut weights = Array2::<f32>::zeros((size, size));
-        let dist = Normal::new(0.0, 1.0).expect("valid normal distribution");
+        let dist = Normal::new(0.0, 1.0)
+            .map_err(|e| EsnError::InvalidConfig(format!("recurrent normal distribution: {e}")))?;
 
         let connection_prob = 1.0 - sparsity;
         for i in 0..size {
@@ -160,7 +166,7 @@ impl EchoStateNetwork {
             }
         }
 
-        weights
+        Ok(weights)
     }
 
     /// Create input weight matrix
@@ -169,10 +175,11 @@ impl EchoStateNetwork {
         input_dim: usize,
         scale: f32,
         rng: &mut impl Rng,
-    ) -> Array2<f32> {
-        let dist = Uniform::new(-1.0, 1.0).expect("valid uniform");
+    ) -> Result<Array2<f32>, EsnError> {
+        let dist = Uniform::new(-1.0, 1.0)
+            .map_err(|e| EsnError::InvalidConfig(format!("input uniform distribution: {e}")))?;
         let weights = Array2::random_using((reservoir_size, input_dim), dist, rng);
-        weights * scale
+        Ok(weights * scale)
     }
 
     /// Estimate the spectral radius (largest eigenvalue magnitude) of a square
