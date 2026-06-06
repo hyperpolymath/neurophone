@@ -11,6 +11,14 @@ updates:
     # current Dependabot behaviour. See rsr-template-repo commit 78b050e
     # and 007-lang/audits/audit-dependabot-automation-gap-2026-04-17.md.
     open-pull-requests-limit: 10
+    # rand 0.9 and rand_distr 0.5 are pinned: ndarray-rand 0.16 requires rand ^0.9.
+    # Do NOT bump these until ndarray-rand releases a version supporting rand 0.10+.
+    # See PR #129 and PLAYBOOK.a2ml (dependency-management section).
+    ignore:
+      - dependency-name: "rand"
+        versions: [">=0.10"]
+      - dependency-name: "rand_distr"
+        versions: [">=0.6"]
     groups:
       cargo:
         patterns:

@@ -85,7 +85,5 @@ deps/
 build/
 dist/
 
-# Gossamer webview UI: committed AffineScript->Deno-ESM compiler-output stub
-# (replaced by real build output once the toolchain lands — see TODO(#83)).
-!android/app/src/main/assets/gossamer-ui/dist/
-!android/app/src/main/assets/gossamer-ui/dist/ui.mjs
+# Claude Code agent worktrees (transient harness state)
+.claude/worktrees/
