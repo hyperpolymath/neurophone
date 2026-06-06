@@ -74,6 +74,23 @@ dependencies {
     // Lifecycle
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
 
+    // ---------------------------------------------------------------------
+    // Gossamer Android webview shell (epic #83, RFC #97, sub-issue #109).
+    //
+    // NeurophoneMainActivity extends io.gossamer.GossamerActivity. As of
+    // sub-PR #3 (scaffold only) the Gossamer Android library is NOT published
+    // to any Maven repo — upstream (hyperpolymath/gossamer) ships it as a raw
+    // Java source tree (android/src/main/java/io/gossamer/*.java) plus a
+    // prebuilt libgossamer.so. So there is nothing resolvable to depend on yet
+    // and this is left commented to keep the scaffold buildable in isolation.
+    //
+    // TODO(#83 sub-PR #4): consume the gossamer Android library once available,
+    // e.g. as a vendored module, a local AAR, or a published coordinate:
+    //
+    //   implementation("io.gossamer:gossamer-android:<version>")
+    //   // and drop libgossamer.so into app/src/main/jniLibs/<abi>/
+    // ---------------------------------------------------------------------
+
     // Testing
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
