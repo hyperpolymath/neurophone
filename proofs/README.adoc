@@ -1,0 +1,56 @@
+// SPDX-License-Identifier: MPL-2.0
+= NeuroPhone Proof Corpus
+:toc:
+
+This directory holds the formal-verification artefacts for neurophone. It exists
+so the obligations declared in `.machine_readable/MUST.contractile`
+("no removal of formal verification proofs", "no ABI change without proof
+update", and the bans on `Admitted`/`sorry`/`believe_me`/`Obj.magic`) refer to a
+real corpus rather than being vacuous.
+
+The full obligation map and its rationale live in
+https://github.com/hyperpolymath/neurophone/issues/84[issue #84]. This README is
+the index from each obligation to the artefact that discharges it.
+
+== Toolchain split
+
+[cols="1,2,2",options="header"]
+|===
+| Tool | Directory | Obligations
+| TLA+ (TLC)        | `proofs/tla/`   | 2.1 lifecycle, 2.2 concurrency, 3.1 data egress
+| Lean / Coq        | `proofs/lean/`  | 1.1 echo state property, 1.3 bridge soundness
+| Dafny / F*        | `proofs/dafny/` | 1.2 LSM bounded dynamics, 0.2 numeric containment
+| Kani + proptest   | (in `crates/`)  | executable bridge from spec to Rust (0.1, 0.2, 1.2)
+|===
+
+== Status
+
+[cols="1,3,1",options="header"]
+|===
+| ID | Obligation | State
+| 0.1 | Panic-freedom on operational paths              | open
+| 0.2 | Numeric containment (no NaN/Inf, no overflow)   | open
+| 0.3 | `unsafe` discipline (`deny`/`forbid` all crates) | *done*
+| 1.1 | Echo State Property (reservoir is a contraction)| spec: `tla/`+`lean/` (open)
+| 1.2 | LSM bounded dynamics                            | open
+| 1.3 | Bridge soundness (neural→symbolic)              | open
+| 2.1 | Lifecycle state-machine safety                  | spec: `tla/Lifecycle.tla`
+| 2.2 | Concurrency safety (no deadlock)                | open
+| 2.3 | Resource/affine lifecycle                       | open
+| 3.1 | Data-egress / privacy invariant                 | open
+| 3.2 | Bounded external interaction                    | open
+|===
+
+== Ground rules
+
+* No proof escape hatches (`Admitted`, `sorry`, `believe_me`, `assert_total`,
+  `Obj.magic`, `unsafeCoerce`) — enforced by `MUST.contractile`. An obligation
+  is either fully discharged or left as a spec/`open`; never faked.
+* `unsafe` discipline (0.3): `sensors`, `bridge`, `neurophone-core`,
+  `claude-client`, `llm` use `#![forbid(unsafe_code)]`. `esn` and `lsm` use
+  `#![deny(unsafe_code)]` instead of `forbid` because they invoke macros
+  (`ndarray-rand` / `rand_distr`) that expand to an inner `#[allow(unsafe_code)]`,
+  which `forbid` — uniquely — rejects (E0453). `deny` still makes any unsafe we
+  write a hard error unless explicitly allowed with a safety comment (per MUST).
+* Each artefact carries an SPDX header and a comment linking back to its
+  obligation ID and issue #84.

@@ -24,3 +24,25 @@ chrono = { workspace = true }
 [target.'cfg(target_os = "android")'.dependencies]
 android_logger = "0.15"
 log = "0.4"
+
+# ---------------------------------------------------------------------------
+# Gossamer migration (epic #83, RFC #97, sub-issue #109)
+#
+# TODO(#83 sub-PR #5): enable the gossamer-rs dependency once it is resolvable
+# from this workspace. As of sub-PR #3 (scaffold only) gossamer-rs is NOT
+# published to crates.io and is consumed elsewhere in the estate (precedent:
+# hyperpolymath/panll) purely as a *path* dependency to a sibling checkout:
+#
+#     gossamer-rs = { path = "../../../gossamer/bindings/rust" }
+#
+# There is no sibling `gossamer` checkout in CI here, so adding it as a hard
+# dependency would break `cargo build --workspace`. It is therefore left
+# commented out. When sub-PR #5 lands, either vendor gossamer, add a git/path
+# dependency, or wait for a crates.io / estate registry release, e.g.:
+#
+#     # gossamer-rs = { git = "https://github.com/hyperpolymath/gossamer", package = "gossamer-rs" }
+#
+# The Gossamer Android shim (ai.neurophone.gossamer.NeurophoneMainActivity)
+# added in sub-PR #3 only needs the `gossamer` *Android library* (io.gossamer,
+# libgossamer.so) at the Gradle layer — it does NOT require this Rust crate yet.
+# ---------------------------------------------------------------------------
