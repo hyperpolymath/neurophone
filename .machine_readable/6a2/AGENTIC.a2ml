@@ -1,64 +1,24 @@
-; SPDX-License-Identifier: MPL-2.0
-; AGENTIC.a2ml — AI agent constraints and capabilities
-; Updated 2026-06-02
+# SPDX-License-Identifier: MPL-2.0
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# AGENTIC.a2ml — AI agent constraints and capabilities
+# Defines what AI agents can and cannot do in this repository.
 
-(agentic
-  (metadata
-    (version "0.2.0")
-    (last-updated "2026-06-02"))
+[metadata]
+version = "0.1.0"
+last-updated = "2026-03-16"
 
-  (permissions
-    (can-edit-source true)
-    (can-edit-tests true)
-    (can-edit-docs true)
-    (can-edit-config true)
-    (can-create-files true)
-    (can-delete-branches false)
-    (can-force-push false)
-    (can-modify-ci-secrets false)
-    (can-publish false))
+[agent-permissions]
+can-edit-source = true
+can-edit-tests = true
+can-edit-docs = true
+can-edit-config = true
+can-create-files = true
 
-  (language-policy
-    (primary "Rust/Spark — all Rust means Rust/Spark per owner directive")
-    (banned "TypeScript Node.js npm Bun pnpm yarn Go Python-general Kotlin Swift React-Native Flutter Dart Tauri Dioxus")
-    (mobile "gossamer (estate shell) — NOT Tauri, NOT Dioxus, NOT React Native")
-    (scripts "Bash/POSIX shell only — keep minimal")
-    (no-new-kotlin "no new Kotlin files; existing android/ is exempt pending gossamer migration"))
-
-  (hard-constraints
-    (no-banned-patterns "never use believe_me unsafeCoerce eval dynamic unsafe patterns in application code")
-    (no-secrets "never commit secrets, credentials, API keys, or .env files")
-    (no-banned-languages "never introduce TypeScript, Python (non-SaltStack), Go, Kotlin (new), Swift, Dart")
-    (no-agpl "never introduce AGPL dependencies without explicit owner approval")
-    (no-hardcoded-paths "no /home/<user>, /mnt/eclipse or developer-specific paths in committed code")
-    (no-dockerfiles "use Containerfile; no Dockerfile")
-    (no-makefiles "use Justfile; no Makefile")
-    (spdx-headers "every new file must have // SPDX-License-Identifier: MPL-2.0 header")
-    (sha-pins "external GitHub Actions must be SHA-pinned")
-    (https-only "no http:// URLs; use https://")
-    (hash-security "no MD5/SHA1 for security purposes — use SHA-256+"))
-
-  (owner-territory
-    (palimpsest "PALIMPSEST.adoc — do not edit")
-    (citations "citation blocks and governance philosophy docs — do not edit")
-    (philosophy "governance philosophy documents — do not edit"))
-
-  (sensitive-areas
-    (abi "ABI definitions — get confirmation before changing")
-    (license-headers "SPDX headers — change only to MPL-2.0 or as directed")
-    (ci-workflows ".github/workflows/ — change only for compliance fixes or directed improvements")
-    (proof-corpus "proofs/ — add new proofs freely; do not delete existing"))
-
-  (recommended-workflow
-    (branch-naming "chore/ feat/ fix/ ci/ docs/ proof/ per change type")
-    (pr-size "small reviewable PRs — prefer one logical change per PR")
-    (commit-style "conventional commits: feat(scope): msg / fix(scope): msg / chore(scope): msg")
-    (test-first "add tests for new behaviour; do not remove existing passing tests")
-    (typestate "prefer compile-time enforcement over runtime guards")
-    (no-premature-abstraction "three similar lines is better than a premature abstraction"))
-
-  (known-ci-reds
-    (rust-ci "upstream standards issue — standards#321 — unfixable from neurophone")
-    (hypatia-scan "upstream standards issue — standards#303 — unfixable from neurophone")
-    (scorecard "upstream infra/token — ignore")
-    (mirror "external forge/token — ignore")))
+[agent-constraints]
+# What AI agents must NOT do:
+# - Never use banned language patterns (believe_me, unsafeCoerce, etc.)
+# - Never commit secrets or credentials
+# - Never use banned languages (TypeScript, Python, Go, etc.)
+# - Never place state files in repository root (must be in .machine_readable/)
+# - Never use AGPL license (use PMPL-1.0-or-later)

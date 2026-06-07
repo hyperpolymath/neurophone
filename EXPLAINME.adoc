@@ -17,28 +17,26 @@ on-device intelligence. Processes: Sensor data → Neural interpretation → LLM
 Runs on the device, with cloud fallback.
 ____
 
-The pipeline is implemented as eight Rust/Spark crates under `crates/`. The critical
+The pipeline is implemented as eight Rust crates under `crates/`. The critical
 path runs: `sensors` crate collects accelerometer, gyroscope, magnetometer, light
 and proximity readings at 50Hz with IIR filtering → `lsm` crate feeds the
 filtered readings into a 512-neuron Leaky Integrate-and-Fire grid (8×8×8,
 distance-dependent connectivity, 1kHz processing) → `esn` crate runs a
-300-neuron Echo State Network with spectral radius 0.95 (true ρ via power
-iteration) for state prediction → `bridge` crate integrates LSM and ESN states
-into a natural-language context string for the LLM → `llm` crate runs Llama 3.2
-1B/3B via llama.cpp with Q4_K_M quantization. The `neurophone-core` crate
-orchestrates the pipeline via a typestate lifecycle — `NeuroSymbolicSystem::new(config)?.initialize()?`
-produces an `Active` handle; sensor events reach it via `process_sensor_event(&event)`
-and queries via `query("What's happening?", prefer_local)`; illegal lifecycle
-transitions are compile errors, not runtime panics.
+300-neuron Echo State Network with spectral radius 0.95 for state prediction
+→ `bridge` crate integrates LSM and ESN states into a natural-language context
+string for the LLM → `llm` crate runs Llama 3.2 1B/3B via llama.cpp with
+Q4_K_M quantization. The `neurophone-core` crate orchestrates the async loop
+via `NeuroSymbolicSystem::start()`, accepting sensor data via
+`system.send_sensor(reading).await` and answering queries via
+`system.query("What's happening?", prefer_local).await`.
 
-**Caveat:** The JNI bridge (`neurophone-android` crate) requires Android NDK 26+.
-The `android/` directory currently uses Kotlin for the UI and JNI declarations —
-this is an acknowledged exception in an otherwise Kotlin-banned account, covered
-by the `.hypatia-baseline.json` exemption. The native JNI implementation has been
-ported to Rust/Spark (`crates/neurophone-android`, PR #130). The UI migration
-path is **gossamer** (estate cross-platform shell, Idris2 + Zig), not Tauri or
-Dioxus — see RFC PR #97 and epic #83. Also, Llama model download (~700MB) is a
-manual step; there is no in-app model downloader yet.
+**Caveat:** The JNI bridge (`neurophone-android` crate) requires Android NDK 26+
+and the Android app (`android/` directory) currently uses Kotlin for the
+JNI interface and Compose UI — this is an acknowledged exception in an
+otherwise Kotlin-banned account, because Android JNI without Kotlin is
+significantly more complex. The migration path toward Tauri 2.0 / Dioxus is
+documented in the README. Also, Llama model download (~700MB) is a manual
+step; there is no in-app model downloader yet.
 
 - Core orchestration: `crates/neurophone-core/src/`
 - LSM: `crates/lsm/src/`
@@ -167,41 +165,7 @@ but which the AI must apply correctly.
 
 | `.machine_readable/6a2/`
 | A2ML checkpoint files: STATE, META, ECOSYSTEM, AGENTIC, NEUROSYM, PLAYBOOK.
-
-| `proofs/`
-| Proof corpus. `proofs/README.adoc` is the obligation tracker. Tiers 0–3
-  (obligations 0.1–3.2) are discharged. `proofs/tla/Lifecycle.tla` is the
-  TLA⁺ lifecycle spec (obligation 2.1). `proofs/affine/README.adoc` is the
-  AffineScript design spec for linear resource handles (obligation 2.3, open).
-
-| `contractiles/`
-| K9/contractile declarations: `must/` (hard invariants), `trust/` (provenance),
-  `intend/` (declared purpose). Checked by the estate K9 runner.
 |===
-
-== Claim: Formal proof obligations discharged (Tiers 0–3)
-
-[quote, proofs/README.adoc]
-____
-All Tier 0–3 obligations (0.1–3.2) are discharged. Obligation 2.3 is recorded
-as an AffineScript design spec (deferred formalisation).
-____
-
-The proof corpus (`proofs/`) backs the RSR Gold/Rhodium track claims:
-
-* **0.1** Type safety: `forbid(unsafe_code)` in core crates + Rust/Spark ownership
-* **0.2** Test coverage: 95+ tests across unit/property/aspect/smoke/e2e/contract
-* **1.1** ESN spectral radius: true ρ via power iteration (not ∞-norm); `SpectralRadius` wrapper enforces < 1
-* **1.2** LSM bounded dynamics: proptest across 200 input sequences, membrane and spike history bounded
-* **2.1** Lifecycle typestate: `NeuroSymbolicSystem<S>` compile-time phases; illegal transitions are compile errors
-* **2.2** Concurrency safety: data-race freedom by construction (`forbid(unsafe_code)` + Mutex), no-lost-updates test
-* **2.3** Affine resource lifecycle: design spec (`proofs/affine/README.adoc`) — AffineScript vehicle, deferred
-* **3.1** Data-egress confinement: `build_system()` only includes neural context when `include_neural_context = true`; trust-boundary tests cover injection
-* **3.2** Backoff safety: `saturating_pow(attempt.min(16)).min(60_000)` — no overflow; bounded-monotonic test
-
-- Obligation tracker: `proofs/README.adoc`
-- TLA⁺ spec: `proofs/tla/Lifecycle.tla`
-- AffineScript spec: `proofs/affine/README.adoc`
 
 == Checking It
 

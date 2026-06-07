@@ -1,111 +1,52 @@
-; SPDX-License-Identifier: MPL-2.0
-; STATE.a2ml — Project state checkpoint
-; Updated 2026-06-02
+# SPDX-License-Identifier: MPL-2.0
+# STATE.a2ml — Project state checkpoint
+# Updated 2026-04-04 — CRG C grade achieved
 
-(state
-  (metadata
-    (project "neurophone")
-    (version "1.0.0")
-    (last-updated "2026-06-02")
-    (status "active")
-    (crg-grade "C→Silver-track")
-    (license "MPL-2.0"))
+[metadata]
+project = "neurophone"
+version = "1.0.0"
+last-updated = "2026-04-04"
+status = "active"
+crg-grade = "C"
 
-  (project-context
-    (name "neurophone")
-    (completion-percentage 72)
-    (phase "Proof corpus complete; Android migration in progress; documentation at Gold standard"))
+[project-context]
+name = "neurophone"
+completion-percentage = 65
+phase = "Testing complete, feature development ready"
 
-  (test-coverage
-    (unit-tests 41)
-    (smoke-tests 3)
-    (e2e-tests 2)
-    (property-tests 14)
-    (reflexive-tests 3)
-    (contract-tests 2)
-    (aspect-tests 6)
-    (benchmarks 24)
-    (total-tests 95))
+[test-coverage]
+unit-tests = 41
+smoke-tests = 3
+e2e-tests = 2
+property-tests = 14
+reflexive-tests = 3
+contract-tests = 2
+aspect-tests = 6
+benchmarks = 24
+total-tests = 95
 
-  (test-results
-    (unit-tests-status "PASS")
-    (smoke-tests-status "PASS")
-    (e2e-tests-status "PASS")
-    (property-tests-status "PASS")
-    (build-status "SUCCESS"))
+[test-results]
+unit-tests-status = "PASS"
+smoke-tests-status = "PASS"
+e2e-tests-status = "PASS"
+property-tests-status = "PASS"
+build-status = "SUCCESS"
 
-  (crates
-    (neurophone-core "88 tests — typestate lifecycle (Created/Active/Down)")
-    (lsm "4 tests — bounded dynamics property tests")
-    (esn "9 tests — spectral radius correctness")
-    (bridge "stub")
-    (llm "stub")
-    (sensors "stub")
-    (claude-client "trust-boundary + backoff tests")
-    (neurophone-android "7 JNI tests (PR #130 draft)"))
+[crates]
+neurophone-core = "88 tests"
+lsm = "4 tests"
+esn = "9 tests"
+bridge = "stub"
+llm = "stub"
+sensors = "stub"
+claude-client = "stub"
+neurophone-android = "stub"
 
-  (proof-obligations
-    (status "Tiers 0–3 discharged")
-    (tracker "proofs/README.adoc")
-    (open "2.3 — AffineScript linear resource handles (design spec, intentionally deferred)")
-    (tier-0
-      (0.1 "type-safety — DONE (forbid unsafe_code + Rust/Spark ownership)")
-      (0.2 "test-coverage — DONE (95+ tests across all categories)"))
-    (tier-1
-      (1.1 "ESN spectral radius — DONE (true rho via power iteration, not inf-norm)")
-      (1.2 "LSM bounded dynamics — DONE (proptest 200-step sequences, membrane + history bounded)"))
-    (tier-2
-      (2.1 "lifecycle typestate — DONE (compile-time phase enforcement)")
-      (2.2 "concurrency safety — DONE (Mutex-serialised, no-lost-updates test)")
-      (2.3 "affine resource lifecycle — SPEC (AffineScript design spec deferred)"))
-    (tier-3
-      (3.1 "data-egress confinement — DONE (neural context gated, injection tests)")
-      (3.2 "backoff safety — DONE (saturating_pow capped, bounded-monotonic test)")))
+[recent-work]
+session-date = "2026-04-04"
+fixed = "ESN crate (was missing src/lib.rs and [lib] section)"
+added = "95+ comprehensive tests covering unit/smoke/e2e/property/reflexive/contract/aspect"
+improved = "Cargo.toml license (PMPL), author attribution, dev dependencies"
 
-  (ci-status
-    (build "GREEN — workspace builds cleanly after rand 0.9 pin (#129)")
-    (language-policy "GREEN — android/** carve-out via .hypatia-baseline.json (#105) + estate reusable (#117)")
-    (governance "GREEN")
-    (codeql "GREEN")
-    (rust-ci "RED — upstream standards issue (rust-ci-reusable fails with 0 jobs; standards#321)")
-    (hypatia-scan "RED — upstream standards issue (scanner reusable/infra; standards#303)")
-    (scorecard "RED — upstream infra/token")
-    (mirror "RED — external forge/token; ignore"))
-
-  (android-migration
-    (epic "#83")
-    (rfc "PR #97")
-    (target "gossamer (estate cross-platform shell)")
-    (nativelib-port "PR #130 DRAFT — full 11-method JNI surface, 7 tests")
-    (scaffold "PR #121/#126 DRAFT — pick one; blocked on gossamer-rs licence")
-    (service "PR #123 DRAFT")
-    (bootreceiver "PR #122 DRAFT")
-    (widgets "PR #128 DRAFT")
-    (ui "PR #127 DRAFT")
-    (delete-legacy "PR #124 DRAFT — blocked on all above")
-    (blocker "gossamer-rs AGPL vs neurophone MPL-2.0 compatibility; owner decision needed"))
-
-  (open-prs
-    (ready-to-merge
-      (pr-125 "chore/ignore-agent-worktrees — gitignore worktrees + HANDOVER.adoc")
-      (pr-119 "chore/consolidate-cicd-docs — README MPL badge"))
-    (draft-blocked
-      (pr-130 "neurophone-android JNI port — strong, includes rand fix")
-      (pr-121 "gossamer scaffold-a")
-      (pr-126 "gossamer scaffold-b (duplicate of #121 — pick one)")
-      (pr-123 "gossamer service")
-      (pr-122 "gossamer bootreceiver")
-      (pr-128 "gossamer widgets")
-      (pr-127 "gossamer UI")
-      (pr-124 "gossamer delete-legacy — blocked on all above")))
-
-  (blockers
-    (gossamer-rs-licence "AGPL vs MPL-2.0 compatibility — owner decision")
-    (gossamer-rs-unpublished "not on crates.io — sourcing decision needed")
-    (rust-ci-upstream "standards#321 — unfixable from neurophone")
-    (hypatia-scan-upstream "standards#303 — unfixable from neurophone"))
-
-  (recent-sessions
-    (2026-05-26 "Tech-debt audit, CRG C grade documentation")
-    (2026-06 "Proof map Tiers 0-3 discharged; typestate lifecycle refactor; ESN spectral radius fixed; claude-client backoff fixed; Android migration decomposed into sub-issues #108-#115; rand 0.9 pin (#129 merged)")
-    (2026-06-02 "Comprehensive documentation pass: README/EXPLAINME/6a2/contractiles to Gold standard; dependabot ignore rules for rand; stale branch cleanup")))
+[blockers]
+none = "Ready for feature development"
