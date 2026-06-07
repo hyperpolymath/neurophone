@@ -1,78 +1,23 @@
-; SPDX-License-Identifier: MPL-2.0
-; PLAYBOOK.a2ml — Operational runbook
-; Updated 2026-06-02
+# SPDX-License-Identifier: MPL-2.0
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# PLAYBOOK.a2ml — Operational playbook
+# Runbooks, incident response, deployment procedures.
 
-(playbook
-  (metadata
-    (version "0.2.0")
-    (last-updated "2026-06-02"))
+[metadata]
+version = "0.1.0"
+last-updated = "2026-03-16"
 
-  (build
-    (host "cargo build --workspace")
-    (android "scripts/build-android.sh  # builds ARM64 .so, copies to android/app/src/main/jniLibs/")
-    (android-prereqs "Rust 1.75+ with aarch64-linux-android target; Android NDK 26+")
-    (setup "scripts/setup.sh  # installs Rust, NDK, cross-compilation targets"))
+[deployment]
+# method = "gitops"
+# target = "container"
 
-  (test
-    (all "cargo test --workspace")
-    (property "cargo test --workspace  # proptest runs within cargo test")
-    (specific "cargo test -p neurophone-core")
-    (benchmarks "cargo bench")
-    (fuzz "cargo fuzz run <target>  # see fuzz/ directory"))
+[incident-response]
+# 1. Check .machine_readable/STATE.a2ml for current status
+# 2. Review recent commits and CI results
+# 3. Run just validate to check compliance
 
-  (lint
-    (clippy "cargo clippy --all-targets -- -D warnings")
-    (fmt "cargo fmt --check")
-    (spdx "grep -rn 'SPDX-License-Identifier' --include='*.rs' .  # verify headers present"))
-
-  (release-process
-    (step-1 "Update version in STATE.a2ml (version field)")
-    (step-2 "Update CHANGELOG.md — add release section with date")
-    (step-3 "Run: cargo fmt && cargo clippy --all-targets -- -D warnings && cargo test --workspace")
-    (step-4 "Commit: chore(release): bump version to X.Y.Z")
-    (step-5 "Tag: git tag -s vX.Y.Z -m 'Release X.Y.Z'")
-    (step-6 "Push: git push origin main --tags"))
-
-  (incident-response
-    (step-1 "Check STATE.a2ml ci-status for current build/CI state")
-    (step-2 "Check GitHub Actions for failing workflow details")
-    (step-3 "For Rust build failures: cargo build --workspace to reproduce locally")
-    (step-4 "For dependency issues: check Cargo.lock and dependabot config")
-    (step-5 "For CI failures: check if failure is in neurophone or upstream standards workflows")
-    (known-upstream-reds "rust-ci (standards#321) and hypatia-scan (standards#303) — not fixable from neurophone"))
-
-  (dependency-management
-    (locked-versions
-      (rand "0.9 — DO NOT bump until ndarray-rand supports rand 0.10; see dependabot ignore rules")
-      (rand-distr "0.5 — DO NOT bump until ndarray-rand supports rand 0.10")
-      (jni "0.21 — pinned for Android JNI stability"))
-    (upgrade-path "rand 0.10 + rand_distr 0.6 require ndarray-rand >= 0.17 — check before upgrading")
-    (dependabot "configured with ignore rules for rand/rand_distr; see .github/dependabot.yml"))
-
-  (android-build
-    (build "scripts/build-android.sh")
-    (target "aarch64-linux-android")
-    (ndk-version "NDK 26+")
-    (jnilib-dest "android/app/src/main/jniLibs/arm64-v8a/")
-    (model-download "adb push llama-3.2-1b-instruct-q4_k_m.gguf /data/local/tmp/")
-    (model-source "https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF (Q4_K_M variant)"))
-
-  (gossamer-migration
-    (status "in progress — RFC #97, epic #83")
-    (blocker "gossamer-rs AGPL vs MPL-2.0 compatibility — owner decision needed")
-    (nativelib-done "PR #130 — JNI surface ported to Rust/Spark")
-    (sequence "scaffold → nativelib → service → bootreceiver → ui → delete-legacy android/"))
-
-  (secrets
-    (claude-api-key "ANTHROPIC_API_KEY environment variable or config/default.toml [claude].api_key")
-    (never-commit "never commit .env, credentials.json, or actual API keys"))
-
-  (documentation
-    (readme "README.adoc — user-facing overview")
-    (explainme "EXPLAINME.adoc — backs up every README claim with code locations")
-    (handover "HANDOVER.adoc — session continuity for Claude Code agents")
-    (proofs "proofs/README.adoc — proof obligation tracker")
-    (ai-install "docs/AI_INSTALLATION_GUIDE.adoc — machine-readable install recipe for AI agents")
-    (quickstart-user "QUICKSTART-USER.adoc")
-    (quickstart-dev "QUICKSTART-DEV.adoc")
-    (quickstart-maintainer "QUICKSTART-MAINTAINER.adoc")))
+[release-process]
+# 1. Update version in STATE.a2ml, META.a2ml
+# 2. Run just quality (format, lint, test)
+# 3. Tag and push

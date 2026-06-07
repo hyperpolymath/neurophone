@@ -1,4 +1,4 @@
-image:https://img.shields.io/badge/License-MPL--2.0-blue.svg[License: MPL-2.0,link="https://www.mozilla.org/en-US/MPL/2.0/"]
+image:https://img.shields.io/badge/License-PMPL--1.0-blue.svg[License: PMPL-1.0,link="https://github.com/hyperpolymath/palimpsest-license"]
 image:https://img.shields.io/badge/Philosophy-Palimpsest-indigo.svg[Palimpsest,link="https://github.com/hyperpolymath/palimpsest-license"]
 
 
@@ -10,7 +10,7 @@ image:https://img.shields.io/badge/Philosophy-Palimpsest-indigo.svg[Palimpsest,l
 
 image:https://img.shields.io/badge/Platform-Android-green[Platform]
 image:https://img.shields.io/badge/Device-Oppo%20Reno%2013-blue[Target Device]
-image:https://img.shields.io/badge/RSR-Silver%2FGold--track-silver[RSR Compliance]
+image:https://img.shields.io/badge/RSR-Bronze-cd7f32[RSR Compliance]
 
 [TIP]
 ====
@@ -244,23 +244,19 @@ Also compatible with Android 8.0+ devices with 4GB+ RAM.
 | Kotlin ↔ Rust bridge
 |===
 
-=== Android App (Kotlin — migration in progress)
+=== Android App (Kotlin)
 
 ```
 android/
 ├── app/src/main/
 │   ├── java/ai/neurophone/
 │   │   ├── MainActivity.kt
-│   │   ├── NativeLib.kt          # JNI declarations (Rust impl in crates/neurophone-android)
+│   │   ├── NativeLib.kt          # JNI interface
 │   │   ├── SensorManager.kt      # Sensor collection
 │   │   └── ui/                   # Compose UI
 │   └── res/
 └── build.gradle.kts
 ```
-
-NOTE: The `android/` tree is being migrated to **gossamer** (estate cross-platform shell).
-The JNI native implementation has been ported to Rust/Spark (`crates/neurophone-android`).
-See RFC PR #97 and epic #83 for the migration roadmap.
 
 == Components
 
@@ -395,31 +391,22 @@ val context = NativeLib.getNeuralContext()
 NativeLib.stop()
 ```
 
-=== Rust/Spark API
+=== Rust API
 
 ```rust
-use neurophone_core::{NeuroSymbolicSystem, SensorEvent, SystemConfig};
+use neurophone_core::{NeuroSymbolicSystem, SystemConfig};
 
-// Typestate lifecycle: Created → Active → Down
-let sys = NeuroSymbolicSystem::new(SystemConfig::default())?
-    .initialize()?;                          // → Active (compile error if skipped)
+let mut system = NeuroSymbolicSystem::with_config(config)?;
+let _rx = system.start().await?;
 
-// Feed sensor data
-let event = SensorEvent {
-    sensor_type: "accelerometer".into(),
-    timestamp_ms: 0,
-    values: vec![0.0, 0.0, 9.81],
-};
-sys.process_sensor_event(&event)?;
+// Send sensor data
+system.send_sensor(reading).await?;
 
-// Query (prefer local LLM; falls back to Claude API if needed)
-let response = sys.query("What's my activity right now?", true)?;
+// Query
+let response = system.query("What's happening?", true).await?;
 
-// Inspect state (available on all lifecycle phases)
-let state = sys.get_state();
-
-// Terminal shutdown — consumes the system, cannot use after
-let _done = sys.shutdown();
+// Get neural context
+let context = system.get_neural_context().await;
 ```
 
 == Performance
@@ -507,16 +494,13 @@ This application and link:https://github.com/hyperpolymath/heterogenous-mobile-c
 
 == RSR Compliance
 
-Silver/Gold-track RSR (Rhodium Standard Repository) compliance:
+Bronze-level RSR (Rhodium Standard Repository) compliance:
 
-* Type safety (Rust/Spark ownership + typestate lifecycle proofs)
-* Memory safety (ownership model — `forbid(unsafe_code)` in core crates)
-* Comprehensive proof corpus (`proofs/` — obligations 0.1–3.2 discharged)
-* Formal concurrency proofs (`proofs/tla/` — TLA⁺ lifecycle spec)
-* Comprehensive documentation and SPDX headers
-* Build automation (Justfile, Guix, Nix)
-* Security policy (SECURITY.md, hypatia scan, cargo-audit)
-* Estate compliance: language-policy, governance, banned-language CI all green
+* Type safety (Rust)
+* Memory safety (ownership model)
+* Comprehensive documentation
+* Build automation
+* Security policy
 
 == Development
 
@@ -537,7 +521,7 @@ Contributions welcome! See link:CONTRIBUTING.md[CONTRIBUTING.md].
 
 == License
 
-Mozilla Public License 2.0 (MPL-2.0) — see link:LICENSE[LICENSE].
+Palimpsest-MPL-1.0 License - See LICENSE file
 
 == Citation
 
