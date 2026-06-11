@@ -1,12 +1,10 @@
 # SPDX-License-Identifier: MPL-2.0
 name: Language Policy Enforcement
-
 on:
   push:
     branches: [main, master]
   pull_request:
     branches: [main, master]
-
 # Estate guardrail: cancel superseded runs so re-pushes / rebased PR
 # updates do not pile up queued runs against the shared account-wide
 # Actions concurrency pool. Applied only to read-only check workflows
@@ -14,10 +12,8 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-
 permissions:
   contents: read
-
 jobs:
   check-banned-languages:
     name: Check for Banned Languages
@@ -25,13 +21,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
-
       # TypeScript check delegated to rsr-antipattern.yml (which honours the
       # universal allowlist and the .claude/CLAUDE.md exemptions table). The
       # blunt `find -name "*.ts"` form previously here false-positived on
       # legitimate bridge files (e.g. tests/*.vitest.config.ts under the
       # *vscode*/tests/ allowlist).
-
       - name: Check for ReScript files
         run: |
           # Estate policy: RS/TS/JS -> AffineScript -> typed-wasm.
@@ -42,7 +36,6 @@ jobs:
             exit 1
           fi
           echo "✓ No ReScript files found"
-
       - name: Check for Go files
         run: |
           if find . -name "*.go" | head -1 | grep -q .; then
@@ -51,7 +44,6 @@ jobs:
             exit 1
           fi
           echo "✓ No Go files found"
-
       - name: Check for Python files (except Ansible)
         run: |
           # Allow Python only in ansible/ directories or for Ansible-specific files
@@ -62,7 +54,6 @@ jobs:
             exit 1
           fi
           echo "✓ No unauthorized Python files found"
-
       - name: Check for Makefiles
         run: |
           MAKEFILES=$(find . -name "Makefile" -o -name "Makefile.*" -o -name "*.mk" | grep -v ".github" || true)
@@ -72,7 +63,6 @@ jobs:
             exit 1
           fi
           echo "✓ No Makefiles found"
-
       - name: Check for package.json (npm/node)
         run: |
           if [ -f "package.json" ]; then
@@ -83,7 +73,6 @@ jobs:
             fi
           fi
           echo "✓ No npm runtime dependencies found"
-
       # Java/Kotlin check is delegated to the estate-wide standards
       # `governance-reusable.yml language-policy` job (called from this
       # repo's governance.yml). That reusable already:
@@ -106,7 +95,6 @@ jobs:
       # `Detect stale baseline entries` job (governance-reusable.yml:127
       # onward) will warn, and the entry can be removed in the same PR
       # that deletes android/.
-
       - name: Check for Swift files
         run: |
           if find . -name "*.swift" | head -1 | grep -q .; then
@@ -115,7 +103,6 @@ jobs:
             exit 1
           fi
           echo "✓ No Swift files found"
-
       - name: Check for V-lang code
         run: |
           # V-lang is banned as of 2026-04-10. Migration target: Zig.
@@ -135,7 +122,6 @@ jobs:
             exit 1
           fi
           echo "✓ No V-lang code found"
-
       - name: Check for Flutter/Dart files
         run: |
           if find . -name "*.dart" -o -name "pubspec.yaml" | head -1 | grep -q .; then
@@ -144,7 +130,6 @@ jobs:
             exit 1
           fi
           echo "✓ No Flutter/Dart code found"
-
       - name: Check for ATS2 files
         run: |
           # ATS2 is rejected in favour of Idris2 (formal verification) and
@@ -155,14 +140,12 @@ jobs:
             exit 1
           fi
           echo "✓ No ATS2 files found"
-
   check-required-files:
     name: Check Required Files
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
-
       - name: Check for .machine_readable directory
         run: |
           if [ ! -d ".machine_readable" ]; then
@@ -178,7 +161,6 @@ jobs:
               fi
             done
           fi
-
       - name: Check for Mustfile/justfile
         run: |
           if [ ! -f "Mustfile" ] && [ ! -f "justfile" ]; then
@@ -186,7 +168,6 @@ jobs:
           else
             echo "✓ Build system files present"
           fi
-
       - name: Check SPDX headers
         run: |
           MISSING_SPDX=0

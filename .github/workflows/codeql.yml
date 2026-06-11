@@ -1,14 +1,12 @@
 # SPDX-License-Identifier: MPL-2.0
 name: CodeQL Security Analysis
-
 on:
   push:
     branches: [main, master]
   pull_request:
     branches: [main, master]
   schedule:
-    - cron: '0 6 1 * *'   # monthly 1st 06:00 UTC
-
+    - cron: '0 6 1 * *' # monthly 1st 06:00 UTC
 # Estate guardrail: cancel superseded runs so re-pushes / rebased PR
 # updates do not pile up queued runs against the shared account-wide
 # Actions concurrency pool. Applied only to read-only check workflows
@@ -16,10 +14,8 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-
 permissions:
   contents: read
-
 jobs:
   analyze:
     runs-on: ubuntu-latest
@@ -35,17 +31,14 @@ jobs:
           # codeql_language_matrix_mismatch.
           - language: actions
             build-mode: none
-
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
       - name: Initialize CodeQL
         uses: github/codeql-action/init@87557b9c84dde89fdd9b10e88954ac2f4248e463 # v3
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
-
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@87557b9c84dde89fdd9b10e88954ac2f4248e463 # v3
         with:
