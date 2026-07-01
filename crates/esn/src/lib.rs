@@ -370,7 +370,10 @@ mod tests {
         w[[2, 2]] = 0.5;
         let scaled = EchoStateNetwork::scale_to_spectral_radius(&w, 0.9);
         let rho = EchoStateNetwork::estimate_spectral_radius(&scaled);
-        assert!((rho - 0.9).abs() < 1e-3, "expected spectral radius 0.9, got {rho}");
+        assert!(
+            (rho - 0.9).abs() < 1e-3,
+            "expected spectral radius 0.9, got {rho}"
+        );
     }
 
     #[test]

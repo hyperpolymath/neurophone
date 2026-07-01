@@ -1,5 +1,11 @@
 # SPDX-License-Identifier: MPL-2.0
-# Prevention workflow - runs OpenSSF Scorecard and fails on low scores
+# Prevention workflow — runs OpenSSF Scorecard and enforces the repo-side,
+# deterministically-satisfiable posture. The aggregate Scorecard number embeds
+# org-plane checks (Branch-Protection, Code-Review) that cannot be satisfied from
+# inside the repository, so it is reported for visibility but NOT hard-gated here
+# (that would be an un-winnable gate — see docs / the PR FLAGS section). What we
+# DO hard-gate is everything the repository itself controls: SECURITY.md, a
+# Dependabot config, SHA-pinned actions, and per-workflow permissions blocks.
 name: OpenSSF Scorecard Enforcer
 
 on:
@@ -43,39 +49,66 @@ jobs:
         with:
           sarif_file: results.sarif
 
-      - name: Check minimum score
+      - name: Report posture (informational)
         run: |
-          # Parse score from results
-          SCORE=$(jq -r '.runs[0].tool.driver.properties.score // 0' results.sarif 2>/dev/null || echo "0")
+          # Scorecard SARIF encodes PER-CHECK results, not a single aggregate
+          # score at .runs[0].tool.driver.properties.score — the old parse always
+          # yielded 0 and always failed. Full per-check detail is now in the
+          # Security tab (SARIF) and in the scorecard.yml JSON artifact. The
+          # aggregate (which includes owner-plane Branch-Protection / Code-Review)
+          # is tracked there, not hard-gated in-repo.
+          echo "OpenSSF Scorecard SARIF uploaded to the Security tab."
+          echo "Repo-side posture is enforced by the check-critical job below."
 
-          echo "OpenSSF Scorecard Score: $SCORE"
-
-          # Minimum acceptable score (0-10 scale)
-          MIN_SCORE=5
-
-          if [ "$(echo "$SCORE < $MIN_SCORE" | bc -l)" = "1" ]; then
-            echo "::error::Scorecard score $SCORE is below minimum $MIN_SCORE"
-            exit 1
-          fi
-
-  # Check specific high-priority items
+  # Deterministic, repo-controllable posture — every item here is satisfiable
+  # without owner/org-plane settings, so a red here is a real, actionable defect.
   check-critical:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
 
-      - name: Check SECURITY.md exists
+      - name: Require SECURITY.md
         run: |
           if [ ! -f "SECURITY.md" ]; then
             echo "::error::SECURITY.md is required"
             exit 1
           fi
 
-      - name: Check for pinned dependencies
+      - name: Require Dependabot config
         run: |
-          # Check workflows for unpinned actions
-          unpinned=$(grep -r "uses:.*@v[0-9]" .github/workflows/*.yml 2>/dev/null | grep -v "#" | head -5 || true)
-          if [ -n "$unpinned" ]; then
-            echo "::warning::Found unpinned actions:"
-            echo "$unpinned"
+          if [ ! -f ".github/dependabot.yml" ] && [ ! -f ".github/dependabot.yaml" ]; then
+            echo "::error::.github/dependabot.yml is required (automated dependency updates)"
+            exit 1
           fi
+
+      - name: Require SHA-pinned actions
+        run: |
+          # OpenSSF Pinned-Dependencies: every `uses:` must reference a 40-char
+          # commit SHA, never a floating @vN / @branch tag.
+          unpinned=$(grep -rnE "uses:[[:space:]]*[^#]*@v[0-9]" .github/workflows/*.yml 2>/dev/null | grep -vE "^\s*#" || true)
+          if [ -n "$unpinned" ]; then
+            echo "::error::Unpinned actions found (must pin to a full commit SHA):"
+            echo "$unpinned"
+            exit 1
+          fi
+          echo "All actions are SHA-pinned."
+
+      - name: Require per-workflow permissions blocks
+        run: |
+          # OpenSSF Token-Permissions: every workflow declares a top-level
+          # least-privilege permissions block.
+          missing=""
+          for f in .github/workflows/*.yml; do
+            if ! grep -qE '^permissions:' "$f"; then
+              missing="$missing $f"
+            fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Workflows missing a top-level permissions block:$missing"
+            exit 1
+          fi
+          echo "All workflows declare a top-level permissions block."

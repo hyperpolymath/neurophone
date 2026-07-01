@@ -504,7 +504,11 @@ impl LiquidStateMachine {
 
     /// Longest per-neuron spike history (number of retained spikes).
     pub fn max_spike_history_len(&self) -> usize {
-        self.spike_history.iter().map(|h| h.len()).max().unwrap_or(0)
+        self.spike_history
+            .iter()
+            .map(|h| h.len())
+            .max()
+            .unwrap_or(0)
     }
 }
 

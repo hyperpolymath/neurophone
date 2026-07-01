@@ -608,10 +608,16 @@ mod tests {
             "stream",
         ];
         for k in obj.keys() {
-            assert!(ALLOWED.contains(&k.as_str()), "unexpected egress field: {k}");
+            assert!(
+                ALLOWED.contains(&k.as_str()),
+                "unexpected egress field: {k}"
+            );
         }
         for forbidden in ["api_key", "x-api-key", "key", "device", "sensor", "secret"] {
-            assert!(!obj.contains_key(forbidden), "sensitive field leaked: {forbidden}");
+            assert!(
+                !obj.contains_key(forbidden),
+                "sensitive field leaked: {forbidden}"
+            );
         }
     }
 
@@ -668,7 +674,13 @@ mod tests {
             stream: None,
         };
         let v = serde_json::to_value(&req).unwrap();
-        assert!(v.get("injected").is_none(), "content broke out of its field");
-        assert_eq!(v["messages"][0]["content"][0]["text"].as_str().unwrap(), nasty);
+        assert!(
+            v.get("injected").is_none(),
+            "content broke out of its field"
+        );
+        assert_eq!(
+            v["messages"][0]["content"][0]["text"].as_str().unwrap(),
+            nasty
+        );
     }
 }
