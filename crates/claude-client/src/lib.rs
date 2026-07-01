@@ -661,6 +661,27 @@ mod tests {
     }
 
     #[test]
+    fn total_retry_budget_is_finite() {
+        // 3.2 (bounded external interaction): the retry loop runs a *bounded*
+        // number of attempts (`for attempt in 0..=max_retries`), and each wait is
+        // the capped backoff — so the worst-case total wait across the whole
+        // interaction is finite and bounded, not just each individual delay.
+        let max_retries = ClaudeConfig::default().max_retries;
+        let mut total = Duration::ZERO;
+        for a in 0..=(max_retries as u32) {
+            total = total
+                .checked_add(ClaudeClient::backoff_delay(a))
+                .expect("total backoff must not overflow");
+        }
+        // (max_retries + 1) attempts, each capped at 60s.
+        let ceiling = Duration::from_secs(60) * (max_retries as u32 + 1);
+        assert!(
+            total <= ceiling,
+            "total retry budget {total:?} exceeds bound {ceiling:?}"
+        );
+    }
+
+    #[test]
     fn user_content_cannot_inject_into_request_json() {
         // 3.2: user content is typed JSON, so quotes/braces are escaped and cannot
         // break out of the message structure.

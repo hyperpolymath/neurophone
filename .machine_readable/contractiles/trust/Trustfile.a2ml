@@ -232,7 +232,7 @@ artifacts:
   - id: "2.2" ; name: "Concurrency safety"                 ; system: "TLA+"     ; file: "(deferred: single-owner design, no shared concurrency)"                ; status: "DESIGNED"
   - id: "2.3" ; name: "Resource/affine lifecycle"          ; system: "rustc (compile-fail)" ; file: "neurophone-core compile-fail doc-tests + android reset"       ; status: "PROVEN"
   - id: "3.1" ; name: "Data-egress / privacy"              ; system: "arch + conative-gating" ; file: "claude-client (egress confined); veto external #103"        ; status: "DESIGNED"
-  - id: "3.2" ; name: "Bounded external interaction"       ; system: "contract test" ; file: "SystemConfig.max_response_time_ms (test pending)"                ; status: "DESIGNED"
+  - id: "3.2" ; name: "Bounded external interaction"       ; system: "proptest/contract" ; file: "claude-client: capped backoff + bounded retries (backoff_is_bounded_and_monotonic, total_retry_budget_is_finite)" ; status: "TESTED"
 open_obligations:
   - "1.1 formal contraction proof (precondition holds; theorem pending)"
   - "1.2 formal Dafny bound (property evidence exists)"
