@@ -1,0 +1,76 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= Governance Model
+:toc: preamble
+
+Governance model for **neurophone** (on-device neurosymbolic AI). This repo
+follows the hyperpolymath estate governance pattern; the canonical estate policy
+lives in https://github.com/hyperpolymath/standards[hyperpolymath/standards].
+
+== Overview
+
+neurophone follows a **Benevolent Dictator (BDFL)** model:
+
+* A single champion (@hyperpolymath) holds the project's vision and final
+  decision authority, while actively welcoming contributions and delegating.
+* *Current reality:* a sole maintainer. That is a staffing fact, not a closed
+  door — contributions are welcomed and reviewed, and authority is delegable to
+  anyone who demonstrably carries the project's essence.
+* Decisions are made transparently through GitHub issues and pull requests.
+
+== Core Principles
+
+[cols="1,2"]
+|===
+| Principle | Description
+| **Benevolent Dictatorship** | Maintainer has final authority but seeks input.
+| **Meritocracy** | Contributions are judged on technical merit.
+| **Transparency** | Significant decisions are documented publicly.
+| **Fail loudly, seal soundly** | No silent green; seams (ABI/FFI) are sealed and, where load-bearing, proved.
+| **Report faithfully** | No overclaiming — proof obligations are discharged or honestly left open (never faked).
+|===
+
+== Roles and Permissions
+
+[cols="1,2,2"]
+|===
+| Role | Permissions | Assignment
+| **Maintainer** | Write, merge, admin | @hyperpolymath
+| **Contributors** | Fork, submit PRs | All GitHub users
+| **Agents (LLM)** | Bounded per `.machine_readable/6a2/AGENTIC.a2ml` | Automated assistants
+|===
+
+== Decision-Making Framework
+
+Routine (bug fixes, docs, minor features, dependency updates) — maintainer or a
+delegate merges after CI is green. Significant (architecture, ABI/FFI seam
+changes, proof-obligation changes, security policy, licence) — require explicit
+maintainer review; these are gated by the estate policies below.
+
+=== Licence changes — owner-only
+
+Per the estate guardrail, **licence and SPDX changes are manual, per-file, and
+owner-approved only**. Agents and automation must not generate licence-change PRs
+or sweep SPDX headers; findings about licence drift are flag-only. neurophone is a
+sole-owner repo: code is **MPL-2.0**, documentation is **CC-BY-SA-4.0**.
+
+=== Security-critical changes
+
+Changes to the Trustfile, CI/security/release workflows, cryptographic material,
+the JNI FFI boundary, or the `proofs/` corpus require explicit review. See
+`.machine_readable/contractiles/trust/Trustfile.a2ml` (`[CAPABILITY_GATEWAY]`).
+
+== Machine-Readable Governance
+
+The normative substrate is authoritative where it applies:
+
+* `.machine_readable/6a2/AGENTIC.a2ml` — agent permissions / risk gating.
+* `.machine_readable/6a2/META.a2ml` — architecture decisions.
+* `.machine_readable/contractiles/` — MUST / TRUST / INTEND / ADJUST / DUST / BUST
+  contracts (e.g. `MUST.contractile` bans proof escape hatches).
+* `proofs/README.adoc` — proof-obligation map and status.
+
+== Code of Conduct
+
+Participation is governed by `CODE_OF_CONDUCT.md`. Report concerns via the
+security/contact channels in `SECURITY.md`.
