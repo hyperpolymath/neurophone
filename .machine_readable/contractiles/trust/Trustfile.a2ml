@@ -231,16 +231,16 @@ artifacts:
   - id: "2.1" ; name: "Lifecycle state-machine safety"     ; system: "TLA+ (TLC)" ; file: "proofs/tla/Lifecycle.{tla,cfg}"                                      ; status: "PROVEN"
   - id: "2.2" ; name: "Concurrency safety"                 ; system: "TLA+"     ; file: "(deferred: single-owner design, no shared concurrency)"                ; status: "DESIGNED"
   - id: "2.3" ; name: "Resource/affine lifecycle"          ; system: "rustc (compile-fail)" ; file: "neurophone-core compile-fail doc-tests + android reset"       ; status: "PROVEN"
-  - id: "3.1" ; name: "Data-egress / privacy"              ; system: "arch + conative-gating" ; file: "claude-client (egress confined); veto external #103"        ; status: "DESIGNED"
+  - id: "3.1" ; name: "Data-egress / privacy"              ; system: "proptest + conative-gating" ; file: "crates/claude-client/src/egress_gate.rs (wired into create_message), egress_integration_tests" ; status: "TESTED"
   - id: "3.2" ; name: "Bounded external interaction"       ; system: "proptest/contract" ; file: "claude-client: capped backoff + bounded retries (backoff_is_bounded_and_monotonic, total_retry_budget_is_finite)" ; status: "TESTED"
 open_obligations:
   - "1.1 formal contraction proof (precondition holds; theorem pending)"
   - "1.2 formal Dafny bound (property evidence exists)"
   - "2.2 concurrency spec (N/A until shared concurrency exists)"
-  - "3.1 GO/NO-GO egress veto (blocked on conative-gating, #103)"
+  - "3.1 caller-declared classification honesty (EgressClass is asserted by the caller, not derived from an independent sensor-provenance tracker); no formal (non-property) proof yet"
 non_claims:
   - "neurophone does NOT yet claim a machine-checked Echo State Property (1.1)."
-  - "neurophone does NOT yet enforce a cryptographic egress veto (3.1)."
+  - "neurophone's egress veto (3.1) enforces policy on a caller-declared payload classification; it does NOT independently verify that classification against real sensor provenance, and it is NOT a formally-proven (only property-tested) guarantee."
 
 ---
 ### [CI_CD]
