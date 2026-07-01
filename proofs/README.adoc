@@ -17,29 +17,58 @@ the index from each obligation to the artefact that discharges it.
 [cols="1,2,2",options="header"]
 |===
 | Tool | Directory | Obligations
-| TLA+ (TLC)        | `proofs/tla/`   | 2.1 lifecycle, 2.2 concurrency, 3.1 data egress
-| Lean / Coq        | `proofs/lean/`  | 1.1 echo state property, 1.3 bridge soundness
-| Dafny / F*        | `proofs/dafny/` | 1.2 LSM bounded dynamics, 0.2 numeric containment
-| Kani + proptest   | (in `crates/`)  | executable bridge from spec to Rust (0.1, 0.2, 1.2)
+| TLA+ (TLC)        | `proofs/tla/`   | 2.1 lifecycle *(checked)*; 2.2/3.1 specs deferred
+| Lean / Coq        | `proofs/lean/`  | 1.1 echo state property, 1.3 bridge soundness (spec)
+| Dafny / F*        | `proofs/dafny/` | 1.2 LSM bounded dynamics, 0.2 numeric containment (spec)
+| proptest          | (in `crates/`)  | executable evidence for 0.1, 0.2, 1.2, 1.3
+| compile-fail tests| `neurophone-core` doc-tests | 2.1 (type level) + 2.3 release-once
 |===
+
+NOTE: Kani is *not* currently wired (no `kani` in the toolchain); `proofs/` uses
+proptest + TLC + compile-fail doc-tests as the runnable bridge. A `#[cfg(kani)]`
+track can be added later behind a self-skipping `just proof-kani` recipe.
 
 == Status
 
-[cols="1,3,1",options="header"]
+Legend: *checked* = a checker (TLC/rustc) accepts it now; *property* = discharged
+by property tests over the operational paths; *open* = honest gap, never faked.
+
+[cols="1,3,2",options="header"]
 |===
 | ID | Obligation | State
-| 0.1 | Panic-freedom on operational paths              | open
-| 0.2 | Numeric containment (no NaN/Inf, no overflow)   | open
+| 0.1 | Panic-freedom on operational paths              | *property* — `esn`/`sensors`/`lsm` numeric suites + `neurophone-core/tests/proptest_core.rs`
+| 0.2 | Numeric containment (no NaN/Inf, no overflow)   | *property* — `*/tests/proptest_numeric.rs` (#87) + `proptest_core.rs`
 | 0.3 | `unsafe` discipline (`deny`/`forbid` all crates) | *done*
-| 1.1 | Echo State Property (reservoir is a contraction)| spec: `tla/`+`lean/` (open)
-| 1.2 | LSM bounded dynamics                            | open
-| 1.3 | Bridge soundness (neural→symbolic)              | open
-| 2.1 | Lifecycle state-machine safety                  | spec: `tla/Lifecycle.tla`
-| 2.2 | Concurrency safety (no deadlock)                | open
-| 2.3 | Resource/affine lifecycle                       | open
-| 3.1 | Data-egress / privacy invariant                 | open
-| 3.2 | Bounded external interaction                    | open
+| 1.1 | Echo State Property (reservoir is a contraction)| *open* — the implementation prerequisite holds (see the `spectral_radius` NOTE); the formal contraction proof is pending.
+| 1.2 | LSM bounded dynamics                            | *property* — `lsm/tests/proptest_bounds.rs`; formal Dafny bound *open*
+| 1.3 | Bridge soundness (neural→symbolic)              | *property* — `bridge/tests/proptest_soundness.rs` (#90); salience-ordering semantics *open*
+| 2.1 | Lifecycle state-machine safety                  | *checked* — TLC on `tla/Lifecycle.{tla,cfg}` (no error; 13 states) + 3 compile-fail typestate doc-tests
+| 2.2 | Concurrency safety (no deadlock)                | *open* — N/A under the current single-owner (`&mut`) design; TLA+ spec deferred until shared concurrency exists
+| 2.3 | Resource/affine lifecycle                       | *checked* (release-once) — `shutdown(self)` consumes the system; compile-fail doc-tests reject double-shutdown / use-after-shutdown; wired through the JNI holder's `reset`. Linear *must-use* (guaranteed shutdown) *open* (needs AffineScript)
+| 3.1 | Data-egress / privacy invariant                 | *open* — egress is confined to `claude-client` by construction; the GO/NO-GO veto is external `conative-gating` (#103)
+| 3.2 | Bounded external interaction                    | *open* — `SystemConfig.max_response_time_ms` bounds exist; a dedicated contract test is pending
 |===
+
+[NOTE]
+====
+*`spectral_radius` realisation (1.1).* An earlier version applied
+`EsnConfig.spectral_radius` as a plain scale factor (matrix infinity-norm), which
+only *bounds* the true spectral radius from above — so the configured value was
+never actually realised. That is now fixed: `esn::EchoStateNetwork` estimates the
+true spectral radius by power iteration (`estimate_spectral_radius`) and scales
+the reservoir to hit the target (`scale_to_spectral_radius`), covered by a unit
+test. The Echo State Property's *precondition* (spectral radius `< 1`) therefore
+holds in code; what remains *open* for 1.1 is the formal proof that this
+precondition implies the contraction / echo-forgetting property. Tracked under
+issue #84 / #88.
+====
+
+== Reproducing
+
+* Property + compile-fail proofs: `cargo test` (or `just proof`).
+* TLA+ model check: `just proof-tla` (fetches `tla2tools.jar` into `.tlacache/`
+  on first run; self-skips if `java` is absent). Direct form:
+  `java -cp tla2tools.jar tlc2.TLC -config proofs/tla/Lifecycle.cfg proofs/tla/Lifecycle.tla`.
 
 == Ground rules
 

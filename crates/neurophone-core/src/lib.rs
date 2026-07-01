@@ -171,6 +171,44 @@ pub mod phase {
 /// `new() -> Created`, then `initialize() -> Active`, then `shutdown() -> Down`.
 /// `process_sensor_event` and `query` exist only on `Active`, so using the system
 /// before initialisation or after shutdown does not compile. Shutdown is terminal.
+///
+/// # Typestate safety (proof obligations 2.1 / 2.3, issue #84)
+///
+/// These examples are part of the proof surface: each is a `compile_fail`
+/// doc-test, so `cargo test` fails if any of them ever *starts* compiling — i.e.
+/// if the typestate protection regresses. They complement the TLC model check in
+/// `proofs/tla/Lifecycle.tla` (the runtime protocol) with the compile-time
+/// guarantee (the API shape).
+///
+/// Use before initialisation does not compile (`query` exists only on `Active`):
+/// ```compile_fail
+/// use neurophone_core::{NeuroSymbolicSystem, SystemConfig};
+/// let mut s = NeuroSymbolicSystem::new(SystemConfig::default()).unwrap();
+/// let _ = s.query("hi", true); // no `query` on Created
+/// ```
+///
+/// Use after shutdown does not compile (`Down` has no `query`):
+/// ```compile_fail
+/// use neurophone_core::{NeuroSymbolicSystem, SystemConfig};
+/// let s = NeuroSymbolicSystem::new(SystemConfig::default())
+///     .unwrap()
+///     .initialize()
+///     .unwrap();
+/// let down = s.shutdown();
+/// let _ = down.query("hi", true); // no `query` on Down
+/// ```
+///
+/// Releasing (shutting down) twice does not compile — `shutdown` consumes
+/// `self`, so the resource is released exactly once:
+/// ```compile_fail
+/// use neurophone_core::{NeuroSymbolicSystem, SystemConfig};
+/// let s = NeuroSymbolicSystem::new(SystemConfig::default())
+///     .unwrap()
+///     .initialize()
+///     .unwrap();
+/// let _first = s.shutdown();
+/// let _second = s.shutdown(); // use of moved value: `s`
+/// ```
 pub struct NeuroSymbolicSystem<S = phase::Active> {
     config: SystemConfig,
     state: SystemState,
