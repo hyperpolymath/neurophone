@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+SPDX-License-Identifier: MPL-2.0
+SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell
+
+Configure activity dropped: matches the drop decision already made once in
+this repo's history (`git show b0de78c`, since deleted with the rest of the
+legacy Kotlin tree) and docs/migrations/RFC-ANDROID-KOTLIN-TO-RUST.adoc Q3.
+Issue #113 still frames this as an open owner question — repeated here
+rather than silently assumed; the widget works with no configure step.
+`android:previewImage` is omitted (the legacy `@drawable/widget_preview` PNG
+was never recovered/re-authored — cosmetic-only gap for the widget picker).
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="180dp"
+    android:minHeight="110dp"
+    android:targetCellWidth="3"
+    android:targetCellHeight="2"
+    android:minResizeWidth="180dp"
+    android:minResizeHeight="110dp"
+    android:maxResizeWidth="320dp"
+    android:maxResizeHeight="180dp"
+    android:resizeMode="horizontal|vertical"
+    android:updatePeriodMillis="1800000"
+    android:initialLayout="@layout/widget_neurophone"
+    android:previewLayout="@layout/widget_neurophone"
+    android:widgetCategory="home_screen" />

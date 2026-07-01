@@ -1,6 +1,14 @@
 [
   {
     "severity": "high",
+    "rule_module": "cicd_rules",
+    "type": "banned_language_file",
+    "file_pattern": "android/**",
+    "note": "The legacy Kotlin/Gradle android/ tree (tracked by this entry pre-2026-07) has been fully deleted (issue #83/#115). This entry now covers the *replacement* hand-written Java shims added under android/app/src/main/java/ai/neurophone/**  (issues #109/#111/#112/#113). Those files are additionally exempt structurally via the estate-wide `android/**/src/**/*.java` carve-out in hyperpolymath/standards governance-reusable.yml (RFC docs/migrations/RFC-ANDROID-KOTLIN-TO-RUST.adoc Q1, standards#341) which the governance /Language job actually enforces; this baseline entry exists as a second layer for Hypatia's own scanner (the separate 'Validate Hypatia Baseline' job), which does not yet share that path-based carve-out. Kept broad (android/**) rather than narrowed, since it also still harmlessly covers the (currently empty) legacy paths.",
+    "tracking_issue": "hyperpolymath/neurophone#83"
+  },
+  {
+    "severity": "high",
     "rule_module": "honest_completion",
     "type": "no_tests",
     "file": ".",

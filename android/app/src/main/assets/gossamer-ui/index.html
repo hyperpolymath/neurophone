@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<!--
+  SPDX-License-Identifier: MPL-2.0
+  SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell
+
+  Webview entry loaded by NeurophoneActivity
+  (file:///android_asset/gossamer-ui/index.html). Structural equivalent of
+  the legacy Android view tree in res/layout/activity_main.xml; element ids
+  match those queried by dist/ui.mjs.
+
+  dist/ui.mjs calls window.NeurophoneBridge directly (synchronous
+  addJavascriptInterface, see NeurophoneBridge.java) and imports the
+  genuinely-compiled dist/logic.deno.js (from src/logic.affine) for pure
+  decision logic — see README.adoc "AffineScript verification". There is no
+  gossamer `window.gossamer` / `__gossamer_invoke` object to wait for here,
+  so the script can run immediately.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'" />
+  <title>NeuroSymbolic Phone</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>NeuroSymbolic Phone</h1>
+    <p class="subtitle">LSM + ESN + Llama 3.2 + Claude</p>
+  </header>
+
+  <section class="status-row">
+    <span class="label">Status:</span>
+    <span id="statusText" class="status-value">Initializing...</span>
+    <button id="startButton" class="btn-small">Start</button>
+  </section>
+
+  <h2 class="section-title">Neural Context:</h2>
+  <div id="neuralContextText" class="neural-context" aria-live="polite">[No neural state available]</div>
+
+  <h2 class="section-title">Query:</h2>
+  <textarea id="inputField" rows="2" placeholder="Enter your question..." disabled></textarea>
+
+  <div class="query-row">
+    <label class="switch-label">
+      <input type="checkbox" id="localSwitch" checked />
+      Prefer Local
+    </label>
+    <span class="spacer"></span>
+    <span id="activityIndicator" class="spinner" hidden></span>
+    <button id="sendButton" disabled>Send</button>
+  </div>
+
+  <h2 class="section-title">Response:</h2>
+  <div id="responseText" class="response" aria-live="polite">Response will appear here...</div>
+
+  <footer>Sensors → Service (Java/JNI) → Rust core ↔ LLM → Widget/UI</footer>
+
+  <!--
+    dist/ui.mjs is a hand-written DOM + NeurophoneBridge harness (not
+    compiler output); it imports dist/logic.deno.js, which IS genuine
+    `affinescript compile --deno-esm` output of src/logic.affine. See
+    dist/ui.mjs's own header and README.adoc "AffineScript verification".
+  -->
+  <script type="module" src="dist/ui.mjs"></script>
+</body>
+</html>

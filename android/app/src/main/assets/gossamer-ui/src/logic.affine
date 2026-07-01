@@ -1,0 +1,111 @@
+// SPDX-License-Identifier: MPL-2.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell
+//
+// Pure UI decision logic for NeurophoneActivity's webview, compiled to
+// Deno-ESM (`affinescript compile --deno-esm`) and imported by the
+// hand-written harness `dist/ui.mjs`, which owns DOM wiring and the actual
+// NeurophoneBridge calls.
+//
+// This file intentionally does NOT attempt to express DOM manipulation or
+// the NativeLib/NeurophoneBridge calls themselves in AffineScript: this
+// compiler's own stdlib documents that a typed DOM binding does not exist
+// yet (`stdlib/Canvas.affine`: "a typed wrapper ... is the natural
+// follow-up once affinescript-dom lands runtime support, currently blocked
+// on ... issue #255" — even Canvas2D crosses the boundary as opaque `Json`
+// today). Modelling `window.NeurophoneBridge.*` as AffineScript `extern fn`
+// would hit the same wall for a different reason: the deno-esm backend's
+// `extern fn` lowering (`lib/codegen_deno.ml`, `deno_builtins`/fallthrough)
+// only supports either (a) a pre-registered host intrinsic, hard-coded in
+// the compiler itself (e.g. `Deno.*Sync`, `Ipc.*`, `JSON.*` — maintained
+// upstream in `hyperpolymath/affinescript`, not something a downstream repo
+// like neurophone can add to), or (b) a bare same-named global *function*
+// call — it cannot express `obj.method(args)` for an arbitrary
+// caller-supplied object, which is what `window.NeurophoneBridge.query(...)`
+// is. So instead: this file holds the parts that genuinely benefit from
+// being typed and verified (status-label selection, message formatting,
+// config-to-JSON encoding, response fallbacks — every place the original
+// Kotlin `MainActivity` had an if/else worth getting right), and the harness
+// (`dist/ui.mjs`) is the thin, hand-written imperative shell around it —
+// exactly the same shape as this compiler's own `tests/codegen-deno/
+// *.harness.mjs` test convention (import compiled pure functions, drive
+// them from plain JS).
+//
+// Genuinely checked in this session: `affinescript check src/logic.affine`
+// passes (0 errors) against the real `affinescript` compiler available in
+// the authoring environment — see android/README.adoc for the exact command
+// and output, and PR body for the transcript.
+
+struct NeuralConfig {
+  sampleRate: Float,
+  windowSizeMs: Int,
+  localThreshold: Float,
+  maxResponseTimeMs: Int
+}
+
+/// Mirrors `neurophone_core::SystemConfig::default()` field-for-field
+/// (crates/neurophone-core/src/lib.rs) so `configToJson(defaultConfig())`
+/// is accepted verbatim by `NativeLib.init` / `state::parse_config`.
+pub fn defaultConfig() -> NeuralConfig {
+  #{ sampleRate: 50.0, windowSizeMs: 100, localThreshold: 0.7, maxResponseTimeMs: 1000 }
+}
+
+/// Hand-rolled JSON encoding (rather than `stdlib/json.affine`'s
+/// `encode_object`/`stringify` machinery) — the four-field shape here is
+/// simple enough that spelling it out directly is clearer than building an
+/// intermediate `Json` tree, and keeps this file's stdlib surface small.
+pub fn configToJson(c: NeuralConfig) -> String {
+  "{\"sample_rate\":" ++ float_to_string(c.sampleRate)
+    ++ ",\"window_size_ms\":" ++ int_to_string(c.windowSizeMs)
+    ++ ",\"local_threshold\":" ++ float_to_string(c.localThreshold)
+    ++ ",\"max_response_time_ms\":" ++ int_to_string(c.maxResponseTimeMs)
+    ++ "}"
+}
+
+/// Start/Stop button label. Mirrors `MainActivity.updateUI()`.
+pub fn statusLabel(running: Bool) -> String {
+  if running { "Stop" } else { "Start" }
+}
+
+/// Status line after a successful start/stop toggle.
+pub fn statusMessage(running: Bool) -> String {
+  if running { "System running" } else { "System stopped" }
+}
+
+/// Status line after `NativeLib.init` returns.
+pub fn initMessage(ok: Bool) -> String {
+  if ok { "System initialized" } else { "Initialization failed" }
+}
+
+/// Status line when `NativeLib.start` returns false.
+pub fn startFailureMessage() -> String {
+  "Failed to start"
+}
+
+/// Neural-context panel text: the raw context string, or a placeholder when
+/// the bridge returned nothing (not yet initialised, or a transient error
+/// the harness already reduced to an empty string).
+pub fn neuralContextOrPlaceholder(ctx: String) -> String {
+  if ctx == "" { "[No neural state available]" } else { ctx }
+}
+
+/// Validation message when the query box is submitted empty.
+pub fn queryEmptyMessage() -> String {
+  "Please enter a message"
+}
+
+/// Response panel text: the bridge's answer, or a fallback when it
+/// returned nothing.
+pub fn responseOrFallback(resp: String) -> String {
+  if resp == "" { "No response received" } else { resp }
+}
+
+/// Trims a raw query-box value the same way `MainActivity.sendQuery()` did
+/// (`message.trim()`), so an all-whitespace query is treated as empty.
+pub fn sanitizeQuery(raw: String) -> String {
+  trim(raw)
+}
+
+/// True if the trimmed query is non-empty and safe to send.
+pub fn isQueryNonEmpty(raw: String) -> Bool {
+  sanitizeQuery(raw) != ""
+}
