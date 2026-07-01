@@ -85,7 +85,12 @@
   ; (must "# Add project-specific invariants here")
 
   (enforcement
+    ; Declarative form (estate standard; run by the Nickel k9 `contractile`
+    ; runner once its _base.ncl / template-hunt.k9.ncl bases are wired here):
     (k9-validator "contractiles/k9/must-check.k9.ncl")
+    ; Portable enforcer active today (bash + coreutils, no k9 runner needed) —
+    ; checks the mechanically-verifiable MUST invariants:
+    (runnable-validator ".machine_readable/contractiles/k9/must-check.sh")
     (ci "quality.yml runs must-check on every PR")
   )
 )
