@@ -15,7 +15,20 @@ can finish.
 
 == Current state
 
-* `crates/neurophone-android/src/lib.rs` = 6-line stub (`pub fn hello() -> &'static str`). No JNI exports yet.
+[NOTE]
+====
+*IMPLEMENTED (2026-07-01, issue #110).* The audit below is fulfilled. The 11-method
+surface now lives in `crates/neurophone-android/` (`lib.rs` JNI exports +
+`state.rs` holder/bridge + `sensor_map.rs` + `error.rs`), using jni 0.22's safe
+`EnvUnowned::with_env`. The `query` gap (Gap 3) was resolved by adding
+`QueryRoute` + `query_routed` to `neurophone-core` (so `queryLocal`/`queryClaude`
+force the model); `getNeuralContext` (Gap 4) and the sensor-id map (Gap 2) landed
+as designed. Bridge logic is host-tested and `reset` consumes the core
+`shutdown(self)` typestate (release-once). The historical audit is retained below
+for provenance.
+====
+
+* `crates/neurophone-android/src/lib.rs` = 6-line stub (`pub fn hello() -> &'static str`). No JNI exports yet. *(historical — now implemented; see the note above.)*
 * `crates/neurophone-android/Cargo.toml` already declares `crate-type =
   ["cdylib"]`, depends on `jni`, `neurophone-core`, `sensors`,
   `serde_json`, `tokio`, `chrono`. Foundation is correct.

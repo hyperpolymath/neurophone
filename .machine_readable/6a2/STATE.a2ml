@@ -1,52 +1,55 @@
 # SPDX-License-Identifier: MPL-2.0
 # STATE.a2ml — Project state checkpoint
-# Updated 2026-04-04 — CRG C grade achieved
+# Updated 2026-07-01 — proofs (2.1 TLC / 2.3 typestate), JNI surface, Trustfile,
+# CI green; crate statuses corrected (the neural crates were never stubs).
 
 [metadata]
 project = "neurophone"
 version = "1.0.0"
-last-updated = "2026-04-04"
+last-updated = "2026-07-01"
 status = "active"
 crg-grade = "C"
 
 [project-context]
 name = "neurophone"
-completion-percentage = 65
-phase = "Testing complete, feature development ready"
+completion-percentage = 80
+phase = "Core + proofs advancing; Android shell blocked on external gossamer"
 
 [test-coverage]
-unit-tests = 41
-smoke-tests = 3
-e2e-tests = 2
-property-tests = 14
-reflexive-tests = 3
-contract-tests = 2
-aspect-tests = 6
-benchmarks = 24
-total-tests = 95
+# Aggregate across the workspace (lib + integration + doc-tests).
+total-tests = 160
+notes = "includes property tests (0.1/0.2/1.2/1.3), typestate compile-fail doc-tests (2.1/2.3), and the TLC lifecycle model check (2.1)"
 
 [test-results]
-unit-tests-status = "PASS"
-smoke-tests-status = "PASS"
-e2e-tests-status = "PASS"
-property-tests-status = "PASS"
 build-status = "SUCCESS"
+test-status = "PASS"
+clippy-status = "CLEAN (--all-targets -- -D warnings)"
+fmt-status = "CLEAN"
+tlc-status = "PASS (Lifecycle: no error, 13 states)"
 
 [crates]
-neurophone-core = "88 tests"
-lsm = "4 tests"
-esn = "9 tests"
-bridge = "stub"
-llm = "stub"
-sensors = "stub"
-claude-client = "stub"
-neurophone-android = "stub"
+# Corrected: bridge/llm/sensors/claude-client carry real code + property suites;
+# neurophone-android is now the full JNI surface, not a stub.
+neurophone-core = "complete — orchestrator + typestate lifecycle + QueryRoute"
+lsm = "complete — proptest_numeric + proptest_bounds"
+esn = "complete — proptest_numeric; true spectral-radius via power iteration"
+bridge = "complete — proptest_soundness (obligation 1.3)"
+llm = "complete — local inference"
+sensors = "complete — proptest_numeric; IIR filtering"
+claude-client = "complete — cloud fallback; egress-scrub test"
+neurophone-android = "implemented — 11-method ai.neurophone.NativeLib JNI surface (#110)"
+
+[proofs]
+# Honest obligation status; full detail in proofs/README.adoc + Trustfile PROOF_ARTIFACTS.
+discharged = "0.1 panic-freedom, 0.2 numeric containment, 0.3 unsafe discipline, 1.2 LSM bounds, 1.3 bridge soundness (property); 2.1 lifecycle (TLC); 2.3 release-once (compile-fail)"
+open = "1.1 Echo State Property (formal contraction), 1.2 formal Dafny bound, 2.2 concurrency (N/A single-owner), 3.1 egress veto (external #103), 3.2 bounded-interaction contract test"
 
 [recent-work]
-session-date = "2026-04-04"
-fixed = "ESN crate (was missing src/lib.rs and [lib] section)"
-added = "95+ comprehensive tests covering unit/smoke/e2e/property/reflexive/contract/aspect"
-improved = "Cargo.toml license (PMPL), author attribution, dev dependencies"
+session-date = "2026-07-01"
+fixed = "rand 0.9/0.10 build break; retired scorecard-enforcer.yml; re-pinned standards reusables (governance/hypatia/scorecard green)"
+added = "real JNI surface (#110); TLA+ Lifecycle.cfg + TLC; typestate compile-fail proofs; core panic/numeric proptests; full estate Trustfile v2026.2.5-final + trustfile.yml gate"
+improved = "Cargo.toml/manifests licence normalised to MPL-2.0; proofs/README honest status; STATE corrected"
 
 [blockers]
-none = "Ready for feature development"
+gossamer = "External: #83 Android migration (gossamer Idris2+Zig shell) blocked — repo not in session scope (403)"
+conative-gating = "External: #103 egress GO/NO-GO veto (obligation 3.1 residual) blocked — repo not in session scope"
