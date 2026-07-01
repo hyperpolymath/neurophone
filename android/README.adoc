@@ -1,0 +1,260 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell
+= NeuroPhone Android tree — Gossamer/Java-shim migration
+:toc:
+:toclevels: 3
+
+Status of the Android Kotlin&rarr;Rust/Gossamer migration (epic #83,
+sub-issues #109/#111/#112/#113/#114/#115) as of this PR. Read alongside
+`docs/migrations/RFC-ANDROID-KOTLIN-TO-RUST.adoc` (the original RFC, resolved
+2026-06-02) and `docs/migrations/JNI-SURFACE-AUDIT.adoc` (the JNI signature
+table) — this file records where this PR *diverges* from those, and why,
+rather than repeating them.
+
+== Honest status (done / staged / open)
+
+[cols="2,3,2", options="header"]
+|===
+| Sub-issue | What's here | Verified how
+
+| #109 (WebView + JNI host)
+| `NeurophoneActivity` + `NeurophoneBridge` — real WebView host, real JS
+  interface, real (already-merged) JNI ABI underneath.
+| Rust ABI side is merged + host-tested (`crates/neurophone-android`,
+  `cargo test -p neurophone-android` — 5/5 pass, pre-existing, re-run this
+  session). Java side:
+  reviewed for correctness against documented Android WebView/JNI-interface
+  semantics; **not compiled** (no Android SDK stub jar in this environment —
+  `javac` alone cannot resolve `android.*`). Staged/unverified on-device.
+
+| #111 (Service)
+| `NeurophoneService` — real `android.app.Service`, direct JNI calls.
+| Same staged/unverified status as #109. gossamer itself has **no** Service
+  primitive (verified: `hyperpolymath/gossamer` Android surface is limited to
+  the WebView Activity + JS bridge) — this extends `android.app.Service`
+  directly, not a gossamer base class. See "Design notes" below.
+
+| #112 (BootReceiver)
+| `BootReceiver` — real `android.content.BroadcastReceiver`, single JNI path.
+| Same staged/unverified status. gossamer has zero foundation for this
+  (verified: no `BroadcastReceiver` anywhere in gossamer) — written from
+  scratch.
+
+| #113 (Widget triple)
+| `NeurophoneAppWidget` + `NeurophoneWidgetActions` + layout/xml/string
+  resources. Configure activity **dropped**, repeating the decision already
+  made once in this repo's own history.
+| Same staged/unverified status. `res/layout/widget_neurophone.xml`,
+  `res/xml/neurophone_widget_info.xml`, `res/values/strings.xml`, and the two
+  vector drawables are recovered near-verbatim from the pre-deletion legacy
+  tree (`git show f389983^:android/app/src/main/res/...`) since they are
+  pure resources with no Kotlin/bridge logic to migrate.
+
+| #114 (AffineScript UI)
+| `assets/gossamer-ui/{index.html,styles.css,src/logic.affine,
+  dist/logic.deno.js,dist/logic.harness.mjs,dist/ui.mjs,build.sh,deno.json}`.
+  Adapted from neurophone's own deleted prior attempt (`a3487cc`); its
+  assumptions were wrong (config shape, bridge transport, and — a discovery
+  this attempt could make that `a3487cc` couldn't — the very idea of an
+  `extern` "host object with methods" isn't expressible by the real
+  compiler) — see `assets/gossamer-ui/README.adoc` "What changed vs
+  a3487cc".
+| **Genuinely mixed, not uniformly staged.** `src/logic.affine` (pure
+  decision logic) is really type-checked, really compiled, and really
+  tested: `affinescript check` passes, `affinescript compile --deno-esm`
+  produced the committed `dist/logic.deno.js`, and `deno run --allow-read
+  dist/logic.harness.mjs` passes 19 assertions — all genuinely run this
+  session (transcript in `assets/gossamer-ui/README.adoc` "AffineScript
+  verification"), against a real `affinescript` 0.1.1 compiler found on
+  `PATH` in the authoring environment (contradicting the earlier assumption,
+  inherited from `a3487cc`, that no such compiler was available anywhere).
+  `dist/ui.mjs` (hand-written DOM + `NeurophoneBridge` wiring — deliberately
+  *not* AffineScript, see its file header) passes `deno check`/`deno lint`
+  cleanly but has not run in a real WebView (no Android SDK/NDK/emulator
+  here). `index.html`/`styles.css` are static assets, visually unverified.
+
+| #115 (delete legacy `android/` Kotlin tree)
+| Nothing to do — already true. Re-verified this session, see below.
+| `git ls-files -- 'android/**/*.kt' 'android/**/*.kts'` (pre-this-PR) returns
+  empty; `Language Policy Enforcement` and `governance / Language / package
+  anti-pattern policy` are both green on `main` already. Not force-closing
+  the issue — left for the owner per the task brief.
+|===
+
+No changes were made to any of the seven core Rust crates
+(`lsm`/`esn`/`bridge`/`sensors`/`llm`/`claude-client`/`neurophone-core`) or to
+`crates/neurophone-android` — the 11-method JNI ABI these shims call was
+already complete and merged (issue #110) before this PR; verified by reading
+`crates/neurophone-android/src/{lib,state,error,sensor_map}.rs` directly
+rather than assuming the RFC/audit doc's historical description.
+
+== Design notes (why this PR looks different from the RFC)
+
+=== 1. No gossamer Zig/Idris2 core is vendored
+
+Sub-issue #109 describes hosting the UI "via the JNI bridge (per gossamer
+`src/interface/abi/Types.idr`)". This PR does **not** link gossamer's Zig
+FFI layer (`webview_android.zig`) or its Idris2 ABI into neurophone. Doing so
+would mean vendoring gossamer's build (Zig + Idris2 toolchains, its own
+`libgossamer.so`) as a neurophone build dependency, which is unbuildable in
+this environment (no such toolchain wired into neurophone's `Cargo.toml`
+workspace, no NDK to link an Android `.so` at all) and is out of scope for
+this migration on its own.
+
+Instead, `NeurophoneActivity`/`NeurophoneBridge` reuse gossamer's *proven
+Java-side pattern* directly: `hyperpolymath/gossamer
+android/src/main/java/io/gossamer/GossamerActivity.java` (full-screen
+`WebView`, hardened `WebSettings`, one JS-interface object, careful
+`onDestroy`) and `GossamerBridge.java` (one `@JavascriptInterface` class
+added via `addJavascriptInterface`) — verified by reading both files
+directly. `android.webkit.WebView` is used from Java without any native
+Zig layer in between, which is, in fact, exactly what gossamer's own
+`webview_android.zig` itself ultimately calls into via JNI — so this cuts a
+native-code layer we cannot build here, rather than skipping something
+gossamer would otherwise provide.
+
+=== 2. Synchronous bridge, not gossamer's async IPC
+
+gossamer's real injected bridge (`hyperpolymath/gossamer
+src/interface/ffi/src/main.zig`, lines ~2013-2091) is
+`window.gossamer`/`window.__gossamer_invoke(name, payload) => Promise`,
+routed through a Zig-side command-dispatch/bindings map, resolved later via
+`evaluateJavascript`. Since this migration doesn't vendor that dispatcher,
+`NeurophoneBridge` instead exposes each `NativeLib` call as a directly
+callable, synchronous `@JavascriptInterface` method — a legitimate, simpler
+Android idiom (`addJavascriptInterface` calls block the JS thread and return
+values synchronously) that fits neurophone's actual situation: every
+`NativeLib` call is already a fast in-process JNI call with no
+cross-process queue to wait on. `dist/ui.mjs` reflects this directly (no
+`Promise`/`await` plumbing around the bridge calls).
+
+A further, more fundamental correction only discoverable with a working
+compiler in hand: `a3487cc`'s `bridge.affine` modelled the bridge as a
+*typed extern object* (`extern let host: { invoke: (...) -> ... }`). The
+real `affinescript` compiler's deno-esm backend cannot express that at all
+— its `extern fn` lowering (`lib/codegen_deno.ml`) only supports a
+compiler-maintained intrinsic table or a bare same-named global function
+call, never an arbitrary `obj.method(args)`. Combined with this compiler's
+stdlib documenting that it has no typed DOM binding yet either
+(`stdlib/Canvas.affine`: blocked on `affinescript-dom`, issue #255), the
+bridge/DOM layer is not expressible in AffineScript today at all — so this
+PR draws the line differently from `a3487cc`: `src/logic.affine` holds only
+the pure decision logic (genuinely compiled + tested, see
+`assets/gossamer-ui/README.adoc` "AffineScript verification"), and
+`dist/ui.mjs` is a hand-written harness around it, mirroring the upstream
+compiler's own `tests/codegen-deno/*.harness.mjs` test convention rather
+than inventing a new pattern.
+
+This is also, concretely, why neurophone's *own* prior AffineScript UI
+attempt (`a3487cc`) had to be corrected rather than reused verbatim: it
+assumed the gossamer async contract above and an extern shape the compiler
+doesn't support, neither of which could have been checked at the time (no
+compiler on hand). See `assets/gossamer-ui/README.adoc` "What changed vs
+a3487cc" for the `SystemConfig` shape correction too.
+
+=== 3. RFC Q6 ("contribute upstream to gossamer") was never executed — verified, and superseded here
+
+`docs/migrations/RFC-ANDROID-KOTLIN-TO-RUST.adoc` Q6 resolved (2026-06-02)
+to build a `gossamer-android-services` companion module upstream in
+`hyperpolymath/gossamer` with four shim base classes (`Service` /
+`BroadcastReceiver` / `AppWidgetProvider` / `Activity`), with neurophone's
+shims becoming thin subclasses of those.
+
+Re-checked directly against `hyperpolymath/gossamer` this session: that
+companion module does not exist. gossamer's Android surface is exactly
+`GossamerActivity` + `GossamerBridge`, nothing else. Q6 was resolved but
+never implemented.
+
+Rather than block this migration on filing and landing a new upstream
+gossamer PR (out of scope for a neurophone-only change), this PR reverts to
+the RFC's originally-proposed **Path (A)**: hand-written Java shims under
+`android/` extending Android framework classes (`Service`,
+`BroadcastReceiver`, `AppWidgetProvider`, `Activity`) directly. If a genuine
+gossamer companion module lands upstream later, these shims are small enough
+to re-point as a follow-up.
+
+=== 4. Directory layout: `android/app/src/main/java/...`, not the RFC's flat `android/src/main/java/...`
+
+The RFC's component table (and Q6) describe shims living at
+`android/src/main/java/ai/neurophone/` — matching gossamer's own flat layout
+(`android/src/main/java/io/gossamer/`). This PR uses
+`android/app/src/main/java/ai/neurophone/` instead (the `app/`-module shape
+the *legacy* Kotlin tree used), for two independently-verified reasons:
+
+. **The live estate CI carve-out requires it.** The Java/Kotlin ban's
+  exemption in `hyperpolymath/standards`
+  `.github/workflows/governance-reusable.yml` (RFC Q1, `standards#341`,
+  landed 2026-06-02) is the shell regex
+  `git ls-files '*.java' '*.kt' '*.kts' '*.groovy' | grep -vE '(^|/)android/.*/src/.*\.java$'`.
+  Tested directly: `android/app/src/main/java/ai/neurophone/NativeLib.java`
+  matches this pattern (exempt); the RFC's own proposed flat
+  `android/src/main/java/ai/neurophone/NativeLib.java` does **not** — there
+  is no `/src/` substring left over once `android/` is consumed, because
+  there's no intervening path segment. This is a real, verifiable
+  discrepancy between the RFC's own proposed layout and the CI rule the RFC
+  itself caused to be written; worth a maintainer's eyes even though it
+  doesn't block this PR (this PR uses the layout that actually satisfies the
+  rule).
+. **Existing, already-committed tooling assumes it.** `scripts/build-android.sh`
+  (untouched by this PR) already hard-codes
+  `ANDROID_APP="$PROJECT_ROOT/android/app"` and copies built `.so` files to
+  `$ANDROID_APP/src/main/jniLibs/<abi>/`; `scripts/install-on-phone.sh`
+  (also untouched) invokes `(cd android && ./gradlew :app:assembleRelease)`.
+  Both predate this PR and both assume the `android/app/` shape, not the
+  RFC's flat one.
+
+=== 5. No Gradle build was added
+
+The RFC (Q4) resolved to keep Gradle, just switch DSL flavour
+(Kotlin `*.gradle.kts` &rarr; Groovy `*.gradle`), reasoning that "Gossamer's
+existing `android/` directory uses raw Gradle". Re-checked directly: it does
+not — `hyperpolymath/gossamer android/` contains exactly two Java files and a
+README, no Gradle files at all. That premise was wrong.
+`scripts/install-on-phone.sh` still assumes a Gradle wrapper
+(`./gradlew :app:assembleRelease`) that has never existed in this repo's
+`android/` tree in the form this PR restores it (the legacy Kotlin tree's own
+`*.gradle.kts` files are gone from history's most recent state too). Adding
+speculative Gradle build files with no way to invoke or verify them here (no
+Gradle/NDK/Android-SDK in this environment) would be unverifiable ceremony,
+so none were added. Building an installable APK remains an explicit follow-up
+gated on real Android tooling, not something this PR claims to have solved.
+
+== Hygiene: stale `.hypatia-baseline.json` / `.hypatia-ignore` entries
+
+Both files carried entries for the legacy Kotlin/Gradle paths (tracking
+issue #97), which no longer exist. This PR updates both to reference the new
+Java shim paths added here and to point at this PR's issues instead, rather
+than leaving dead references sitting next to newly-added live ones. See the
+PR description for the exact diff.
+
+== What would still be needed for a real, installable build
+
+* An Android SDK + NDK (`cargo-ndk` or equivalent) to cross-compile
+  `crates/neurophone-android` and produce `libneurophone_android.so` for
+  `arm64-v8a`/`armeabi-v7a`/`x86_64` — `scripts/build-android.sh` already
+  handles this gracefully when absent (falls back to a host-only build), but
+  actually producing the `.so` needs the toolchain.
+* Either a Gradle module (`android/build.gradle`, `android/settings.gradle`,
+  `android/app/build.gradle`, matching RFC Q4's Groovy-DSL decision) or some
+  other non-Gradle native Android packaging path, wired to
+  `scripts/install-on-phone.sh`'s existing `./gradlew :app:assembleRelease`
+  expectation (or a replacement of that expectation).
+* The `affinescript` compiler vendored somewhere reachable by CI (it was
+  found on `PATH` in this authoring environment and genuinely used — see
+  `assets/gossamer-ui/README.adoc` "AffineScript verification" — but nothing
+  in CI currently re-runs `bash build.sh` / `deno task test:ui` to catch
+  drift between `src/logic.affine` and the committed `dist/logic.deno.js`).
+* `affinescript-dom` (or equivalent) landing upstream, so the DOM/bridge
+  wiring currently hand-written in `dist/ui.mjs` could move into typed
+  AffineScript too — out of neurophone's control, tracked upstream in
+  `hyperpolymath/affinescript` issue #255.
+* Device/emulator verification of the full lifecycle (service start/stop,
+  boot-restart, widget render/toggle, webview query round-trip) — none of
+  which could be exercised in this authoring environment.
+
+None of the above blocks this PR from being reviewed as a real, honest step:
+the JNI ABI it calls into is genuinely merged and tested; `src/logic.affine`
+is genuinely type-checked, compiled, and behaviourally tested; the
+Java/hand-written-JS it adds is genuinely new source reviewed for
+platform-API correctness, just not yet run in a real WebView or on a
+device.

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+SPDX-License-Identifier: MPL-2.0
+SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell
+
+Recovered near-verbatim from the pre-deletion legacy tree (`git show
+f389983^:android/app/src/main/res/drawable/widget_background.xml`); no
+behavioural content, so nothing to re-adapt for the Rust/Gossamer migration.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient
+        android:angle="135"
+        android:startColor="#1A237E"
+        android:endColor="#283593" />
+    <corners android:radius="18dp" />
+    <stroke android:width="1dp" android:color="#3F51B5" />
+</shape>

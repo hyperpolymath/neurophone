@@ -1,0 +1,147 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell
+= Webview UI (AffineScript pure logic + hand-written harness)
+:toc:
+
+NeuroSymbolic Phone user interface, loaded by `NeurophoneActivity`'s
+`WebView`. Part of the Android Kotlin&rarr;Rust migration (epic #83,
+sub-issue #114).
+
+This supersedes neurophone's own prior attempt at this exact sub-issue
+(commit `a3487cc`, "AffineScript UI in the Gossamer webview", later deleted
+in the Kotlin-removal wave `f389983`), and corrects two things that attempt
+got wrong (or never got to verify, since the `affinescript` compiler was
+assumed unvendored at the time) — see "What changed vs a3487cc" below.
+
+It replaces the Kotlin UI that lived in:
+
+* `android/app/src/main/java/ai/neurophone/MainActivity.kt` (view/controller)
+* `android/app/src/main/res/layout/activity_main.xml` (layout)
+
+Both are gone from the tree (deleted in `f389983`); recoverable via
+`git show f389983^:<path>` for reference.
+
+== Layout
+
+[source]
+----
+gossamer-ui/
+  index.html            webview entry; element ids match dist/ui.mjs queries
+  styles.css            visual parity with the deleted activity_main.xml
+  deno.json              Deno tasks: build/check/fmt/test
+  build.sh               compiles src/logic.affine -> dist/logic.deno.js, runs the harness
+  src/
+    logic.affine         pure decision logic — REAL compiled AffineScript
+  dist/
+    logic.deno.js        genuine `affinescript compile --deno-esm` OUTPUT (committed)
+    logic.harness.mjs     regression test for logic.deno.js (deno run --allow-read)
+    ui.mjs                hand-written DOM + NeurophoneBridge harness (NOT compiled)
+----
+
+== What changed vs a3487cc
+
+`a3487cc` assumed two things that don't hold, both caught by re-verifying
+against the current tree / a real compiler rather than trusting the old PR
+description:
+
+. *Config shape.* It modelled the config as nested
+  (`loop_interval_ms` / `debug` / `sensor{...}` / `lsm{...}` / `esn{...}`),
+  matching the legacy Kotlin `MainActivity.createConfig()`. The current
+  `crates/neurophone-core::SystemConfig` is flat:
+  `sample_rate` / `window_size_ms` / `local_threshold` /
+  `max_response_time_ms`. `src/logic.affine`'s `NeuralConfig` mirrors that
+  flat shape field-for-field, and `dist/logic.harness.mjs` asserts the
+  compiled `configToJson()` output matches it exactly.
+. *Bridge transport.* It assumed gossamer's own generic async IPC bridge
+  (`globalThis.gossamer.invoke(cmd, args): Promise<string>`). This migration
+  does not vendor gossamer's Zig core (see `android/README.adoc` "Design
+  notes"), so there is no such bridge; the webview talks directly and
+  *synchronously* to `window.NeurophoneBridge` (`NeurophoneBridge.java`,
+  registered by `NeurophoneActivity`).
+
+Additionally — a discovery this attempt made that `a3487cc` had no way to
+make, because it never had a working compiler to check against — `a3487cc`'s
+`bridge.affine` assumed a typed `extern let host: { invoke: (...) -> ... }`
+*record-of-functions* shape was expressible as an AffineScript extern. It
+is not, as of the real `affinescript` compiler available in this session:
+the deno-esm backend's `extern fn` lowering (`lib/codegen_deno.ml` in
+`hyperpolymath/affinescript`) only supports a compiler-maintained intrinsic
+table or a bare same-named global *function* call, never an arbitrary
+caller-supplied `obj.method(args)`. See "AffineScript verification" below
+and `src/logic.affine`'s file header for the full explanation and the
+architecture this leads to (pure logic compiled, DOM/bridge wiring
+hand-written).
+
+== AffineScript verification
+
+Unlike `a3487cc` (which shipped a hand-written stub because "the
+`affinescript` compiler is not yet vendored... in this repo or CI"), the
+authoring environment for *this* PR had a real, working `affinescript`
+compiler (`hyperpolymath/affinescript`, version 0.1.1) on `PATH`. This was
+used for real, not assumed absent:
+
+[source,sh]
+----
+$ affinescript check src/logic.affine
+Type checking passed
+
+$ affinescript compile --deno-esm -o dist/logic.deno.js src/logic.affine
+Compiled src/logic.affine -> dist/logic.deno.js (Deno-ESM)
+
+$ deno run --allow-read dist/logic.harness.mjs
+logic.harness.mjs OK — 19 assertions passed
+----
+
+`dist/logic.deno.js` committed in this PR **is that real compiler output**,
+not a hand-written stand-in — diff it against a fresh
+`affinescript compile --deno-esm` run any time the compiler or
+`src/logic.affine` changes (`bash build.sh` does exactly this, then re-runs
+the harness). `dist/logic.harness.mjs` is a genuine regression test (uses
+`node:assert/strict` under Deno, mirroring the upstream compiler's own
+`tests/codegen-deno/*.harness.mjs` convention) and was actually executed in
+this session with the transcript above.
+
+`dist/ui.mjs` (the DOM + `NeurophoneBridge` wiring) and
+`dist/logic.harness.mjs` are **not** compiler output — see their own file
+headers for exactly why AffineScript can't express them yet (no typed DOM
+binding; no arbitrary-object-method extern lowering).
+
+`affinescript fmt src/logic.affine` was also tried; it currently exits 125
+with `Failure("Code formatting not yet implemented")` — an upstream compiler
+gap (see `build.sh`'s `--fmt` branch), not something this PR works around.
+
+== What the UI does (ported 1:1 from MainActivity)
+
+* On load: builds the config, `NeurophoneBridge.init(configJson)`.
+* Start/Stop button toggles the neural loop
+  (`NeurophoneBridge.start`/`.stop`).
+* While running: polls `NeurophoneBridge.getNeuralContext()` every 500ms and
+  renders it (placeholder text supplied by the compiled
+  `neuralContextOrPlaceholder`).
+* Query box + Send: `NeurophoneBridge.query(message, preferLocal)`; "Prefer
+  Local" toggle routes smart/local/cloud.
+
+Sensor *acquisition* is intentionally NOT in this UI: the foreground
+`NeurophoneService` (Java, sub-issue #111) registers Android sensors
+natively and feeds the core directly.
+
+== Verification status
+
+*Mixed — some genuinely verified, some staged.* `src/logic.affine` is
+genuinely type-checked, compiled, and behaviourally tested (transcript
+above; re-run any time with `deno task test:ui`). `dist/ui.mjs` (DOM +
+bridge wiring) passes `deno check`/`deno lint` cleanly but has not been
+exercised in a real WebView — no Android SDK/NDK/emulator in the authoring
+environment (see `android/README.adoc`). `index.html`/`styles.css` are
+static assets, visually unverified (no browser/WebView run in this
+session).
+
+== Language policy
+
+AffineScript (`src/logic.affine`, primary application logic) + a
+hand-written DOM/bridge harness in plain JS (`dist/ui.mjs`) + HTML/CSS + a
+Deno-run Bash build script. No TypeScript, Node, or npm. `dist/ui.mjs` and
+`dist/logic.harness.mjs` are not "a compiler-output stub standing in for
+AffineScript we couldn't compile" (that was `a3487cc`'s situation) — they
+are hand-written by design, for the DOM/bridge surface this compiler
+doesn't reach yet; `dist/logic.deno.js` is the actual compiled artifact.

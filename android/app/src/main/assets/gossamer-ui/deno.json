@@ -1,0 +1,20 @@
+{
+  "//": "SPDX-License-Identifier: MPL-2.0",
+  "//license": "deno.json carries SPDX via this key; JSON has no comment syntax.",
+  "//purpose": "Deno-based build/check/test tasks for the AffineScript pure-logic module + its hand-written harness. No npm/Node — Deno only, per estate language policy.",
+  "tasks": {
+    "build:ui": "bash build.sh",
+    "check:ui": "bash build.sh --check-only",
+    "fmt:ui": "bash build.sh --fmt",
+    "test:ui": "deno run --allow-read dist/logic.harness.mjs"
+  },
+  "fmt": {
+    "include": ["index.html", "styles.css"],
+    "exclude": ["dist/"]
+  },
+  "lint": {
+    "include": ["dist/ui.mjs", "dist/logic.harness.mjs"],
+    "exclude": ["dist/logic.deno.js"]
+  },
+  "//toolchain": "AffineScript compiler (OCaml/Dune, hyperpolymath/affinescript) is invoked by build.sh, not by Deno. dist/logic.deno.js is genuine compiler output (verified this session — see android/README.adoc); dist/ui.mjs and dist/logic.harness.mjs are hand-written (see their file headers for why). `deno task test:ui` re-runs the harness against whatever dist/logic.deno.js is currently checked in."
+}
