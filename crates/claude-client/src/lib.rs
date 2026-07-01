@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 //! Claude API Client - Cloud Connection
 //!
 //! Connects to Claude (Anthropic's AI) for advanced reasoning

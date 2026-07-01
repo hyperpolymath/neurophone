@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 //! Liquid State Machine (LSM) - Spiking Neural Network Reservoir
 //!
 //! Implements a biologically-inspired spiking neural network using
