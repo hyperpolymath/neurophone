@@ -81,10 +81,55 @@ proof-tla:
     cd proofs/tla
     java -XX:+UseParallelGC -cp "$jar" tlc2.TLC -config Lifecycle.cfg Lifecycle.tla
 
+# Type-check the Lean 4 Echo State Property proof (obligation 1.1, issue
+# #84, `proofs/lean/EsnEcho.lean`). Self-skips (non-fatal) if `lake` (elan)
+# isn't on PATH. First run needs network access to fetch the pinned Mathlib
+# revision (see `proofs/lean/lake-manifest.json`); later runs reuse the
+# local `.lake/` cache.
+proof-lean:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if ! command -v lake >/dev/null 2>&1; then
+        echo "proof-lean: lake not found — skipping Lean check (spec unchanged)"; exit 0
+    fi
+    cd proofs/lean && lake build
+
+# Verify the Dafny LSM-bounded-dynamics proof (obligation 1.2, issue #84,
+# `proofs/dafny/LsmBoundedDynamics.dfy`). Uses a system `dafny` if present;
+# otherwise fetches a pinned, checksum-verified, self-contained release into
+# `.dafnycache/` on first run. Self-skips (non-fatal) if no system `dafny`
+# is found and the download isn't possible (offline / no permissions), so
+# it degrades gracefully in minimal/offline environments.
+proof-dafny:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if command -v dafny >/dev/null 2>&1; then
+        dafny verify proofs/dafny/LsmBoundedDynamics.dfy
+        exit 0
+    fi
+    version=4.11.0
+    sha256=a46a9ff7cdd720f7955854c78e95df13f4cfe6b80691b05f8654fe19e8267179
+    dir="$(pwd)/.dafnycache/dafny-${version}"
+    bin="${dir}/dafny/dafny"
+    if [ ! -x "$bin" ]; then
+        zip="$(pwd)/.dafnycache/dafny-${version}.zip"
+        mkdir -p "$dir"
+        if ! curl -fsSL -o "$zip" \
+          "https://github.com/dafny-lang/dafny/releases/download/v${version}/dafny-${version}-x64-ubuntu-22.04.zip"; then
+            echo "proof-dafny: could not download Dafny (offline?) — skipping"; exit 0
+        fi
+        echo "${sha256}  ${zip}" | sha256sum -c - || {
+            echo "proof-dafny: checksum mismatch on downloaded release, aborting"; exit 1
+        }
+        unzip -q "$zip" -d "$dir"
+    fi
+    "$bin" verify proofs/dafny/LsmBoundedDynamics.dfy
+
 # Run the full proof surface: property tests + compile-fail typestate doc-tests
-# (via `cargo test`) plus the TLA+ model check.
-proof: test proof-tla
-    @echo "Proof surface checked (properties, typestate compile-fails, TLC)."
+# (via `cargo test`) plus the TLA+ model check, the Lean type-check, and the
+# Dafny verification.
+proof: test proof-tla proof-lean proof-dafny
+    @echo "Proof surface checked (properties, typestate compile-fails, TLC, Lean, Dafny)."
 
 # Quality gates (RSR golden path `just test && just quality`).
 quality: fmt-check lint audit

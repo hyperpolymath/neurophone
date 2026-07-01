@@ -225,8 +225,8 @@ artifacts:
   - id: "0.1" ; name: "Panic-freedom (operational paths)" ; system: "proptest" ; file: "crates/*/tests/proptest_*.rs, neurophone-core/tests/proptest_core.rs" ; status: "TESTED"
   - id: "0.2" ; name: "Numeric containment (no NaN/Inf)"   ; system: "proptest" ; file: "crates/*/tests/proptest_numeric.rs, proptest_core.rs"                  ; status: "TESTED"
   - id: "0.3" ; name: "unsafe discipline"                  ; system: "rustc"    ; file: "forbid/deny(unsafe_code) across crates"                                ; status: "PROVEN"
-  - id: "1.1" ; name: "Echo State Property"                ; system: "Lean/TLA" ; file: "proofs/lean/, proofs/tla/"                                             ; status: "DESIGNED"
-  - id: "1.2" ; name: "LSM bounded dynamics"               ; system: "proptest/Dafny" ; file: "crates/lsm/tests/proptest_bounds.rs"                             ; status: "TESTED"
+  - id: "1.1" ; name: "Echo State Property (contraction, ‖W‖∞ hypothesis)" ; system: "Lean 4 + Mathlib" ; file: "proofs/lean/EsnEcho.lean" ; status: "PROVEN"
+  - id: "1.2" ; name: "LSM bounded dynamics (membrane-potential ceiling)" ; system: "proptest + Dafny" ; file: "crates/lsm/tests/proptest_bounds.rs, proofs/dafny/LsmBoundedDynamics.dfy" ; status: "PROVEN"
   - id: "1.3" ; name: "Bridge soundness"                   ; system: "proptest" ; file: "crates/bridge/tests/proptest_soundness.rs"                             ; status: "TESTED"
   - id: "2.1" ; name: "Lifecycle state-machine safety"     ; system: "TLA+ (TLC)" ; file: "proofs/tla/Lifecycle.{tla,cfg}"                                      ; status: "PROVEN"
   - id: "2.2" ; name: "Concurrency safety"                 ; system: "TLA+"     ; file: "(deferred: single-owner design, no shared concurrency)"                ; status: "DESIGNED"
@@ -234,12 +234,13 @@ artifacts:
   - id: "3.1" ; name: "Data-egress / privacy"              ; system: "proptest + conative-gating" ; file: "crates/claude-client/src/egress_gate.rs (wired into create_message), egress_integration_tests" ; status: "TESTED"
   - id: "3.2" ; name: "Bounded external interaction"       ; system: "proptest/contract" ; file: "claude-client: capped backoff + bounded retries (backoff_is_bounded_and_monotonic, total_retry_budget_is_finite)" ; status: "TESTED"
 open_obligations:
-  - "1.1 formal contraction proof (precondition holds; theorem pending)"
-  - "1.2 formal Dafny bound (property evidence exists)"
+  - "1.1 bridge lemma: spectral_radius(W) < 1 (what esn::scale_to_spectral_radius actually enforces) does NOT in general imply ‖W‖∞ < 1 (the Lean theorem's hypothesis) for non-normal matrices — the contraction theorem itself is proven (proofs/lean/EsnEcho.lean), but this connecting lemma is a separate, harder, unattempted result (would need a Gelfand's-formula-style construction)."
+  - "1.2 the two-sided [reset, threshold] membrane-potential bound is FALSE in general (see the LowerBoundFails counterexample in proofs/dafny/LsmBoundedDynamics.dfy) — only the one-sided ceiling bound is provable and is now proven; the exact-real-vs-f32 gap and the spike-history-length bound (crates/lsm/tests/proptest_bounds.rs's third invariant) remain open, not attempted in Dafny this pass."
   - "2.2 concurrency spec (N/A until shared concurrency exists)"
   - "3.1 caller-declared classification honesty (EgressClass is asserted by the caller, not derived from an independent sensor-provenance tracker); no formal (non-property) proof yet"
 non_claims:
-  - "neurophone does NOT yet claim a machine-checked Echo State Property (1.1)."
+  - "neurophone's 1.1 Lean proof (proofs/lean/EsnEcho.lean) establishes the classical reservoir contraction / echo-state theorem under a ‖W‖∞ < 1 hypothesis; it does NOT claim — and this is false in general for non-normal matrices — that the code's actual spectral-radius scaling implies that hypothesis. The code-to-theorem bridge is a separate, still-open lemma."
+  - "neurophone's 1.2 Dafny proof (proofs/dafny/LsmBoundedDynamics.dfy) establishes only a one-sided (ceiling) bound on membrane potential; it does NOT claim a lower (floor) bound (a Dafny counterexample refutes one), and it does not model f32 floating-point rounding, subnormals, or overflow."
   - "neurophone's egress veto (3.1) enforces policy on a caller-declared payload classification; it does NOT independently verify that classification against real sensor provenance, and it is NOT a formally-proven (only property-tested) guarantee."
 
 ---

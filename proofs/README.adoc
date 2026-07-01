@@ -18,8 +18,8 @@ the index from each obligation to the artefact that discharges it.
 |===
 | Tool | Directory | Obligations
 | TLA+ (TLC)        | `proofs/tla/`   | 2.1 lifecycle *(checked)*; 2.2/3.1 specs deferred
-| Lean / Coq        | `proofs/lean/`  | 1.1 echo state property, 1.3 bridge soundness (spec)
-| Dafny / F*        | `proofs/dafny/` | 1.2 LSM bounded dynamics, 0.2 numeric containment (spec)
+| Lean / Coq        | `proofs/lean/`  | 1.1 echo state property *(checked, `‖W‖∞` hypothesis — see NOTE)*; 1.3 bridge soundness (spec)
+| Dafny / F*        | `proofs/dafny/` | 1.2 LSM bounded dynamics *(checked, ceiling half — see NOTE)*; 0.2 numeric containment (spec)
 | proptest          | (in `crates/`)  | executable evidence for 0.1, 0.2, 1.2, 1.3, 3.1 (veto enforcement), 3.2
 | compile-fail tests| `neurophone-core` doc-tests | 2.1 (type level) + 2.3 release-once
 |===
@@ -39,8 +39,8 @@ by property tests over the operational paths; *open* = honest gap, never faked.
 | 0.1 | Panic-freedom on operational paths              | *property* — `esn`/`sensors`/`lsm` numeric suites + `neurophone-core/tests/proptest_core.rs`
 | 0.2 | Numeric containment (no NaN/Inf, no overflow)   | *property* — `*/tests/proptest_numeric.rs` (#87) + `proptest_core.rs`
 | 0.3 | `unsafe` discipline (`deny`/`forbid` all crates) | *done*
-| 1.1 | Echo State Property (reservoir is a contraction)| *open* — the implementation prerequisite holds (see the `spectral_radius` NOTE); the formal contraction proof is pending.
-| 1.2 | LSM bounded dynamics                            | *property* — `lsm/tests/proptest_bounds.rs`; formal Dafny bound *open*
+| 1.1 | Echo State Property (reservoir is a contraction)| *checked* (Lean, sorry-free) — `proofs/lean/EsnEcho.lean` proves `update` is a contraction (constant `(1-a)+a·ρ<1`) and that iterating it forgets the initial state, under the classical `‖W‖∞ < 1` hypothesis. *Open*: the bridge from the code's actual invariant (spectral radius, via `estimate_spectral_radius`) to this hypothesis — see NOTE.
+| 1.2 | LSM bounded dynamics                            | *checked* (Dafny, no assume/axiom) + *property* — `proofs/dafny/LsmBoundedDynamics.dfy` proves the membrane potential never exceeds threshold over an arbitrary-length run; `lsm/tests/proptest_bounds.rs` checks this empirically over `f32`. *Corrected*: the two-sided `[reset, threshold]` bound this table previously implied is **false** in general (Dafny counterexample `LowerBoundFails`) — only the ceiling half is provable. *Open*: exact-real-vs-`f32` gap; spike-history-length bound not attempted in Dafny.
 | 1.3 | Bridge soundness (neural→symbolic)              | *property* — `bridge/tests/proptest_soundness.rs` (#90); salience-ordering semantics *open*
 | 2.1 | Lifecycle state-machine safety                  | *checked* — TLC on `tla/Lifecycle.{tla,cfg}` (no error; 13 states) + 3 compile-fail typestate doc-tests
 | 2.2 | Concurrency safety (no deadlock)                | *open* — N/A under the current single-owner (`&mut`) design; TLA+ spec deferred until shared concurrency exists
@@ -51,16 +51,47 @@ by property tests over the operational paths; *open* = honest gap, never faked.
 
 [NOTE]
 ====
-*`spectral_radius` realisation (1.1).* An earlier version applied
-`EsnConfig.spectral_radius` as a plain scale factor (matrix infinity-norm), which
-only *bounds* the true spectral radius from above — so the configured value was
-never actually realised. That is now fixed: `esn::EchoStateNetwork` estimates the
-true spectral radius by power iteration (`estimate_spectral_radius`) and scales
-the reservoir to hit the target (`scale_to_spectral_radius`), covered by a unit
-test. The Echo State Property's *precondition* (spectral radius `< 1`) therefore
-holds in code; what remains *open* for 1.1 is the formal proof that this
-precondition implies the contraction / echo-forgetting property. Tracked under
-issue #84 / #88.
+*`spectral_radius` realisation and the Lean proof (1.1).* An earlier version
+applied `EsnConfig.spectral_radius` as a plain scale factor (matrix
+infinity-norm), which only *bounds* the true spectral radius from above — so
+the configured value was never actually realised. That is now fixed:
+`esn::EchoStateNetwork` estimates the true spectral radius by power iteration
+(`estimate_spectral_radius`) and scales the reservoir to hit the target
+(`scale_to_spectral_radius`), covered by a unit test (issue #88, closed).
+
+`proofs/lean/EsnEcho.lean` now formally proves (Lean 4 + Mathlib, no `sorry`)
+that the reservoir update is a contraction — *given* the classical sufficient
+condition `‖W‖∞ < 1` (max absolute row sum), which is also what the field
+generally uses. What remains genuinely *open* is a **different, harder**
+statement: that the code's actual invariant (`spectral_radius(W) < 1`, via
+power iteration) implies `‖W‖∞ < 1`. For a general (non-normal) matrix the
+spectral radius can be strictly smaller than every induced operator norm —
+e.g. a nilpotent matrix has spectral radius `0` but arbitrary infinity norm —
+so this bridge is **not true in full generality**, and is a known subtlety in
+reservoir computing (spectral radius `< 1` is the field's standard
+*heuristic*, not, by itself, a sufficient condition for every non-normal
+reservoir — see Yildiz, Jaeger & Kiebel 2012). Proving a correct (necessarily
+weaker/asymptotic — Gelfand's-formula-flavoured) version of this bridge is
+future work; the Lean file's header comment gives the precise mathematical
+reason it was not attempted this pass. Tracked under issue #84 / #88.
+====
+
+[NOTE]
+====
+*The membrane-potential bound is one-sided, not two-sided (1.2).* An earlier
+version of this corpus's obligation text (in `proofs/dafny/README.adoc`)
+described the LSM membrane-potential invariant as a *two-sided* bound,
+`v ∈ [reset, threshold + ε]`. `proofs/dafny/LsmBoundedDynamics.dfy` shows this
+was an overclaim: the Rust `total_current` (input- and recurrent-weighted
+sum) is never clamped, so a sufficiently negative current drives the updated
+potential arbitrarily far *below* `v_reset` in one step — there is a ceiling
+(the threshold-crossing reset) but no floor. The Dafny file's
+`LowerBoundFails` lemma proves this with a concrete counterexample rather
+than merely asserting it. The corrected, honestly-provable (and now
+Dafny-*proven*) claim is one-sided: the potential never exceeds `v_thresh`,
+for any run of any length and any (unrestricted) input-current sequence —
+which is also all that `crates/lsm/tests/proptest_bounds.rs` actually checks
+(it never asserts a lower bound). Tracked under issue #84 / #89.
 ====
 
 == Reproducing
@@ -69,6 +100,14 @@ issue #84 / #88.
 * TLA+ model check: `just proof-tla` (fetches `tla2tools.jar` into `.tlacache/`
   on first run; self-skips if `java` is absent). Direct form:
   `java -cp tla2tools.jar tlc2.TLC -config proofs/tla/Lifecycle.cfg proofs/tla/Lifecycle.tla`.
+* Lean check (obligation 1.1): `just proof-lean` (or `cd proofs/lean && lake
+  build`; self-skips if `lake`/elan is absent). First run needs network
+  access to fetch the pinned Mathlib revision in
+  `proofs/lean/lake-manifest.json`.
+* Dafny check (obligation 1.2): `just proof-dafny` (uses a system `dafny` if
+  present, else fetches a pinned, checksum-verified, self-contained Dafny
+  4.11.0 release into `.dafnycache/`; self-skips if neither is available).
+  Direct form: `dafny verify proofs/dafny/LsmBoundedDynamics.dfy`.
 
 == Ground rules
 
