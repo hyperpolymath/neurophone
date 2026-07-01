@@ -62,6 +62,34 @@ update:
 audit:
     cargo audit
 
+# Model-check the TLA+ lifecycle proof (obligation 2.1, issue #84). Fetches
+# tla2tools.jar on first run into .tlacache/; self-skips (non-fatal) when java
+# is unavailable so it degrades gracefully in minimal environments.
+proof-tla:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if ! command -v java >/dev/null 2>&1; then
+        echo "proof-tla: java not found — skipping TLC (spec unchanged)"; exit 0
+    fi
+    jar="${TLA2TOOLS_JAR:-$(pwd)/.tlacache/tla2tools.jar}"
+    if [ ! -f "$jar" ]; then
+        mkdir -p "$(dirname "$jar")"
+        echo "proof-tla: fetching tla2tools.jar…"
+        curl -fsSL -o "$jar" \
+          https://github.com/tlaplus/tlaplus/releases/download/v1.8.0/tla2tools.jar
+    fi
+    cd proofs/tla
+    java -XX:+UseParallelGC -cp "$jar" tlc2.TLC -config Lifecycle.cfg Lifecycle.tla
+
+# Run the full proof surface: property tests + compile-fail typestate doc-tests
+# (via `cargo test`) plus the TLA+ model check.
+proof: test proof-tla
+    @echo "Proof surface checked (properties, typestate compile-fails, TLC)."
+
+# Quality gates (RSR golden path `just test && just quality`).
+quality: fmt-check lint audit
+    @echo "Quality gates passed!"
+
 # All checks before commit
 pre-commit: fmt-check lint test
     @echo "All checks passed!"

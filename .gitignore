@@ -84,3 +84,6 @@ deps/
 .cache/
 build/
 dist/
+
+# TLA+ model-checker jar cache (fetched by `just proof-tla`)
+.tlacache/

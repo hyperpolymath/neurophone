@@ -1,6 +1,13 @@
 # SPDX-License-Identifier: MPL-2.0
-# Trustfile (A2ML Canonical)
+# Trustfile (human-facing companion — runnable integrity checks)
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)
+#
+# The CANONICAL machine-readable Trustfile (estate baseline v2026.2.5-final:
+# META / THREAT_MODEL / TRUSTFILE / PROOF_ARTIFACTS / CAPABILITY_GATEWAY /
+# CRYPTO_AGILITY / SIGNATURE_BLOCK / DEPLOYMENT) lives at
+# .machine_readable/contractiles/trust/Trustfile.a2ml and is validated by
+# .github/workflows/trustfile.yml. This companion keeps the fast, runnable
+# k9-style checks the estate tooling greps for.
 
 @abstract:
 Trust and provenance verification for Neurophone.
@@ -15,8 +22,8 @@ Maximal trust by default — LLM may read, build, test, lint, format.
 ## Integrity
 
 ### license-content
-- description: LICENSE contains expected SPDX identifier
-- run: grep -q 'SPDX\|License\|MIT\|Apache\|PMPL\|MPL' LICENSE
+- description: LICENSE is the expected MPL-2.0 (sole-owner repo)
+- run: grep -q 'Mozilla Public License\|MPL-2.0' LICENSE
 - severity: critical
 
 ### no-secrets-committed
