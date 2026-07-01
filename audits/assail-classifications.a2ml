@@ -1,0 +1,48 @@
+; SPDX-License-Identifier: MPL-2.0
+; assail-classifications.a2ml — user-classification registry for panic-attack.
+;
+; Flips audited-sound findings to `suppressed = true` AFTER the kanren
+; structural-suppression pass (see panic-attack src/assail/mod.rs ::
+; apply_user_classifications). Matching is exact on (file, category). This
+; registry lives apart from the source under scan, so a finding cannot
+; self-suppress — each entry is a reviewable companion change with a rationale
+; cross-referenced to audits/audit-install-scripts.adoc.
+;
+; All entries below are audited false positives; neurophone has 0 real
+; vulnerabilities (production: 0 unsafe, 0 panic sites, 0 injection, 0 crypto
+; misuse). The PanicPath findings are auto-suppressed (test/bench) and need no
+; classification here.
+;
+; The top-level identity/version fields below satisfy the estate a2ml-validate
+; gate (matching a2ml-ecosystem conformance/valid/sectioned-manifest.a2ml);
+; panic-attack's loader ignores everything outside `(classification …)` blocks,
+; so they do not affect suppression.
+
+project = "neurophone"
+schema_version = "1.0.0"
+
+[metadata]
+name = "assail-classifications"
+version = "1.0.0"
+
+(assail-classifications
+  (classification
+    (file "scripts/setup.sh")
+    (category "PathTraversal")
+    (audit "audits/audit-install-scripts.adoc §1")
+    (rationale "Android /data/local/tmp device-staging path (adb), not host /tmp"))
+  (classification
+    (file "scripts/install-on-phone.sh")
+    (category "PathTraversal")
+    (audit "audits/audit-install-scripts.adoc §1")
+    (rationale "adb push target on the device: /data/local/tmp/<model>, not host /tmp"))
+  (classification
+    (file "scripts/uninstall.sh")
+    (category "PathTraversal")
+    (audit "audits/audit-install-scripts.adoc §1")
+    (rationale "adb shell rm of the on-device model at /data/local/tmp, not host /tmp"))
+  (classification
+    (file "scripts/install-termux.sh")
+    (category "HardcodedSecret")
+    (audit "audits/audit-install-scripts.adoc §2")
+    (rationale "public HuggingFace model URL + commented sk-ant placeholder in a config template; no secret")))

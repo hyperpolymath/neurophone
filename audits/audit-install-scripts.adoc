@@ -1,0 +1,45 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= Audit: install/uninstall shell scripts — panic-attack residuals
+:toc:
+:revdate: 2026-07-01
+
+Companion audit for `audits/assail-classifications.a2ml`. Records why the
+`panic-attack assail` findings in the install/uninstall shell scripts are
+audited-sound false positives, so they may be classified `suppressed` in a
+reviewable, out-of-band way (per the panic-attack user-classification pattern —
+the registry lives apart from the source, so a finding cannot self-suppress).
+
+Scan of record: `panic-attack assail .` — 9 weak points, 0 real vulnerabilities.
+The 5 `PanicPath` findings are already auto-suppressed (test/bench code). The
+four production-script findings below are the audited residuals.
+
+== §1 PathTraversal — Android device-staging paths (not host `/tmp`)
+
+Files: `scripts/setup.sh`, `scripts/install-on-phone.sh`, `scripts/uninstall.sh`.
+
+The detector pattern-matched `/tmp/` inside `/data/local/tmp/`. That is **not**
+the host temp directory — it is the canonical Android **on-device** staging path
+used with `adb push` / `adb shell`, the standard location for pushing a model
+file to a phone:
+
+* `scripts/setup.sh` — an `echo` instruction: `Place in: /data/local/tmp/ on the device`.
+* `scripts/install-on-phone.sh` — `DEVICE_MODEL_PATH="/data/local/tmp/${MODEL_FILE}"`, the `adb push` target on the device.
+* `scripts/uninstall.sh` — `adb shell rm -f /data/local/tmp/llama-…gguf`, removing the model from the device.
+
+There is no host-side symlink/traversal surface here: the path is a device path
+addressed through `adb`, and applying `mktemp` would be **incorrect** (you cannot
+`mktemp` a device path, and `/data/local/tmp/` is the required Android location).
+Classification: audited-sound false positive.
+
+== §2 HardcodedSecret — public URL + commented key template
+
+File: `scripts/install-termux.sh`.
+
+* Line ~19: `MODEL_URL="https://huggingface.co/…/Llama-3.2-1B-Instruct-Q4_K_M.gguf"` — a **public** model download URL, not a secret.
+* The `sk-ant-…` string is a **commented-out placeholder** inside a generated
+  `config.toml` template (`# api_key = "sk-ant-..."   # uncomment + set …`),
+  showing the user where to place *their own* key. No credential is committed.
+
+No secret enters source control (corroborated by the estate secret-scanner gate).
+Classification: audited-sound false positive.
