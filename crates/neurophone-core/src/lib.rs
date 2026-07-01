@@ -20,9 +20,9 @@
 #![cfg_attr(not(test), deny(clippy::unwrap_used, clippy::expect_used))]
 
 use ndarray::Array1;
-use std::marker::PhantomData;
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::marker::PhantomData;
 use std::time::Instant;
 use thiserror::Error;
 use tracing::{debug, info, warn};
@@ -206,7 +206,6 @@ impl NeuroSymbolicSystem<phase::Created> {
 }
 
 impl NeuroSymbolicSystem<phase::Active> {
-
     /// Process a sensor event
     pub fn process_sensor_event(
         &mut self,
@@ -289,7 +288,6 @@ impl NeuroSymbolicSystem<phase::Active> {
 
 /// Inspectors available in every lifecycle phase.
 impl<S> NeuroSymbolicSystem<S> {
-
     /// Get current system state
     pub fn get_state(&self) -> SystemState {
         self.state.clone()
