@@ -13,6 +13,13 @@ tracing = { workspace = true }
 tokio = { workspace = true }
 reqwest = { workspace = true }
 futures = { workspace = true }
+uuid = { version = "1", features = ["v4"] }
+# conative-gating is pre-1.0 (0.1.0) and not published to crates.io, so it is
+# consumed as a git dependency pinned to a specific commit SHA on the public
+# hyperpolymath/conative-gating repo (issue #103 / proof obligation 3.1:
+# egress GO/NO-GO veto). Do NOT float on a branch -- re-pin deliberately.
+policy-oracle = { git = "https://github.com/hyperpolymath/conative-gating", rev = "7baaf25ecb20ec2a75f138ec69c1681e7677021a" }
+gating-contract = { git = "https://github.com/hyperpolymath/conative-gating", rev = "7baaf25ecb20ec2a75f138ec69c1681e7677021a" }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
