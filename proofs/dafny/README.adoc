@@ -3,12 +3,48 @@
 
 Obligations discharged here (see issue #84):
 
-* *1.2 LSM bounded dynamics* — the discretised Leaky Integrate-and-Fire update
-  keeps the membrane potential within `[reset, threshold + ε]`, respects the
-  refractory period, bounds the firing rate given bounded input, and keeps the
-  spike-history ring buffers within capacity.
+* *1.2 LSM bounded dynamics* — `proofs/dafny/LsmBoundedDynamics.dfy`.
+  **Proven, no `assume`/axiom**: the discretised Leaky Integrate-and-Fire
+  update (`LifStep`, mirroring the per-neuron branch of
+  `LiquidStateMachine::step` in `crates/lsm/src/lib.rs` exactly) never lets
+  the membrane potential exceed `v_thresh`, for *any* finite run and *any*
+  (unrestricted) sequence of input currents, given a valid starting state
+  (`LifRunKeepsBelowThreshold`, proved by induction over the run length).
++
+**Honest correction versus the *original* text of this file.** The
+  original wording (below, superseded) claimed the potential stays within a
+  *two-sided* `[reset, threshold + ε]` interval. That is false in general:
+  `total_current` is not clamped anywhere in the Rust code, so a
+  sufficiently negative current drives the updated potential arbitrarily far
+  *below* `v_reset` in a single step — there is a ceiling (the
+  threshold-crossing reset) but no floor. `LowerBoundFails` in the same file
+  is a concrete Dafny counterexample proving this (not just asserting it).
+  This matches `crates/lsm/tests/proptest_bounds.rs`, which likewise only
+  ever asserts the upper bound plus finiteness, never a lower bound. The
+  refractory-period respect, firing-rate bound, and spike-history-capacity
+  parts of the original claim remain as before: the spike-history length
+  bound is property-tested (`proptest_bounds.rs`) but not attempted in
+  Dafny (a separate combinatorial argument over spike timing, not the
+  membrane-potential recurrence) — open, tracked under issue #84.
++
+**Honest scope note — exact reals vs. `f32`.** Dafny's `real` is exact
+  (no NaN/Inf/overflow/rounding); this proof is over the *idealised*
+  exact-arithmetic recurrence, and does not by itself model IEEE-754 `f32`
+  rounding or overflow-to-infinity — that empirical side is exactly what
+  `crates/lsm/tests/proptest_bounds.rs` / `proptest_numeric.rs` check.
+  Bridging exact reals to `f32` (Dafny/SMT floating-point theory, or a Kani
+  harness) remains open.
 * *0.2 Numeric containment* — the sensor and reservoir kernels neither produce
   nor propagate NaN/Inf, and integer indexing/accumulation does not overflow.
+  *(Spec only — no `.dfy` file yet; property-tested in
+  `crates/*/tests/proptest_numeric.rs`.)*
 
 Models are written against the algorithm; the Rust implementation is tied back
-to them with Kani harnesses and `proptest` properties in the respective crates.
+to them with `proptest` properties in the respective crates (Kani is not
+currently wired — see `proofs/README.adoc`). Reproduce with
+`just proof-dafny` (or a system `dafny verify
+proofs/dafny/LsmBoundedDynamics.dfy`); fetches a pinned, checksum-verified,
+self-contained Dafny 4.11.0 release into `.dafnycache/` on first run if no
+system `dafny` is found, and self-skips (non-fatal) if that download isn't
+possible (offline / no permissions). Verified in this pass with Dafny 4.11.0
+(self-contained Linux x64 release; no system `dotnet` required).

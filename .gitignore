@@ -97,3 +97,10 @@ dist/
 
 # TLA+ model-checker jar cache (fetched by `just proof-tla`)
 .tlacache/
+
+# Dafny release cache (fetched by `just proof-dafny`)
+.dafnycache/
+
+# Lean/Lake build cache and vendored Mathlib checkout (fetched/built by
+# `just proof-lean`); see proofs/lean/.gitignore.
+proofs/lean/.lake/
