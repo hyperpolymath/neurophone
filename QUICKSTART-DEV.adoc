@@ -53,10 +53,9 @@ just setup-dev
 [source]
 ----
 neurophone/
-├── src/                  # Source code
-├── src/abi/              # Idris2 ABI definitions (if applicable)
+├── crates/               # Rust workspace (core pipeline, benches, tests live alongside each crate)
+├── proofs/               # Formal-verification artefacts (TLA+/Lean/Dafny) — see proofs/README.adoc
 ├── ffi/zig/              # Zig FFI bridge (if applicable)
-├── tests/                # Test suite
 ├── docs/                 # Documentation
 ├── .machine_readable/    # Checkpoint files (STATE, META, ECOSYSTEM)
 ├── Justfile              # Task runner recipes

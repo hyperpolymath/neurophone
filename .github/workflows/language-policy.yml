@@ -22,6 +22,7 @@ jobs:
   check-banned-languages:
     name: Check for Banned Languages
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v4
@@ -159,6 +160,7 @@ jobs:
   check-required-files:
     name: Check Required Files
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v4

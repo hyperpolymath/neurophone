@@ -1,10 +1,37 @@
 [
   {
     "severity": "high",
-    "rule_module": "cicd_rules",
-    "type": "banned_language_file",
-    "file_pattern": "android/**",
-    "note": "Android/Kotlin scaffold is being migrated to Gossamer; see RFC PR #97. The android/ tree is owner-authored work-in-flight, not vendored upstream. Exempt until the Gossamer migration lands and android/ is removed.",
-    "tracking_issue": "hyperpolymath/neurophone#97"
+    "rule_module": "honest_completion",
+    "type": "no_tests",
+    "file": ".",
+    "note": "Scanner-limitation false positive: honest_completion's has_tests_dir check only looks for a root-level test/ or tests/ directory, and its test_files counter only matches .test.js/.test.ts/_test.exs/_test.res suffixes -- it has no Rust/Cargo-workspace convention (no .rs extension, no per-crate tests/ recognition). neurophone is a Cargo workspace with real, extensive tests under crates/*/tests/*.rs plus #[cfg(test)] inline modules (see e.g. crates/neurophone-core/tests/, crates/lsm/tests/); `cargo test` runs them all. Verified via hypatia source (lib/rules/honest_completion.ex collect_evidence/1) 2026-07-01 while investigating this finding -- there is no lightweight fix on the neurophone side (adding a fake root tests/ dir would be theater, not a real fix); the fix belongs in hypatia's rule. Caveat: hypatia's own `file` value for this finding is the scan root's Path.expand(path) (an absolute host path in practice, e.g. the CI runner's checkout dir), not a literal repo-relative \".\" -- exact `file` matching against this entry may not actually apply until hypatia relativizes its own output, a gap distinct from hypatia#566/standards#449 discovered while writing this entry. See hyperpolymath/neurophone PR introducing this baseline for the full writeup."
+  },
+  {
+    "severity": "high",
+    "rule_module": "code_safety",
+    "type": "unwrap_without_check",
+    "file_pattern": "crates/*/benches/**",
+    "note": "Bench-harness setup code, not an operational path. proofs/README.adoc's obligation 0.1 (panic-freedom) is explicitly scoped to operational paths; Criterion bench setup (crates/{sensors,llm,esn,bridge,neurophone-core}/benches/*.rs) legitimately panics on setup failure by design -- it is dev-only tooling that is never part of a shipped build. Rewriting bench harnesses to add defensive handling for scenarios that can't/shouldn't be handled would be needless churn (contrary to this repo's own philosophy, see MUST.contractile). Caveat: hypatia's code_safety module reports an absolute host path in `file` (built from `find <expanded-repo-path> ...`), not repo-relative as the baseline schema expects -- this file_pattern may not exact-match until hypatia relativizes its own output."
+  },
+  {
+    "severity": "medium",
+    "rule_module": "code_safety",
+    "type": "expect_in_hot_path",
+    "file_pattern": "crates/*/benches/**",
+    "note": "Same rationale and same absolute-path caveat as the unwrap_without_check entry above: crates/{lsm,neurophone-core}/benches/*.rs are bench-harness setup code, not operational paths, and are out of scope for obligation 0.1."
+  },
+  {
+    "severity": "medium",
+    "rule_module": "structural_drift",
+    "type": "SD022",
+    "file": "docs/BT-PRESENCE-PLAN.adoc",
+    "note": "Not rename-drift: this is a design-only cross-repo plan document (\"Status: Design only -- no code yet\") whose ownership-boundary table explicitly splits paths between the sibling `burble` repo (\"Lives in burble\" column) and neurophone (\"Lives in neurophone\" column). `src/Burble/ABI/NearbyPresence.idr` is listed under \"Lives in burble\" -- it describes a planned path in the OTHER repo, not a stale reference to something that used to exist here. SD022's rename-drift heuristic has no cross-repo awareness, so it flags any `src/<dir>/` it can't resolve locally. Verified via `git log` (no such path was ever committed in neurophone; nothing to rename-sweep) and via reading the doc's own explicit repo-ownership table 2026-07-01. Caveat: hypatia reports `type` as literal \"SD022\" (uppercase), which does not match the baseline schema's `^[a-z][a-z0-9_]*$` pattern for `type` -- a schema/hypatia-output mismatch discovered while writing this entry; kept as the exact uppercase value so the entry can actually match once baseline-consuming CI is wired up, at the cost of failing strict schema validation today."
+  },
+  {
+    "severity": "medium",
+    "rule_module": "git_state",
+    "type": "GS007",
+    "file": ".",
+    "note": "Operational/transient, not a code defect: this repo has an active multi-branch workflow (feature branches, workstream branches from parallel agent sessions) and the non-main remote branch count fluctuates by the hour as branches are opened and merged/deleted. Baselining the rule itself rather than a point-in-time count; do not read a specific branch-count number into this entry. Owner should periodically review `git branch -r` and delete fully-merged branches, but that is a routine housekeeping call, not something this baseline should force. Same uppercase-`type` schema caveat as the SD022 entry above (\"GS007\" vs `^[a-z][a-z0-9_]*$`)."
   }
 ]
