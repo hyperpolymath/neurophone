@@ -10,7 +10,8 @@
 # `neurophone` CLI.
 #
 # Run inside Termux:
-#   curl -fsSL https://raw.githubusercontent.com/hyperpolymath/neurophone/main/scripts/install-termux.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/hyperpolymath/neurophone/main/scripts/install-termux.sh -o install-termux.sh
+#   bash install-termux.sh
 set -euo pipefail
 
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/share/neurophone}"
@@ -72,7 +73,8 @@ n_threads = 4
 context_size = 2048
 
 [claude]
-# api_key = "sk-ant-..."   # uncomment + set for cloud fallback
+# For cloud fallback, set the ANTHROPIC_API_KEY environment variable
+# instead of storing a key in this file.
 model = "claude-sonnet-4-20250514"
 EOF
 fi

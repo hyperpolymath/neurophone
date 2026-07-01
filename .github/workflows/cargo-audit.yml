@@ -20,6 +20,7 @@ permissions: read-all
 jobs:
   audit:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v4
 
@@ -35,6 +36,7 @@ jobs:
   # Optional: Create issues for vulnerabilities
   create-issue:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     needs: audit
     if: failure()
     permissions:

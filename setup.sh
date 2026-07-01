@@ -6,7 +6,8 @@
 # Then hands off to `just setup` for project-specific configuration.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/hyperpolymath/neurophone/main/setup.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/hyperpolymath/neurophone/main/setup.sh -o setup.sh
+#   sh setup.sh
 #   # or after cloning:
 #   ./setup.sh
 #
@@ -128,6 +129,21 @@ detect_platform() {
     esac
 }
 
+# ── Install just via upstream installer script ──
+# Downloads to a temp file and runs it locally rather than piping the
+# remote script straight into `bash` (CWE-494). just.systems/install.sh
+# is regenerated per-release with no stable checksum upstream publishes
+# to pin against, so this can't be real signature verification — but it
+# does avoid streaming a partial/interrupted download straight into a
+# shell, and leaves the script on disk for inspection before it runs.
+install_just_via_script() {
+    just_installer="$(mktemp)"
+    curl -fsSL https://just.systems/install.sh -o "$just_installer"
+    chmod +x "$just_installer"
+    bash "$just_installer" --to /usr/local/bin
+    rm -f "$just_installer"
+}
+
 # ── Install just ──
 install_just() {
     if command -v just >/dev/null 2>&1; then
@@ -141,7 +157,7 @@ install_just() {
         dnf)        sudo dnf install -y just ;;
         apt)        sudo apt-get install -y just 2>/dev/null || {
                         # just not in older apt repos — use installer
-                        curl -fsSL https://just.systems/install.sh | bash -s -- --to /usr/local/bin
+                        install_just_via_script
                     } ;;
         pacman)     sudo pacman -S --noconfirm just ;;
         apk)        sudo apk add just ;;
@@ -153,7 +169,7 @@ install_just() {
         nix)        nix-env -iA nixpkgs.just ;;
         *)
             info "Using just installer script..."
-            curl -fsSL https://just.systems/install.sh | bash -s -- --to /usr/local/bin
+            install_just_via_script
             ;;
     esac
 
