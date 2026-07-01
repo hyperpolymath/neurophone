@@ -41,8 +41,8 @@ neurophone-android = "implemented — 11-method ai.neurophone.NativeLib JNI surf
 
 [proofs]
 # Honest obligation status; full detail in proofs/README.adoc + Trustfile PROOF_ARTIFACTS.
-discharged = "0.1 panic-freedom, 0.2 numeric containment, 0.3 unsafe discipline, 1.2 LSM bounds, 1.3 bridge soundness (property); 2.1 lifecycle (TLC); 2.3 release-once (compile-fail)"
-open = "1.1 Echo State Property (formal contraction), 1.2 formal Dafny bound, 2.2 concurrency (N/A single-owner), 3.1 egress veto (external #103), 3.2 bounded-interaction contract test"
+discharged = "0.1 panic-freedom, 0.2 numeric containment, 0.3 unsafe discipline, 1.2 LSM bounds, 1.3 bridge soundness, 3.2 bounded external interaction (property); 2.1 lifecycle (TLC); 2.3 release-once (compile-fail)"
+open = "1.1 Echo State Property (formal contraction), 1.2 formal Dafny bound, 2.2 concurrency (N/A single-owner), 3.1 egress veto (external #103)"
 
 [recent-work]
 session-date = "2026-07-01"

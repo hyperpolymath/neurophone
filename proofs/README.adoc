@@ -20,7 +20,7 @@ the index from each obligation to the artefact that discharges it.
 | TLA+ (TLC)        | `proofs/tla/`   | 2.1 lifecycle *(checked)*; 2.2/3.1 specs deferred
 | Lean / Coq        | `proofs/lean/`  | 1.1 echo state property, 1.3 bridge soundness (spec)
 | Dafny / F*        | `proofs/dafny/` | 1.2 LSM bounded dynamics, 0.2 numeric containment (spec)
-| proptest          | (in `crates/`)  | executable evidence for 0.1, 0.2, 1.2, 1.3
+| proptest          | (in `crates/`)  | executable evidence for 0.1, 0.2, 1.2, 1.3, 3.2
 | compile-fail tests| `neurophone-core` doc-tests | 2.1 (type level) + 2.3 release-once
 |===
 
@@ -46,7 +46,7 @@ by property tests over the operational paths; *open* = honest gap, never faked.
 | 2.2 | Concurrency safety (no deadlock)                | *open* — N/A under the current single-owner (`&mut`) design; TLA+ spec deferred until shared concurrency exists
 | 2.3 | Resource/affine lifecycle                       | *checked* (release-once) — `shutdown(self)` consumes the system; compile-fail doc-tests reject double-shutdown / use-after-shutdown; wired through the JNI holder's `reset`. Linear *must-use* (guaranteed shutdown) *open* (needs AffineScript)
 | 3.1 | Data-egress / privacy invariant                 | *open* — egress is confined to `claude-client` by construction; the GO/NO-GO veto is external `conative-gating` (#103)
-| 3.2 | Bounded external interaction                    | *open* — `SystemConfig.max_response_time_ms` bounds exist; a dedicated contract test is pending
+| 3.2 | Bounded external interaction                    | *property* — `claude-client`: capped saturating `backoff_delay` + bounded `max_retries` retry loop; tests `backoff_is_bounded_and_monotonic`, `total_retry_budget_is_finite` (whole interaction has a finite time bound), `user_content_cannot_inject_into_request_json`
 |===
 
 [NOTE]
