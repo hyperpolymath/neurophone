@@ -1,6 +1,6 @@
-; SPDX-License-Identifier: MPL-2.0
-; Intentfile (A2ML Canonical)
-; Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)
+# SPDX-License-Identifier: MPL-2.0
+# Intentfile (A2ML Canonical)
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)
 
 @abstract:
 Declared intent and purpose for Neurophone.
@@ -8,44 +8,15 @@ Declared intent and purpose for Neurophone.
 
 ## Purpose
 
-Neurophone is a neurosymbolic AI application for mobile devices.
-
-It combines spiking neural networks (LSM + ESN) with local large language
-models (Llama 3.2 via llama.cpp) and cloud fallback (Claude API) to deliver
-on-device intelligence from phone sensor data.
-
-Primary use case: real-time interpretation of phone sensor readings
-(accelerometer, gyroscope, magnetometer, light, proximity) via a neural
-pipeline, answerable in natural language.
-
-Primary target: Android (Oppo Reno 13, Dimensity 8350). Long-term
-cross-platform via gossamer (estate shell).
-
-## In Scope
-
-- Rust/Spark crates: lsm, esn, bridge, sensors, llm, claude-client,
-  neurophone-core, neurophone-android
-- Android application shell (Kotlin, migration to gossamer in progress)
-- Proof corpus for neural-state invariants and lifecycle safety
-- AI-assisted installation tooling
-- Estate compliance (RSR, language-policy, governance, hypatia)
+Neurophone — // SPDX-License-Identifier: MPL-2.0
 
 ## Anti-Purpose
 
 This project is NOT:
-- A library (it is an application — for the routing library see heterogenous-mobile-computing)
-- A monorepo for unrelated tools
-- A fork or wrapper around an upstream project
-- A cloud-first application (sensor data stays on device)
+- A fork or wrapper around another tool
+- A monorepo (unless explicitly structured as one)
 
 ## If In Doubt
 
-If you are unsure whether a change is in scope, ask the owner.
-
-Sensitive areas:
-- ABI definitions in crates/neurophone-android/ (JNI contract)
-- SPDX/licence headers (must be MPL-2.0)
-- CI workflows in .github/workflows/ (only for compliance or directed changes)
-- Owner-territory: PALIMPSEST.adoc, citation blocks, governance philosophy docs
-- Proof corpus in proofs/ (add freely; do not delete existing)
-- The gossamer migration path (do not substitute Tauri/Dioxus)
+If you are unsure whether a change is in scope, ask.
+Sensitive areas: ABI definitions, license headers, CI workflows.
