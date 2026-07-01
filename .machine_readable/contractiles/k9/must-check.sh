@@ -27,7 +27,7 @@ for f in STATE.a2ml META.a2ml ECOSYSTEM.a2ml AGENTIC.a2ml NEUROSYM.a2ml PLAYBOOK
 done
 
 # --- All GitHub Actions SHA-pinned (no @vN / @branch) ---
-if grep -rnE "uses:[[:space:]]*[^#]*@v[0-9]" .github/workflows/*.yml 2>/dev/null | grep -vE "^\s*#" ; then
+if grep -rnE "uses:[[:space:]]*[^#]*@v[0-9]" .github/workflows/*.yml 2>/dev/null | grep -vE "^[[:space:]]*#" ; then
   err "unpinned GitHub Action(s) — pin to a full 40-char commit SHA"
 fi
 
@@ -63,4 +63,4 @@ done < <(find crates -name "*.rs" -not -path "*/target/*" 2>/dev/null)
 if [ "$fail" = "0" ]; then
   echo "must-check: all mechanically-verifiable MUST invariants satisfied."
 fi
-exit $fail
+exit "$fail"
