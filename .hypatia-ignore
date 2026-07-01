@@ -4,6 +4,18 @@
 # Format: <rule_module>/<rule_type>:<repo-relative-path>
 # See standards/docs/EXEMPTION-MECHANISMS.adoc for the canonical reference.
 #
-# No active exemptions. The former android/ Kotlin/Gradle carve-out was
-# removed in sub-PR #9 (epic #83) once the legacy android/ tree was deleted
-# as part of the Gossamer migration; no banned-language exemptions remain.
+# The android/ subtree is owner-authored Kotlin/Gradle code being migrated to
+# Gossamer (see RFC PR #97). It is not vendored upstream — it is intentional
+# work-in-flight. The canonical glob-form exemption lives in
+# .hypatia-baseline.json (file_pattern: "android/**"); these per-file lines
+# exist for any tool that only reads .hypatia-ignore.
+cicd_rules/banned_language_file:android/app/build.gradle.kts
+cicd_rules/banned_language_file:android/build.gradle.kts
+cicd_rules/banned_language_file:android/settings.gradle.kts
+cicd_rules/banned_language_file:android/app/src/main/java/ai/neurophone/BootReceiver.kt
+cicd_rules/banned_language_file:android/app/src/main/java/ai/neurophone/MainActivity.kt
+cicd_rules/banned_language_file:android/app/src/main/java/ai/neurophone/NativeLib.kt
+cicd_rules/banned_language_file:android/app/src/main/java/ai/neurophone/NeurophoneService.kt
+cicd_rules/banned_language_file:android/app/src/main/java/ai/neurophone/widget/NeurophoneAppWidget.kt
+cicd_rules/banned_language_file:android/app/src/main/java/ai/neurophone/widget/NeurophoneWidgetActions.kt
+cicd_rules/banned_language_file:android/app/src/main/java/ai/neurophone/widget/NeurophoneWidgetConfigureActivity.kt

@@ -85,5 +85,5 @@ deps/
 build/
 dist/
 
-# Claude Code agent worktrees (transient harness state)
-.claude/worktrees/
+# TLA+ model-checker jar cache (fetched by `just proof-tla`)
+.tlacache/

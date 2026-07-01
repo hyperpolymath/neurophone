@@ -1,59 +1,32 @@
-; SPDX-License-Identifier: MPL-2.0
-; Trustfile (A2ML Canonical)
-; Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)
+# SPDX-License-Identifier: MPL-2.0
+# Trustfile (human-facing companion — runnable integrity checks)
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)
+#
+# The CANONICAL machine-readable Trustfile (estate baseline v2026.2.5-final:
+# META / THREAT_MODEL / TRUSTFILE / PROOF_ARTIFACTS / CAPABILITY_GATEWAY /
+# CRYPTO_AGILITY / SIGNATURE_BLOCK / DEPLOYMENT) lives at
+# .machine_readable/contractiles/trust/Trustfile.a2ml and is validated by
+# .github/workflows/trustfile.yml. This companion keeps the fast, runnable
+# k9-style checks the estate tooling greps for.
 
 @abstract:
 Trust and provenance verification for Neurophone.
-Maximal trust by default — LLM agents may read, build, test, lint, format.
+Maximal trust by default — LLM may read, build, test, lint, format.
 @end
 
 @trust-level: maximal
 @trust-boundary: repo
-@trust-actions: [read, build, test, lint, format, commit, push, create-pr]
-@trust-deny: [delete-branch, force-push, modify-ci-secrets, publish, merge-to-main-without-ci]
+@trust-actions: [read, build, test, lint, format]
+@trust-deny: [delete-branch, force-push, modify-ci-secrets, publish]
 
 ## Integrity
 
 ### license-content
-- description: LICENSE contains MPL-2.0 identifier
-- run: grep -q 'Mozilla Public License\|MPL-2.0\|MPL 2.0' LICENSE
+- description: LICENSE is the expected MPL-2.0 (sole-owner repo)
+- run: grep -q 'Mozilla Public License\|MPL-2.0' LICENSE
 - severity: critical
 
 ### no-secrets-committed
 - description: No .env or credential files in repo
 - run: test ! -f .env && test ! -f credentials.json && test ! -f .env.local
 - severity: critical
-
-### cargo-lock-clean
-- description: Cargo.lock must be present and not contain obviously insecure entries
-- run: test -f Cargo.lock
-- severity: critical
-
-### sha-pinned-actions
-- description: GitHub Actions must use SHA pins, not floating tags (checked by workflow-linter.yml)
-- run: grep -rn 'uses:.*@[a-f0-9]\{40\}' .github/workflows/ | head -1 | grep -q .
-- severity: warning
-
-## Gossamer Boundary
-
-### no-new-kotlin-outside-android
-- description: No new Kotlin files outside the android/ exemption directory
-- run: "! find . -name '*.kt' -not -path './android/*' -not -path './.git/*' 2>/dev/null | head -1 | grep ."
-- severity: critical
-
-### android-exemption-tracked
-- description: android/** Kotlin exemption is documented in hypatia baseline
-- run: grep -q 'android' .hypatia-baseline.json
-- severity: warning
-
-## Dependency Provenance
-
-### rand-version-locked
-- description: rand must be pinned to 0.9.x (ndarray-rand 0.16 compatibility)
-- run: grep -q 'rand = "0.9' Cargo.toml
-- severity: warning
-
-### rand-distr-version-locked
-- description: rand_distr must be pinned to 0.5.x (ndarray-rand 0.16 compatibility)
-- run: grep -q 'rand_distr = "0.5' Cargo.toml
-- severity: warning

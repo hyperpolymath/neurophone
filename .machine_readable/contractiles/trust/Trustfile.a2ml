@@ -1,22 +1,381 @@
 # SPDX-License-Identifier: MPL-2.0
-# Trustfile — Integrity and Provenance Contract
+# Trustfile — Estate security and integrity baseline, specialised for neurophone.
+# Based on A2ML Trustfile specification v2026.2.5-final (estate baseline).
+#
+# This is the canonical machine-readable Trustfile. The human-facing companion at
+# contractiles/trust/Trustfile.a2ml carries the runnable k9-style integrity checks
+# and points here. Placeholders ({{...}}) are owner-supplied crypto material,
+# filled at signing time per [DEPLOYMENT]; they are tracked by [PLACEHOLDER_TRACKING]
+# and the trustfile.yml gate (WARN on branches, ERROR only on main).
 
-[trustfile]
-version = "1.0.0"
-format = "a2ml"
+---
+### [META]
+id: "did:web:github.com:hyperpolymath:neurophone"
+version: "2026.2.5-final"
+profile: "hyperpolymath-estate-baseline"
+context:
+  - "https://a2ml.org/ns/v2"
+  - "https://leanprover-community.github.io/lean4"
+  - "https://hypatia.scans/ns/v1"
+  - "https://w3id.org/security/v4"
+  - "https://w3id.org/transparency/v1"
+meta:
+  generated: "{{GENERATED_TIMESTAMP}}"
+  expires: "{{EXPIRY_TIMESTAMP}}"
+  repository:
+    owner: "hyperpolymath"
+    name: "neurophone"
+    url: "https://github.com/hyperpolymath/neurophone"
+  estate:
+    owner: "hyperpolymath"
+    trust_domain: "hyperpolymath.org"
+    baseline: "estate-standard"
+  signature:
+    algorithm: "Ed448+Dilithium5"
+    value: |
+      -----BEGIN HYBRID SIGNATURE-----
+      {{BASE64_Ed448_Dilithium5_SIGNATURE_OF_THIS_FILE}}
+      -----END HYBRID SIGNATURE-----
+    signedBy: "did:web:github.com:hyperpolymath:neurophone#primary-sig"
+    proof: "https://github.com/hyperpolymath/neurophone/tree/main/proofs/tla/Lifecycle.tla"
+  fallbackSignature:
+    algorithm: "SPHINCS+"
+    value: |
+      -----BEGIN SPHINCS+ SIGNATURE-----
+      {{BASE64_SPHINCS_SIGNATURE_OF_THIS_FILE}}
+      -----END SPHINCS+ SIGNATURE-----
+  integrity:
+    sha3-512: "{{HEX_SHA3_512_OF_THIS_FILE}}"
+    shake256: "{{BASE32_SHAKE256_OF_THIS_FILE}}"
+    blake3: "{{HEX_BLAKE3_OF_THIS_FILE}}"
+    zonemd: "N/A — on-device application, no published DNS zone"
+  ci_cd:
+    github_actions: "https://github.com/hyperpolymath/neurophone/blob/main/.github/workflows/trustfile.yml"
+    gitbot_fleet: "https://gitbot-fleet.hyperpolymath.org/hooks/trustfile"
+    hypatia_scan: "https://hypatia.scans/repos/hyperpolymath/neurophone"
+  automation:
+    hashing: ["SHA3-512", "SHAKE256", "BLAKE3"]
+    diffing: "alert-on-unexpected-changes"
+    integrity:
+      - "transparency-log-continuity"
+      - "proof-validity-where-present"
+      - "policy-validity"
 
-[provenance]
-source-control = "git"
-forge = "github"
-ci-verified = true
-signing-policy = "commit-signing-preferred"
+---
+### [THREAT_MODEL]
+# neurophone is an on-device neurosymbolic AI app (sensor -> LSM/ESN -> bridge ->
+# LLM, local llama.cpp with an optional Claude fallback). The trust boundary is
+# the device; the one outbound seam is the Claude fallback in `claude-client`.
+adversaries:
+  - type: "Malicious or Compromised JNI Caller"
+    mitigations:
+      - "The JNI surface (ai.neurophone.NativeLib) is a pure ABI boundary; all logic lives in Rust (crates/neurophone-android/src/state.rs), host-tested."
+      - "Panics cannot unwind across FFI: every native method runs inside jni `with_env` (catch_unwind) and maps errors to a Java RuntimeException."
+      - "Lifecycle is typestate-enforced (Created->Active->Down); use-before-init / use-after-shutdown / double-shutdown are compile errors (proofs, obligation 2.1/2.3)."
+  - type: "Network Adversary on the Claude Fallback (MITM / exfiltration)"
+    mitigations:
+      - "Egress is confined to the `claude-client` crate (reqwest, rustls); no other crate opens the network."
+      - "Egress payloads are allow-listed and scrubbed of sensitive fields (claude-client egress test forbids api_key/device/sensor/secret keys)."
+      - "TLS 1.3 only (see [SSL/TLS]). A GO/NO-GO veto over egress is planned via conative-gating (#103, obligation 3.1 residual)."
+  - type: "Model / Data Extraction"
+    mitigations:
+      - "Inference is local-first; sensor-derived data is processed on-device and only a bounded query text may reach the fallback."
+      - "No secrets or model weights are committed (secret-scan on push; [SECRETS_HYGIENE])."
+  - type: "Sensor Spoofing / Malformed Input"
+    mitigations:
+      - "Numeric containment is property-tested: arbitrary finite sensor inputs never produce NaN/Inf and never panic (obligations 0.1/0.2)."
+      - "Sensor-type ids are validated against a fixed allow-list (crates/neurophone-android/src/sensor_map.rs)."
+  - type: "Supply Chain Attack"
+    mitigations:
+      - "Cargo dependencies are lock-pinned; cargo-audit (RUSTSEC) runs in CI; GitHub Actions are SHA-pinned; reusable workflows pin a vetted standards SHA."
+      - "unsafe discipline: forbid/deny(unsafe_code) across all crates except the sanctioned JNI FFI boundary (obligation 0.3)."
+  - type: "Quantum Adversary"
+    mitigations:
+      - "Long-lived trust records use hybrid classical/post-quantum signatures (Ed448+Dilithium5) with a SPHINCS+ fallback; see [CRYPTO_AGILITY]."
 
-[integrity]
-spdx-compliant = true
-license-audit = "required"
-dependency-pinning = "sha-pinned"
+---
+### [TRUSTFILE]
+issuer: "did:web:github.com:hyperpolymath:neurophone"
+keys:
+  - id: "#primary-sig"
+    type: "HybridKey2024"
+    classical:
+      algorithm: "Ed448"
+      publicKeyJwk:
+        kty: "OKP"
+        crv: "Ed448"
+        x: "{{BASE64URL_Ed448_PUBLIC_KEY}}"
+    postQuantum:
+      algorithm: "Dilithium5"
+      publicKeyJwk:
+        kty: "OKP"
+        crv: "Dilithium5"
+        x: "{{BASE64URL_Dilithium5_PUBLIC_KEY}}"
+    fallback:
+      algorithm: "SPHINCS+"
+      publicKeyJwk:
+        kty: "OKP"
+        crv: "SPHINCS+"
+        x: "{{BASE64URL_SPHINCS_PUBLIC_KEY}}"
+    usage: ["authentication", "assertion", "release-signing", "trustfile-signing"]
+algorithms:
+  hashing:
+    required: ["SHA3-512", "SHAKE256"]
+    recommended: ["BLAKE3"]
+  kdf: "HKDF-SHAKE512"
+  rng: "ChaCha20-DRBG"
+  passwordHashing: "Argon2id"
+policies:
+  egress_default_deny:
+    description: "Only claude-client may open the network; sensor-derived data must not leave the device without an explicit GO decision."
+    ci_cd: "hypatia-scan + architecture-enforcement on push"
+  ffi:
+    description: "The JNI layer is a pure ABI boundary; it must not reimplement trusted core logic. It carries #[unsafe(no_mangle)] exports only, no other unsafe code."
+    ci_cd: "ffi-policy on push"
+  secrets:
+    description: "Secrets must not enter source control."
+    ci_cd: "secret-scan on push"
+  totality_or_equivalent:
+    description: "Critical logic is total, bounded, verified, or property-tested; operational paths are panic-free (obligation 0.1)."
+    ci_cd: "cargo test + TLC on push"
+fallbacks:
+  signatures: ["Ed448+Dilithium5", "SPHINCS+"]
+  keyExchange: ["Kyber1024-X25519", "X25519"]
 
-[verification]
-reproducible-builds = "goal"
-sbom-generation = "required"
-attestation = "sigstore-preferred"
+---
+### [ESTATE_STANDARD]
+description: "Baseline security, integrity, provenance, and automation standard for Hyperpolymath repositories, applied to neurophone."
+required_files:
+  - "Trustfile.a2ml"          # this file (canonical: .machine_readable/contractiles/trust/)
+  - "LICENSE"                 # MPL-2.0
+  - "README.adoc"
+  - ".gitignore"
+  - ".gitattributes"
+  - ".editorconfig"
+  - ".github/workflows/trustfile.yml"
+recommended_files:
+  - "SECURITY.md"
+  - "GOVERNANCE.adoc"
+  - "CONTRIBUTING.md"
+  - "CHANGELOG.md"
+  - "EXPLAINME.adoc"
+  - ".hypatia-ignore"
+repository_invariants:
+  - "Trustfile changes require review."
+  - "Security / release workflow changes require review."
+  - "Proof, policy, and machine-readable governance files must not be silently weakened."
+  - "The FFI boundary must declare it delegates to the trusted core, not reimplements it."
+  - "Secrets must never be committed."
+assurance_levels:
+  - level: "PROVEN"     ; meaning: "Mechanically checked (TLC model check / rustc typestate)."
+  - level: "TESTED"     ; meaning: "Covered by property tests / conformance checks."
+  - level: "DESIGNED"   ; meaning: "Specified or architecturally intended, not yet fully proved."
+  - level: "ASSUMED"    ; meaning: "External/environmental/dependency assumption."
+  - level: "DEPRECATED" ; meaning: "Retained for compatibility, outside the active trust boundary."
+trust_boundary:
+  source_of_truth:
+    - "Trustfile.a2ml"
+    - "machine-readable manifests (.machine_readable/)"
+    - "CI workflows"
+    - "proof artefacts (proofs/)"
+  outside_boundary:
+    - "README/EXPLAINME claims not backed by Trustfile, tests, proofs, or release artefacts"
+    - "unverified external services"
+    - "the Claude fallback endpoint (external; treated as untrusted network)"
+
+---
+### [REPOSITORY_SPECIFIC]
+repository:
+  name: "neurophone"
+  class: "on-device neurosymbolic AI application (Android)"
+  description: "Sensor -> LSM/ESN reservoir -> neural->symbolic bridge -> LLM (local llama.cpp + optional Claude fallback), on-device for privacy."
+architecture:
+  core: "Rust multi-crate workspace (lsm, esn, bridge, sensors, llm, claude-client, neurophone-core) + neurophone-android JNI cdylib"
+  runtime: "Android (Dimensity 8350 / Oppo Reno 13 target); host tooling on desktop"
+  languages: ["Rust", "TLA+ (proofs)"]
+  interfaces: ["JNI (ai.neurophone.NativeLib)", "Claude HTTPS fallback (claude-client)"]
+  invariants:
+    - "Lifecycle is typestate-safe: no use before init, no use after shutdown, shutdown is terminal & release-once."
+    - "Operational paths are panic-free and numerically contained."
+    - "Network egress is confined to claude-client and scrubbed of sensitive fields."
+  enforcement:
+    - workflow: "rust-ci.yml"      ; description: "build + test + clippy (zero-warning) on push/PR"
+    - workflow: "trustfile.yml"    ; description: "A2ML structural lint + placeholder policy + integrity-hash drift report"
+    - workflow: "hypatia-scan.yml" ; description: "policy / unsafe-pattern / egress scan"
+# Runnable integrity checks (mirrored in the human-facing companion, k9-style):
+checks:
+  - id: "trust-deny"
+    description: "No branch deletion / force-push / CI-secret modification / publish by automation."
+    actions_denied: ["delete-branch", "force-push", "modify-ci-secrets", "publish"]
+    severity: "critical"
+  - id: "no-secrets-committed"
+    description: "No .env or credential files in the repo."
+    run: "test ! -f .env && test ! -f credentials.json && test ! -f .env.local"
+    severity: "critical"
+  - id: "license-content"
+    description: "LICENSE carries the expected SPDX identifier (MPL-2.0)."
+    run: "grep -q 'Mozilla Public License\\|MPL-2.0' LICENSE"
+    severity: "critical"
+
+---
+### [PROOF_ARTIFACTS]
+# Honest obligation map (issue #84). State reflects what a checker/property run
+# actually establishes today — never overclaimed. See proofs/README.adoc.
+artifacts:
+  - id: "0.1" ; name: "Panic-freedom (operational paths)" ; system: "proptest" ; file: "crates/*/tests/proptest_*.rs, neurophone-core/tests/proptest_core.rs" ; status: "TESTED"
+  - id: "0.2" ; name: "Numeric containment (no NaN/Inf)"   ; system: "proptest" ; file: "crates/*/tests/proptest_numeric.rs, proptest_core.rs"                  ; status: "TESTED"
+  - id: "0.3" ; name: "unsafe discipline"                  ; system: "rustc"    ; file: "forbid/deny(unsafe_code) across crates"                                ; status: "PROVEN"
+  - id: "1.1" ; name: "Echo State Property"                ; system: "Lean/TLA" ; file: "proofs/lean/, proofs/tla/"                                             ; status: "DESIGNED"
+  - id: "1.2" ; name: "LSM bounded dynamics"               ; system: "proptest/Dafny" ; file: "crates/lsm/tests/proptest_bounds.rs"                             ; status: "TESTED"
+  - id: "1.3" ; name: "Bridge soundness"                   ; system: "proptest" ; file: "crates/bridge/tests/proptest_soundness.rs"                             ; status: "TESTED"
+  - id: "2.1" ; name: "Lifecycle state-machine safety"     ; system: "TLA+ (TLC)" ; file: "proofs/tla/Lifecycle.{tla,cfg}"                                      ; status: "PROVEN"
+  - id: "2.2" ; name: "Concurrency safety"                 ; system: "TLA+"     ; file: "(deferred: single-owner design, no shared concurrency)"                ; status: "DESIGNED"
+  - id: "2.3" ; name: "Resource/affine lifecycle"          ; system: "rustc (compile-fail)" ; file: "neurophone-core compile-fail doc-tests + android reset"       ; status: "PROVEN"
+  - id: "3.1" ; name: "Data-egress / privacy"              ; system: "arch + conative-gating" ; file: "claude-client (egress confined); veto external #103"        ; status: "DESIGNED"
+  - id: "3.2" ; name: "Bounded external interaction"       ; system: "contract test" ; file: "SystemConfig.max_response_time_ms (test pending)"                ; status: "DESIGNED"
+open_obligations:
+  - "1.1 formal contraction proof (precondition holds; theorem pending)"
+  - "1.2 formal Dafny bound (property evidence exists)"
+  - "2.2 concurrency spec (N/A until shared concurrency exists)"
+  - "3.1 GO/NO-GO egress veto (blocked on conative-gating, #103)"
+non_claims:
+  - "neurophone does NOT yet claim a machine-checked Echo State Property (1.1)."
+  - "neurophone does NOT yet enforce a cryptographic egress veto (3.1)."
+
+---
+### [CI_CD]
+github_actions:
+  name: "Trustfile Validation"
+  on: ["push", "pull_request"]
+  gates:
+    - "a2ml structural lint (no stray {{...}} on main)"
+    - "cargo test (properties + typestate compile-fail doc-tests)"
+    - "TLC model check (just proof-tla; self-skips without java)"
+    - "hypatia scan (policy / egress / unsafe patterns)"
+    - "secret scan"
+    - "governance staleness (standards reusable, SHA-pinned)"
+workflows:
+  - "rust-ci.yml" ; "cargo-audit.yml" ; "codeql.yml" ; "hypatia-scan.yml"
+  - "language-policy.yml" ; "secret-scanner.yml" ; "scorecard.yml"
+  - "governance.yml" ; "trustfile.yml"
+
+---
+### [AUTOMATION]
+hashing:
+  tool: "GitBot-Fleet"
+  triggers: ["pre-commit", "post-merge", "pre-release"]
+  algorithms: ["SHA3-512", "SHAKE256", "BLAKE3"]
+diffing:
+  tool: "GitBot-Fleet"
+  rules:
+    - "alert-on-unexpected-changes"
+    - "require-proof-updates-for-crypto-changes"
+    - "require-policy-review-for-trustfile-changes"
+    - "block-binding-logic-reimplementation (FFI must delegate to core)"
+integrity:
+  tool: "Hypatia + GitBot-Fleet + cargo test + TLC"
+  checks:
+    - "trustfile-validation"
+    - "test-suite-validation"
+    - "proof-validation-where-present"
+    - "unsafe-pattern-detection"
+    - "transparency-log-continuity"
+
+---
+### [CAPABILITY_GATEWAY]
+rules:
+  - resource: "release-publication"
+    policy: "require Trustfile validation, clean secret scan, passing tests, and signed artifact hashes"
+  - resource: "security-critical-change"
+    policy: "require explicit review for changes to Trustfile, workflows, crypto, the FFI boundary, proofs, policies, or release scripts"
+  - resource: "network-egress"
+    policy: "only claude-client may egress; payloads allow-listed and scrubbed; GO/NO-GO veto planned (#103)"
+  - resource: "agentic-automation"
+    policy: "bounded permissions, declared action scope, diff review for privileged changes; never modify LICENSE/SPDX without owner approval"
+
+---
+### [SSL/TLS]
+# Applies to the outbound Claude fallback only (claude-client, rustls).
+ciphers:
+  - "TLS_AES_256_GCM_SHA384"
+  - "TLS_CHACHA20_POLY1305_SHA256"
+groups: ["X25519Kyber768Draft00", "secp256r1"]
+protocols: ["TLSv1.3"]
+features:
+  certificateTransparency: true
+
+---
+### [CRYPTO_AGILITY]
+policy:
+  - "Algorithms may be upgraded without weakening historical verification."
+  - "Deprecated algorithms remain verifiable for old releases but are not used for new signatures."
+  - "Key compromise requires rotation, revocation entry, transparency-log update, and an estate-level advisory."
+  - "Post-quantum fallback remains documented even where implementation is pending."
+current:
+  primary_signature: "Ed448+Dilithium5"
+  fallback_signature: "SPHINCS+"
+  hash_primary: "SHA3-512"
+  hash_secondary: "SHAKE256"
+  hash_fast: "BLAKE3"
+
+---
+### [TRANSPARENCY_LOG]
+rfc9162:
+  uri: "https://github.com/hyperpolymath/neurophone/releases"
+  entries:
+    - timestamp: "{{RELEASE_TIMESTAMP}}"
+      release: "{{RELEASE_TAG}}"
+      source_revision: "{{GIT_COMMIT_SHA}}"
+      signature: "{{BASE64_Ed448_Dilithium5_SIGNATURE}}"
+      ci_cd: "append-on-release"
+
+---
+### [PLACEHOLDER_TRACKING]
+# The trustfile.yml gate treats remaining {{...}} tokens as WARN on branches and
+# ERROR on main. All are owner-supplied crypto/provenance material, filled at
+# signing time per [DEPLOYMENT]; no functional gate depends on them for CI green.
+pending:
+  - "META.signature / fallbackSignature / integrity hashes"
+  - "TRUSTFILE keys (Ed448 / Dilithium5 / SPHINCS+ public JWKs)"
+  - "TRANSPARENCY_LOG release entries"
+
+---
+### [NOT_APPLICABLE]
+# neurophone is an on-device application with no public web surface; the estate
+# baseline's web/infra sections do not apply and are intentionally omitted:
+sections:
+  - "DNS / ZONEMD — no published DNS zone"
+  - "EMAIL_SECURITY — no mail domain"
+  - "CLOUDFLARE / EDGE_SECURITY / RESPONSE_HEADERS / ORIGIN_PROTECTION — no web edge"
+  - "PHP_HARDENING — no PHP"
+
+---
+### [SIGNATURE_BLOCK]
+primary:
+  algorithm: "Ed448+Dilithium5"
+  signature: |
+    -----BEGIN HYBRID SIGNATURE-----
+    {{BASE64_Ed448_Dilithium5_SIGNATURE_OF_THIS_FILE}}
+    -----END HYBRID SIGNATURE-----
+  signedBy: "did:web:github.com:hyperpolymath:neurophone#primary-sig"
+fallback:
+  algorithm: "SPHINCS+"
+  signature: |
+    -----BEGIN SPHINCS+ SIGNATURE-----
+    {{BASE64_SPHINCS_SIGNATURE_OF_THIS_FILE}}
+    -----END SPHINCS+ SIGNATURE-----
+
+---
+### [DEPLOYMENT]
+checklist:
+  - "Replace all {{PLACEHOLDER}} crypto/provenance values (owner-only)."
+  - "Confirm repository name, DID, issuer, and signedBy fields."
+  - "Generate Trustfile integrity hashes (SHA3-512 / SHAKE256 / BLAKE3)."
+  - "Run repository test suite (cargo test) + proofs (just proof)."
+  - "Run Hypatia scan + secret scan."
+  - "Sign with the Ed448+Dilithium5 hybrid key; generate the SPHINCS+ fallback."
+  - "Append a release entry to the transparency log."
+  - "Validate via CI: .github/workflows/trustfile.yml."
+notes:
+  - "This estate baseline is a floor, not a ceiling."
+  - "Repository-specific sections may add stricter requirements but must not silently weaken security, integrity, provenance, or review obligations."
