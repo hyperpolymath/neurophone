@@ -20,7 +20,7 @@ the index from each obligation to the artefact that discharges it.
 | TLA+ (TLC)        | `proofs/tla/`   | 2.1 lifecycle *(checked)*; 2.2/3.1 specs deferred
 | Lean / Coq        | `proofs/lean/`  | 1.1 echo state property, 1.3 bridge soundness (spec)
 | Dafny / F*        | `proofs/dafny/` | 1.2 LSM bounded dynamics, 0.2 numeric containment (spec)
-| proptest          | (in `crates/`)  | executable evidence for 0.1, 0.2, 1.2, 1.3, 3.2
+| proptest          | (in `crates/`)  | executable evidence for 0.1, 0.2, 1.2, 1.3, 3.1 (veto enforcement), 3.2
 | compile-fail tests| `neurophone-core` doc-tests | 2.1 (type level) + 2.3 release-once
 |===
 
@@ -45,7 +45,7 @@ by property tests over the operational paths; *open* = honest gap, never faked.
 | 2.1 | Lifecycle state-machine safety                  | *checked* — TLC on `tla/Lifecycle.{tla,cfg}` (no error; 13 states) + 3 compile-fail typestate doc-tests
 | 2.2 | Concurrency safety (no deadlock)                | *open* — N/A under the current single-owner (`&mut`) design; TLA+ spec deferred until shared concurrency exists
 | 2.3 | Resource/affine lifecycle                       | *checked* (release-once) — `shutdown(self)` consumes the system; compile-fail doc-tests reject double-shutdown / use-after-shutdown; wired through the JNI holder's `reset`. Linear *must-use* (guaranteed shutdown) *open* (needs AffineScript)
-| 3.1 | Data-egress / privacy invariant                 | *open* — egress is confined to `claude-client` by construction; the GO/NO-GO veto is external `conative-gating` (#103)
+| 3.1 | Data-egress / privacy invariant                 | *property* — the `conative-gating` GO/NO-GO veto (#103) is now wired into `ClaudeClient::create_message`, the sole outbound-network choke point in `claude-client` (see `crates/claude-client/src/egress_gate.rs`); `egress_integration_tests::blocked_egress_never_reaches_the_network` proves a `Block` verdict results in *zero* network calls (against a real local fake-transport server) and `..._reaches_the_network_exactly_once` proves an allowed request is not obstructed. Honest gap: `EgressClass` is *caller-declared* (there is no independent sensor-provenance tracker yet), so a caller that mislabels raw data as derived/aggregated is not currently caught by this layer — see the module's doc comment for the exact boundary. Formal (non-property) proof remains open; no TLA+/Dafny spec for this obligation yet.
 | 3.2 | Bounded external interaction                    | *property* — `claude-client`: capped saturating `backoff_delay` + bounded `max_retries` retry loop; tests `backoff_is_bounded_and_monotonic`, `total_retry_budget_is_finite` (whole interaction has a finite time bound), `user_content_cannot_inject_into_request_json`
 |===
 
