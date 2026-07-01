@@ -12,6 +12,18 @@
 ; vulnerabilities (production: 0 unsafe, 0 panic sites, 0 injection, 0 crypto
 ; misuse). The PanicPath findings are auto-suppressed (test/bench) and need no
 ; classification here.
+;
+; The top-level identity/version fields below satisfy the estate a2ml-validate
+; gate (matching a2ml-ecosystem conformance/valid/sectioned-manifest.a2ml);
+; panic-attack's loader ignores everything outside `(classification …)` blocks,
+; so they do not affect suppression.
+
+project = "neurophone"
+schema_version = "1.0.0"
+
+[metadata]
+name = "assail-classifications"
+version = "1.0.0"
 
 (assail-classifications
   (classification
