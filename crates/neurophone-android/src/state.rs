@@ -235,4 +235,58 @@ mod tests {
             assert!(init(Some("{not valid json")).is_err());
         });
     }
+
+    #[test]
+    fn every_boundary_op_before_init_is_rejected() {
+        with_clean(|| {
+            assert!(!is_running());
+            // All read/act operations must refuse to run before the holder is
+            // acquired — the affine resource is `None`, so there is nothing to
+            // borrow. (This covers the guard error paths that the happy-path
+            // lifecycle test does not exercise for every entrypoint.)
+            assert!(start().is_err(), "start before init");
+            assert!(
+                process_sensor("accelerometer", vec![1.0], 1).is_err(),
+                "process_sensor before init"
+            );
+            assert!(query("hi", QueryRoute::Auto).is_err(), "query before init");
+            assert!(neural_context().is_err(), "neural_context before init");
+            assert!(state_json().is_err(), "state_json before init");
+            assert!(reset().is_err(), "reset before init");
+            // stop() is defined as a safe no-op before init — it must neither
+            // error nor panic, and must leave the system not-running.
+            stop();
+            assert!(!is_running());
+        });
+    }
+
+    #[test]
+    fn empty_or_whitespace_config_falls_back_to_default() {
+        with_clean(|| {
+            // Empty and whitespace-only config JSON are treated as "no config",
+            // not as a parse error — parse_config trims before deciding.
+            init(Some("")).expect("empty config -> default");
+            start().expect("start");
+            assert!(is_running());
+        });
+        with_clean(|| {
+            init(Some("   ")).expect("whitespace config -> default");
+            assert!(!is_running());
+        });
+    }
+
+    #[test]
+    fn reset_preserves_not_running_and_stays_usable() {
+        with_clean(|| {
+            init(None).expect("init");
+            // Never started: the running flag is false and reset must preserve it
+            // (complements reset_preserves_running_and_config, which covers true).
+            assert!(!is_running());
+            reset().expect("reset");
+            assert!(!is_running());
+            // The reinstated system is fresh and usable once started.
+            start().expect("start");
+            query("after reset", QueryRoute::ForceLocal).expect("query after reset");
+        });
+    }
 }

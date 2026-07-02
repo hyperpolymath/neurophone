@@ -1,0 +1,33 @@
+# SPDX-License-Identifier: MPL-2.0
+# glambot.a2ml — Directives for glambot in neurophone
+
+project = "neurophone"
+schema_version = "1.0.0"
+
+[identity]
+bot = "glambot"
+role = "documentation"
+
+[constraints]
+# All prose docs use .adoc (AsciiDoc) — not .md except the GitHub-required set
+#   (SECURITY.md, CONTRIBUTING.md, CODE_OF_CONDUCT.md, CHANGELOG.md).
+# SPDX-License-Identifier header required on every doc file (docs are CC-BY-SA-4.0).
+# Do not remove or truncate EXPLAINME.adoc or AFFIRMATION.adoc.
+# Do not add emojis unless the user explicitly requests them.
+# NEVER edit licence text or SPDX identifiers, or PALIMPSEST.adoc / citation /
+#   governance-philosophy docs — licensing is owner-manual only (flag, do not edit).
+# Docs must not outrun the proofs/tests: keep claims within the proofs/README.adoc ledger.
+
+[targets]
+watch = [
+  "README.adoc",
+  "EXPLAINME.adoc",
+  "AFFIRMATION.adoc",
+  "RSR-PHILOSOPHY.adoc",
+  "AUDIT.adoc",
+  "docs/",
+  "docs/wikis/",
+  "QUICKSTART-USER.adoc",
+  "QUICKSTART-DEV.adoc",
+  "QUICKSTART-MAINTAINER.adoc",
+]

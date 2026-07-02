@@ -549,4 +549,4 @@ MPL-2.0 License - See the LICENSE file. Documentation is CC-BY-SA-4.0.
 
 == Architecture
 
-See link:TOPOLOGY.md[TOPOLOGY.md] for a visual architecture map and completion dashboard.
+See link:TOPOLOGY.adoc[TOPOLOGY.adoc] for a visual architecture map and completion dashboard.
