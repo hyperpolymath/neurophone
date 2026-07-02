@@ -1,0 +1,57 @@
+# SPDX-License-Identifier: MPL-2.0
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# echidnabot.a2ml — Directives for echidnabot in neurophone.
+#
+# echidnabot is the estate's proof-verification and fuzzing bot. In neurophone
+# its job is to keep the proof corpus (proofs/) honest and to exercise the
+# operational paths with fuzzers — never to weaken a proof or a test to make a
+# gate pass.
+
+project = "neurophone"
+schema_version = "1.0.0"
+
+[identity]
+bot = "echidnabot"
+role = "formal-verification-and-fuzzing"
+scope = "verify the proof corpus; run fuzzers; draft new proof/test obligations"
+
+[constraints]
+# Hard rules — echidnabot MUST NOT cross these.
+allow = [
+  "analysis",
+  "fuzzing",
+  "proof checks (TLC / Lean / Dafny / proptest / trybuild)",
+  "drafting new proof and test obligations as priority items",
+]
+deny = [
+  "introducing any proof escape hatch (believe_me, assert_total, Admitted, sorry, unsafeCoerce, Obj.magic)",
+  "weakening, skipping, or deleting an existing test or proof",
+  "editing crate source to make a proof pass (fix the proof, not the claim)",
+  "editing licence text or SPDX headers (owner-manual only)",
+  "relaxing the obligation-state ledger in proofs/README.adoc to overclaim",
+]
+
+[targets]
+# What echidnabot watches. Changes here should trigger a proof/fuzz re-check.
+watch = [
+  "crates/",
+  "proofs/",
+  "fuzz/",
+  ".clusterfuzzlite/",
+  "TEST-NEEDS.adoc",
+  ".machine_readable/MUST.contractile",
+]
+
+[obligations]
+# The canonical obligation map lives in proofs/README.adoc and issue #84.
+# echidnabot reads that table as the single source of truth for what is
+# *checked*, *property*-discharged, or honestly *open*, and never reports a
+# state stronger than the table records.
+source_of_truth = "proofs/README.adoc"
+epic = "https://github.com/hyperpolymath/neurophone/issues/84"
+
+[cadence]
+# First status line on wake must acknowledge the honesty contract.
+ack = "ACK: neurophone proof-corpus honesty contract loaded (no escape hatches; no overclaim)."
+on_new_unproven_seam = "draft a proof obligation as a priority item; do not defer silently"

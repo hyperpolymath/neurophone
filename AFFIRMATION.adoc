@@ -1,0 +1,123 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= AFFIRMATION — neurophone, as of 2026-07-02
+:toc: macro
+:toclevels: 2
+
+_the No-Bullshit file: what we affirm was true and checkable at this moment._
+
+[NOTE]
+====
+An *affirmation* is a solemn declaration of the truth of a statement, made by
+someone who _declines to swear an oath_ — our truth-as-best-believed at a stamped
+instant, binding on our honesty, not a claim of infallibility. It is the third of
+the README / EXPLAINME / AFFIRMATION trio:
+
+[cols="1,3,2",options="header"]
+|===
+| File | Answers | Tense
+| `README.adoc` | _Where is this going, and why?_ — steering, intent, vision | future / aspirational
+| `EXPLAINME.adoc` | _How is it built, and what's the evidence?_ — engineering | descriptive / mechanism
+| *`AFFIRMATION.adoc`* (this file) | _What can we honestly affirm was *true and checkable* at a stamped moment?_ | a frozen instant, falsifiable
+|===
+====
+
+toc::[]
+
+== What this is, and how it works
+
+*What it is.* A short, dated snapshot of what can honestly and verifiably be
+claimed about *neurophone* at one anchor. Nothing here is marketing and nothing
+is a promise about the future — those live in the README. This file is the
+receipt.
+
+*How it stays trustworthy.* Every claim below is tagged with _how_ it was
+established: `local run` (a command executed in the authoring session),
+`CI` (established by the repository's own GitHub Actions on the anchor), or
+`inspection` (a file/state directly read). Where a claim could not be
+established in this session, it is moved to <<not-claimed>> rather than asserted.
+
+*We are fallible.* This is our best honest belief, not a proof of its own
+correctness. Treat it as a falsifiable claim, not gospel. You are invited to
+bulldoze any claim here with a counter-example, a failing run, or a
+contradicting source.
+
+== The epistemic contract
+
+This document records the author's *best belief* at the timestamp below. It is
+*not a guarantee of correctness.* The only guarantee is *no intentional
+overclaim*: where something is proven we say "proven"; where it is a property
+test, a documented trust boundary, or an unwired module, we say so; where a claim
+is the README's aspiration rather than a checked result, we say so. An honest
+claim that later turns out false is an *error to be fixed* — not a lie.
+
+== What we affirm
+
+[cols="3,1,3",options="header"]
+|===
+| Claim | Status | Evidence (how established)
+
+| Source formatting is clean
+| affirmed
+| `cargo fmt --check` → exit 0 (*local run*, 2026-07-02, rustc 1.94.1)
+
+| The workspace builds and its test suite passes on the anchor
+| affirmed (CI)
+| GitHub Actions `rust-ci` was last green on `main@690b90a`. Not re-run locally this session — see <<not-claimed>>. (*CI*)
+
+| The proof corpus is honest about its own state
+| affirmed
+| `proofs/README.adoc` marks each obligation `checked` / `property` / `open` and never claims more; `MUST.contractile` bans escape hatches (`sorry`/`Admitted`/`believe_me`/`Obj.magic`/`unsafeCoerce`/`assert_total`) and `.github/workflows/quality.yml` runs `must-check.sh`. (*inspection* + *CI*)
+
+| Formal obligations 1.1 (Echo State Property, Lean) and 1.2 (LSM bounded dynamics, Dafny) are *checked*, not faked
+| affirmed (CI + inspection)
+| `proofs/lean/EsnEcho.lean` (sorry-free, `‖W‖∞ < 1` hypothesis) and `proofs/dafny/LsmBoundedDynamics.dfy` (one-sided ceiling; `LowerBoundFails` records the honest counterexample). Merged as #169. (*inspection*)
+
+| The data-egress privacy invariant (3.1) is wired at the sole network choke point
+| affirmed (property)
+| The conative-gating GO/NO-GO veto is wired into `ClaudeClient::create_message` (`crates/claude-client/src/egress_gate.rs`); a `Block` verdict results in zero network calls. Merged as #165. Honest residual: `EgressClass` is caller-declared. (*inspection*)
+
+| `unsafe` discipline holds
+| affirmed
+| `sensors`/`bridge`/`neurophone-core`/`claude-client`/`llm` use `#![forbid(unsafe_code)]`; `esn`/`lsm` use `#![deny(unsafe_code)]` (macro-expansion of `rand_distr`/`ndarray-rand` forces `deny`, not `forbid` — documented in `proofs/README.adoc`). (*inspection*)
+|===
+
+[#not-claimed]
+== What we do NOT claim (here, in this session)
+
+Silence is not affirmation — these are named, not hidden:
+
+* *Local build/test/clippy PASS.* They could **not** be re-run in this authoring
+  session. `crates/claude-client` depends on `hyperpolymath/conative-gating`
+  (crate `gating-contract`, git rev `7baaf25e`) via a git dependency, and that
+  repository is outside this session's network egress scope — every fetch
+  returns HTTP 403, so `cargo build`/`test`/`clippy` cannot resolve the
+  workspace here. Build/test PASS is therefore affirmed by *CI* (last green on
+  `main@690b90a`), not by a local run. This is a property of the _session_, not
+  of the repository: neurophone's own GitHub Actions can fetch the dependency
+  and do build and test it.
+* *Formal obligations 1.1-bridge, 2.2, and the 3.1 provenance residual* remain
+  honestly *open* — see `proofs/README.adoc`. No "proven" claim is made for
+  them.
+* *Signature status of this commit.* Commit signing in this managed execution
+  environment is platform-mediated; this commit may land unsigned
+  (`git log --format='%G?'` → `N`). That is a property of the environment, not a
+  withdrawal of the affirmation's honesty — the anchor below is what makes it
+  checkable.
+
+[#verifiable-anchor]
+== Verifiable anchor
+
+[cols="1,3"]
+|===
+| Project | neurophone
+| Repository | https://github.com/hyperpolymath/neurophone
+| Anchor (base) | `main` @ `690b90a`
+| Branch | `claude/neurophone-repo-setup-envzix` (this affirmation is introduced here)
+| Timestamp (UTC) | 2026-07-02
+| Toolchain | rustc 1.94.1 (e408947bf 2026-03-25), cargo 1.94.1
+| Affirmed by | Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+|===
+
+_This affirmation is a living snapshot: move the anchor SHA and it becomes a
+draft until its claims are re-established at the new anchor._
