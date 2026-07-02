@@ -1,0 +1,95 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= NeuroPhone — User FAQ & Troubleshooting
+:toc: preamble
+:icons: font
+
+_Practical answers for people installing and running NeuroPhone. For the exact,
+always-current install steps, the authoritative source is
+`docs/AI_INSTALLATION_GUIDE.adoc` and `QUICKSTART-USER.adoc` at the repo root —
+this page is the "why / what if it goes wrong" companion._
+
+== Getting started
+
+=== What is the easiest way to install it?
+Tell any capable AI assistant:
+
+[source,text]
+----
+Set up NeuroPhone on my Android from https://github.com/hyperpolymath/neurophone
+----
+
+It reads `docs/AI_INSTALLATION_GUIDE.adoc`, checks your device, and walks you
+through the steps. You answer a few questions (device, privacy confirmation, and
+whether to allow an optional cloud fallback) and confirm each action.
+
+=== What do I need?
+An Android phone with enough free storage and RAM for a local language model,
+and the ability to install https://termux.dev[Termux] (a terminal environment).
+The installer sets up the rest (Rust, Git, dependencies, and a model sized to
+your device).
+
+=== Do I have to use an AI to install it?
+No. The same steps can be run by hand — see `docs/installation.adoc` and
+`docs/build.adoc`. The AI-assisted route just automates them.
+
+== Privacy
+
+=== Does my data leave the phone?
+By default, no. The neural pipeline and the local language model run entirely on
+the device. The only component that can use the network is the *optional* Claude
+fallback, which is off unless you turn it on.
+
+=== How do I stay fully local (no cloud)?
+Decline the cloud fallback during setup (the default), and do not configure a
+Claude API key. With no key configured, the outbound path has nothing to call.
+The egress design is described in `proofs/README.adoc` (obligation 3.1).
+
+=== What sensors are used, and why?
+Movement/orientation and ambient signals feed the reservoirs. You are shown the
+sensor/privacy notice during setup; nothing is transmitted off-device by using
+them.
+
+== Troubleshooting
+
+=== The install failed partway through
+Re-run the setup step; it is designed to be repeatable. If a specific tool is
+missing, the installer reports which one. You can also run the repo's
+self-diagnostic: `just doctor`.
+
+=== The model is too big / the phone runs out of memory
+Pick a smaller quantised model when asked about your device, or free up storage.
+The installer chooses a size from your device's RAM/storage, but you can override
+it. A smaller model uses less memory at some cost to answer quality.
+
+=== The build fails with a compiler or dependency error
+Make sure the toolchain finished installing (Rust + Git) and that you have
+network access for the initial dependency fetch. `just doctor` checks for common
+problems; `just heal` attempts routine repairs.
+
+=== Sensors don't seem to do anything
+Confirm you granted the sensor permissions during setup, and that the app is
+running its capture loop. Sensor behaviour and OS integration are covered in
+`docs/OS_INTEGRATION.adoc`.
+
+=== Answers are slow
+On-device inference speed depends on your phone. A smaller model is faster.
+Complex one-off questions can optionally use the cloud fallback (if you enabled
+it) without changing the default local behaviour.
+
+== Managing & removing
+
+=== How do I update it?
+Pull the latest source and rebuild (`git pull` then `just build`), or re-run the
+AI-assisted setup and ask it to update.
+
+=== How do I uninstall it?
+Use the repository's uninstall script (`scripts/uninstall.sh`) or ask your AI
+assistant to remove NeuroPhone. This removes the built app and its files from the
+device.
+
+== Getting help
+
+* `just help-me` prints a diagnostic context block to include in a report.
+* Open an issue: https://github.com/hyperpolymath/neurophone/issues
+* Deeper docs: `EXPLAINME.adoc` (how it works) and link:README.adoc[the wiki hub].

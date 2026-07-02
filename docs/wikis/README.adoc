@@ -1,0 +1,84 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= NeuroPhone Wiki
+:toc: preamble
+:icons: font
+
+Long-form, audience-tailored documentation for NeuroPhone — an Android app that
+runs a *neurosymbolic AI* entirely on your phone (sensors → reservoir → symbolic
+bridge → a local language model, with an optional cloud fallback you turn on
+yourself).
+
+This page is the hub. It routes each kind of reader to the right material —
+including the deep-dive docs that already live elsewhere in the repo, so nothing
+is duplicated.
+
+[IMPORTANT]
+====
+NeuroPhone is *in active development* (pre-1.0). Where a page states a fact it is
+meant to be checkable — see `AFFIRMATION.adoc` at the repo root for the dated,
+falsifiable snapshot of what is actually true right now, and `proofs/README.adoc`
+for exactly which correctness claims are formally checked, property-tested, or
+still honestly open.
+====
+
+== By audience
+
+[cols="1,3",options="header"]
+|===
+| If you are… | Start here
+
+| *A curious reader* (non-technical)
+| link:for-lay-readers.adoc[What is NeuroPhone? — in plain language]. No jargon,
+  no code — just what it does and why on-device AI is different.
+
+| *A user / installer*
+| link:for-users-faq.adoc[User FAQ & troubleshooting], then the repo-root
+  `QUICKSTART-USER.adoc` and `docs/AI_INSTALLATION_GUIDE.adoc` (the
+  "tell any AI to install it" recipe).
+
+| *A developer / contributor*
+| `EXPLAINME.adoc` (architecture & evidence), `docs/architecture.adoc`,
+  `docs/build.adoc`, `QUICKSTART-DEV.adoc`, and `proofs/README.adoc` for the
+  proof corpus. Contribution rules: `CONTRIBUTING.md`, `RSR-PHILOSOPHY.adoc`.
+
+| *A platform maintainer / operator*
+| `QUICKSTART-MAINTAINER.adoc`, `MAINTAINERS.adoc`, `HANDOVER.adoc`,
+  `GOVERNANCE.adoc`, and the CI conventions in `.github/workflows/`. The audit
+  posture is in `AUDIT.adoc`.
+
+| *A journalist, analyst, or partner*
+| link:for-press-and-partners.adoc[For press & partners] — the grounded story,
+  what is genuinely novel, what is not yet done, licensing, and how to verify
+  claims.
+|===
+
+== Core concepts (cross-links, not copies)
+
+* *Architecture* — `docs/architecture.adoc` and `TOPOLOGY.adoc` (the
+  sensor → LSM/ESN reservoir → symbolic bridge → LLM pipeline).
+* *Privacy & egress* — the outbound-network choke point and its GO/NO-GO veto
+  are described in `proofs/README.adoc` (obligation 3.1) and
+  `crates/claude-client/src/egress_gate.rs`.
+* *Formal verification* — `proofs/README.adoc` is the obligation ledger; it
+  states honestly which claims are checked vs open.
+* *Bluetooth presence (planned)* — `docs/BT-PRESENCE-PLAN.adoc`.
+
+== Glossary
+
+[cols="1,3"]
+|===
+| Term | Meaning
+| *Neurosymbolic* | Combining a *neural* substrate (learned, sub-symbolic reservoirs) with *symbolic* reasoning (explicit structure a language model can act on).
+| *LSM* | Liquid State Machine — a spiking reservoir of leaky integrate-and-fire neurons.
+| *ESN* | Echo State Network — a rate-based reservoir whose dynamics "echo" recent input.
+| *Reservoir computing* | Using a fixed random dynamical system as a rich feature map; only a light readout is trained.
+| *Bridge* | The component that turns neural reservoir state into symbolic context for the language model.
+| *On-device* | Runs on your phone's own hardware; no data leaves the device unless you explicitly enable the cloud fallback.
+| *RSR* | Rhodium Standard Repository — the hyperpolymath repository-quality standard this repo follows.
+|===
+
+== Wiki synchronisation
+
+These `.adoc` sources are the canonical wiki. If a forge-hosted wiki
+(GitHub/GitLab) is enabled, sync from here — do not edit the forge wiki directly.
