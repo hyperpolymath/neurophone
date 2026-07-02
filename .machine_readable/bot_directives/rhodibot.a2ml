@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: MPL-2.0
+# rhodibot.a2ml — Directives for rhodibot in neurophone
+
+project = "neurophone"
+schema_version = "1.0.0"
+
+[identity]
+bot = "rhodibot"
+role = "git-operations"
+
+[constraints]
+# Never force-push to main or any protected branch (squabble, don't bypass).
+# Never push to non-origin remotes (GitHub is the source of truth).
+# SHA-pin all actions/* references before committing workflow changes (MUST).
+# Do not amend published commits — create new commits instead.
+# Always sign commits where the environment supports it; unsigned commits in the
+#   managed execution environment are non-blocking (platform-mediated signing).
+# Never put a model identifier in commit messages, PR titles/bodies, or code.
+
+[targets]
+watch = [
+  ".github/workflows/",
+  ".github/dependabot.yml",
+  "Justfile",
+  "contractile.just",
+  "Mustfile",
+  ".gitignore",
+  ".gitattributes",
+]
