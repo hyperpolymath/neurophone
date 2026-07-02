@@ -116,7 +116,7 @@ NeuroPhone work begins at Phase 2 in the cross-repo plan:
 == Cross-references
 
 * link:../README.adoc[README.adoc] — privacy commitments to preserve.
-* link:../TOPOLOGY.md[TOPOLOGY.md] — existing sensor → LSM → ESN → bridge pipeline diagram.
+* link:../TOPOLOGY.adoc[TOPOLOGY.adoc] — existing sensor → LSM → ESN → bridge pipeline diagram.
 * `burble/docs/architecture/ANDROID-CLIENT.adoc` — authoritative cross-repo plan.
 * `burble/.machine_readable/6a2/nearby-presence.a2ml` — wire format that codegen reads.
 
