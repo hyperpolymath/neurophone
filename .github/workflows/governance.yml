@@ -31,4 +31,4 @@ permissions:
 
 jobs:
   governance:
-    uses: hyperpolymath/standards/.github/workflows/governance-reusable.yml@f81bb0453ab7fda0cea94127d3855f83968fb9e8 # bumped 2026-07-03: standards#455 wired apply-baseline.sh into validate-hypatia-baseline AND #464 fixed it actually running (the #455 wire-in aborted under `bash -e` on the scan's exit-on-findings before the filter ran). Other standards reusables intentionally left at 7c9db0e.
+    uses: hyperpolymath/standards/.github/workflows/governance-reusable.yml@412a7031577112b31ee287cc6060179d638d6500 # bumped 2026-07-03: standards #455 (baseline consulted) + #464 (filter runs under bash -e) + #466 (scan a clean caller tree, not the .standards-checkout tooling). Other standards reusables intentionally left at 7c9db0e.
