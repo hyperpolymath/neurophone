@@ -31,4 +31,4 @@ permissions:
 
 jobs:
   governance:
-    uses: hyperpolymath/standards/.github/workflows/governance-reusable.yml@7c9db0e5909aab77bf11a444ade3b95c1d2b702e
+    uses: hyperpolymath/standards/.github/workflows/governance-reusable.yml@832b1578ecaeeb27dad54f133630ebd670f6e752 # bumped 2026-07-03: standards#455 wires apply-baseline.sh into validate-hypatia-baseline (the check now actually consults .hypatia-baseline.json). Other standards reusables intentionally left at 7c9db0e.
