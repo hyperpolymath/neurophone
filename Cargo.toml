@@ -27,7 +27,7 @@ ndarray-rand = "0.16"
 # separate, incompatible rand in the tree (Distribution/Rng traits don't match
 # ndarray-rand's). Revert until ndarray-rand ships a rand-0.10-compatible release.
 rand = "0.9"
-rand_distr = "0.5"
+rand_distr = "0.6"
 rayon = "1.12"
 
 # Serialization
