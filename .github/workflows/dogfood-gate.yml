@@ -211,9 +211,15 @@ jobs:
             HAS_GROOVE_CODE="true"
           fi
 
-          # Check if this repo likely serves HTTP (has server/listener code)
+          # Check if this repo likely serves HTTP in production. Key on
+          # production HTTP-server framework markers only. A bare `TcpListener`
+          # is deliberately NOT a signal: it is dominated by test/utility use
+          # (e.g. a #[cfg(test)] loopback fake), so matching it produced a
+          # spurious groove nudge on client-only apps. A real hand-rolled Rust
+          # server still pairs the listener with `axum::serve`/`hyper::Server`,
+          # which are matched here.
           HAS_SERVER="false"
-          if grep -rl 'TcpListener\|Bandit\|Plug.Cowboy\|httpz\|vweb\|axum::serve\|actix_web' --include='*.rs' --include='*.ex' --include='*.zig' --include='*.v' . 2>/dev/null | head -1 | grep -q .; then
+          if grep -rl 'Bandit\|Plug.Cowboy\|httpz\|vweb\|axum::serve\|actix_web\|hyper::Server\|rocket::build\|warp::serve' --include='*.rs' --include='*.ex' --include='*.zig' --include='*.v' . 2>/dev/null | head -1 | grep -q .; then
             HAS_SERVER="true"
           fi
 
