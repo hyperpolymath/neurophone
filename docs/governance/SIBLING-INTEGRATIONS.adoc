@@ -122,8 +122,8 @@ Phase 2 and depends on burble finishing Phases 0–1 first.
 |===
 | Artifact NeuroPhone's plan names | Reality in `burble` @ `0926a15` | Status
 
-| `src/Burble/ABI/NearbyPresence.idr` (Idris2 wire type)
-| Absent from the ABI dir and from the `burble-abi.ipkg` module list; appears only as a "NEW" line in `docs/architecture/ANDROID-CLIENT.adoc`
+| `Burble.ABI.NearbyPresence` Idris2 wire type (burble tree)
+| Absent from the ABI dir and from the `burble-abi.ipkg` module list; appears only as a "NEW" line in burble's `docs/architecture/ANDROID-CLIENT.adoc`
 | PLANNED
 
 | `nearby-presence.a2ml` (wire format)
@@ -168,7 +168,7 @@ in either repo's code or docs is a *migration precedent*: panll migrated
 the template for its own Kotlin→Rust Android migration
 (`docs/migrations/RFC-ANDROID-KOTLIN-TO-RUST.adoc`). No runtime data flow is
 claimed anywhere. panll's one *live* data-ingest path is panll↔`panic-attack`
-event-chain JSON (`src/core/EventChain.res`), and in NeuroPhone `panic-attack` is
+event-chain JSON (panll's `EventChain.res` parser), and in NeuroPhone `panic-attack` is
 only ever run as a scanner over NeuroPhone's own source — NeuroPhone emits no
 event chains.
 
