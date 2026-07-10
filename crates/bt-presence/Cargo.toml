@@ -18,6 +18,3 @@ thiserror = { workspace = true }
 
 [build-dependencies]
 toml = { workspace = true }
-
-[dev-dependencies]
-serde_json = { workspace = true }

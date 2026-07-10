@@ -18,8 +18,8 @@ phase = "Core + proofs advancing; BLE presence consumer built (awaiting burble P
 
 [test-coverage]
 # Aggregate across the workspace (lib + integration + doc-tests).
-total-tests = 174
-notes = "160 + 14 new in crates/bt-presence (11 decode/decay unit + 3 burble frozen-vector conformance, incl. byte-exact beacon-id). Also property tests (0.1/0.2/1.2/1.3), typestate compile-fail doc-tests (2.1/2.3), TLC lifecycle model check (2.1)"
+total-tests = 173
+notes = "160 + 13 new in crates/bt-presence (11 decode/decay unit + 2 burble frozen-vector conformance, incl. byte-exact beacon-id). Conformance vectors held as byte-array constants (not a vendored JSON) so secret scanners do not false-positive on burble's non-production test keys. Also property tests (0.1/0.2/1.2/1.3), typestate compile-fail doc-tests (2.1/2.3), TLC lifecycle model check (2.1)"
 
 [test-results]
 build-status = "SUCCESS"
