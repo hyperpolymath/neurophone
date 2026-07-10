@@ -1,24 +1,25 @@
 # SPDX-License-Identifier: MPL-2.0
 # STATE.a2ml — Project state checkpoint
-# Updated 2026-07-01 — proofs (2.1 TLC / 2.3 typestate), JNI surface, Trustfile,
-# CI green; crate statuses corrected (the neural crates were never stubs).
+# Updated 2026-07-10 — bt-presence Phase-2 consumer (burble BLE presence v1,
+# frozen upstream ADR-0015) implemented + vector-validated; sibling-integration
+# audit + launcher carve-out; hypatia baseline + cargo-audit greened.
 
 [metadata]
 project = "neurophone"
 version = "1.0.0"
-last-updated = "2026-07-01"
+last-updated = "2026-07-10"
 status = "active"
 crg-grade = "C"
 
 [project-context]
 name = "neurophone"
-completion-percentage = 80
-phase = "Core + proofs advancing; Android shell blocked on external gossamer"
+completion-percentage = 82
+phase = "Core + proofs advancing; BLE presence consumer built (awaiting burble Phase-1 emitter); Android shell on external gossamer"
 
 [test-coverage]
 # Aggregate across the workspace (lib + integration + doc-tests).
-total-tests = 160
-notes = "includes property tests (0.1/0.2/1.2/1.3), typestate compile-fail doc-tests (2.1/2.3), and the TLC lifecycle model check (2.1)"
+total-tests = 174
+notes = "160 + 14 new in crates/bt-presence (11 decode/decay unit + 3 burble frozen-vector conformance, incl. byte-exact beacon-id). Also property tests (0.1/0.2/1.2/1.3), typestate compile-fail doc-tests (2.1/2.3), TLC lifecycle model check (2.1)"
 
 [test-results]
 build-status = "SUCCESS"
@@ -38,6 +39,7 @@ llm = "complete — local inference"
 sensors = "complete — proptest_numeric; IIR filtering"
 claude-client = "complete — cloud fallback; egress-scrub test"
 neurophone-android = "implemented — 11-method ai.neurophone.NativeLib JNI surface (#110)"
+bt-presence = "implemented — read-only consumer of burble's frozen BLE presence beacon (wire v1, ADR-0015): build.rs codegen from vendored frozen spec + byte-exact HMAC decoder + contact resolution + RSSI decay; validated against burble's frozen vectors. Feeds a new SensorKind::Presence channel. Device-side scan glue (gossamer/JNI) + burble Phase-1 emitter still pending."
 
 [proofs]
 # Honest obligation status; full detail in proofs/README.adoc + Trustfile PROOF_ARTIFACTS.
@@ -45,11 +47,13 @@ discharged = "0.1 panic-freedom, 0.2 numeric containment, 0.3 unsafe discipline,
 open = "1.1 Echo State Property (formal contraction), 1.2 formal Dafny bound, 2.2 concurrency (N/A single-owner), 3.1 egress veto (external #103)"
 
 [recent-work]
-session-date = "2026-07-01"
-fixed = "rand 0.9/0.10 build break; retired scorecard-enforcer.yml; re-pinned standards reusables (governance/hypatia/scorecard green)"
-added = "real JNI surface (#110); TLA+ Lifecycle.cfg + TLC; typestate compile-fail proofs; core panic/numeric proptests; full estate Trustfile v2026.2.5-final + trustfile.yml gate"
-improved = "Cargo.toml/manifests licence normalised to MPL-2.0; proofs/README honest status; STATE corrected"
+session-date = "2026-07-10"
+added = "crates/bt-presence — Phase-2 BLE nearby-presence consumer (build.rs codegen from vendored frozen burble spec; byte-exact HMAC decoder + contact resolution + RSSI decay; burble frozen-vector conformance tests; SensorKind::Presence channel); docs/governance/SIBLING-INTEGRATIONS.adoc (ground-truthed groove/cleave/burble/panll dispositions + launcher carve-out); ECOSYSTEM.a2ml related-projects + carve-outs"
+fixed = "greened main CI after #178 (hypatia SD022 cross-repo false-positives via module-name citations; crossbeam-epoch RUSTSEC-2026-0204 lockfile bump); groove-check test-listener false positive (source-fixed in rsr-template)"
+improved = "BT-PRESENCE-PLAN.adoc corrected (burble Phase-0 now frozen; path 6a2/->descriptiles/; Kotlin->gossamer); burble ecosystem status blocked-upstream -> consumer-implemented"
+prior-session = "2026-07-01: real JNI surface (#110); TLA+ Lifecycle.cfg + TLC; typestate compile-fail proofs; full estate Trustfile v2026.2.5-final; licence normalised to MPL-2.0"
 
 [blockers]
-gossamer = "External: #83 Android migration (gossamer Idris2+Zig shell) blocked — repo not in session scope (403)"
-conative-gating = "External: #103 egress GO/NO-GO veto (obligation 3.1 residual) blocked — repo not in session scope"
+gossamer = "External: #83 Android migration (gossamer Idris2+Zig shell); also owns the device-side BLE scan glue that feeds bt-presence"
+conative-gating = "External: #103 egress GO/NO-GO veto (obligation 3.1 residual)"
+burble-phase1 = "External (runtime-only, non-blocking for build): burble's Android client that EMITS the presence beacon is not yet shipped (ADR-0015 Proposed; no client/android). bt-presence is built + pinned to the frozen v1 format, ready to receive once burble emits."

@@ -38,8 +38,8 @@ upstream design doc.
 | Pre-alpha design corpus — zero implementation, no ABI/schema/SDK, no domain overlap.
 
 | `burble`
-| BLOCKED (upstream Phase 0)
-| Real future integration (BLE nearby-presence sensor), but every burble-side artifact NeuroPhone would consume is still design-only.
+| CONSUMER IMPLEMENTED (Phase-1 emitter pending)
+| burble froze the presence wire format v1 (ADR-0015, 2026-07-09). NeuroPhone's byte-exact consumer now ships in `crates/bt-presence/`, validated against burble's frozen vectors. Only burble's Android *emitter* (Phase 1) is still unbuilt.
 
 | `panll`
 | PRECEDENT-ONLY
@@ -108,53 +108,67 @@ future tie is a conceptual analogy between cleave's (unbuilt) FFI-dial "kernel"
 and NeuroPhone's JNI/FFI boundary — an analogy, not an integration, and it
 cannot be specified until cleave writes its kernel.
 
-== burble — BLOCKED (upstream Phase 0 incomplete)
+== burble — CONSUMER IMPLEMENTED (Phase-1 emitter pending)
 
 *What it is.* A self-hostable voice-first communications platform. Relevant to
-NeuroPhone only via a planned Bluetooth Low Energy *nearby-presence* signal that
-NeuroPhone would consume read-only as one more sensor input (see
-`docs/BT-PRESENCE-PLAN.adoc`). NeuroPhone's work begins at the cross-repo plan's
-Phase 2 and depends on burble finishing Phases 0–1 first.
+NeuroPhone via a Bluetooth Low Energy *nearby-presence* signal that NeuroPhone
+consumes read-only as one more sensor input (see `docs/BT-PRESENCE-PLAN.adoc`).
 
-*Ground truth — every consumed artifact is still PLANNED, not present:*
+*What changed (2026-07-09/10).* This section previously recorded burble as
+BLOCKED with every consumed artefact design-only. That flipped: burble PR #154
+(`2b5914b`) *froze the BLE presence wire format v1* under ADR-0015 and explicitly
+"unblock[ed] neurophone." The artefacts now exist upstream and are frozen, and
+NeuroPhone's Phase-2 consumer is now implemented and vector-validated.
 
 [cols="2,3,1",options="header"]
 |===
-| Artifact NeuroPhone's plan names | Reality in `burble` @ `0926a15` | Status
+| Artifact NeuroPhone's plan names | Reality in `burble` @ `2b5914b` | Status
 
-| `Burble.ABI.NearbyPresence` Idris2 wire type (burble tree)
-| Absent from the ABI dir and from the `burble-abi.ipkg` module list; appears only as a "NEW" line in burble's `docs/architecture/ANDROID-CLIENT.adoc`
-| PLANNED
+| `Burble.ABI.NearbyPresence` Idris2 wire type
+| Present; listed in `burble-abi.ipkg` module list
+| EXISTS (frozen)
 
-| `nearby-presence.a2ml` (wire format)
-| Does not exist. NeuroPhone's plan cited `.machine_readable/6a2/…` — but `6a2/` is *NeuroPhone's* namespace; burble uses `descriptiles/`, and the file is absent there too
-| PLANNED (+ wrong path)
+| `.machine_readable/descriptiles/nearby-presence.a2ml` (wire format)
+| Present; `status = "frozen"`, wire-version 1, full 24-byte layout + freeze covenant
+| EXISTS (frozen)
 
-| burble Android client emitting the advertisement (Phase-1 precondition)
-| No `client/android/` exists; `ANDROID-CLIENT.adoc`: "Design only — no code yet"
-| PLANNED
+| Frozen conformance vectors + reference impl
+| `.machine_readable/test-vectors/ble-spa-v1.json` + `server/lib/burble/presence/ble_spa.ex`
+| EXISTS (frozen)
 
-| `server/lib/burble/bridges/neurophone.ex`
-| No `bridges/` directory exists
-| PLANNED
+| Defined advertisement byte layout
+| `magic(0x42) | ver_type(0x12) | epoch:u32BE | HMAC-SHA256(secret,…)[0..18]`, company id `0xFFFF`
+| DEFINED (frozen)
 
-| Defined advertisement UUID / byte layout
-| None defined anywhere; only a prose knock-packet sketch, explicitly *not* a continuous advertisement
-| UNDEFINED
+| burble Android client *emitting* the beacon (Phase-1 precondition)
+| No `client/android/` yet; ADR-0015 is `Status: Proposed`
+| STILL PENDING
 |===
 
-The governing decision, burble `docs/decisions/0010-presence-discovery-and-trust-zones.adoc`,
-is `Status: Proposed` (dated 2026-07-08) and states "Nothing here is built yet."
-burble's own `PRODUCTION-BLOCKER-HANDOFF.adoc` flags the Android BLE design as
-internally contradictory and unbuilt.
+*NeuroPhone-side implementation (this repo).* `crates/bt-presence/` is a
+host-testable, pure-Rust consumer of the frozen v1 beacon:
 
-*Disposition.* The honest NeuroPhone-side artifact today is a *blocked-on note*,
-not codegen and not a vendored schema — you cannot vendor or generate against a
-wire format that has never been authored. `docs/BT-PRESENCE-PLAN.adoc` has been
-annotated with this upstream status and two corrections (the `6a2/`→`descriptiles/`
-path error, and the now-superseded Kotlin scanner plan, which must follow the
-gossamer migration per #83 rather than reintroduce banned Kotlin). NeuroPhone
-resumes Phase 2 the moment burble authors and freezes the advertisement format.
+* `build.rs` code-generates the wire constants from a byte-exact vendored copy of
+  burble's frozen `nearby-presence.a2ml` (`vendor/`, provenance pinned to commit
+  `2b5914b` + sha256), and *fails the build loudly* if the vendored spec is not a
+  frozen v1 — no hand-copied protocol numbers, no silent fork.
+* `src/decode.rs` decodes the 24-byte frame, derives the epoch (`unix/900`), and
+  resolves the beacon against held contact secrets by reproducing
+  `HMAC-SHA256(secret, "BRBL-PRES-v1" ‖ magic ‖ ver_type ‖ epoch)[0..18]`
+  (constant-time compare, ±1 epoch freshness window).
+* `src/decay.rs` turns intermittent sightings into a smooth `0.0..=1.0` presence
+  score (RSSI-reinforced, exponential decay).
+* `tests/vectors.rs` replays burble's frozen vectors and asserts the beacon id is
+  *byte-exact* with burble's independent oracle (`presence_beacon_id_is_byte_exact`).
+* The score enters the pipeline through a new `sensors::SensorKind::Presence`
+  channel — sensor-class only, no microphone, no outbound advertising.
+
+*Disposition.* Consumer implemented and pinned to the frozen format; the
+integration is *wired and tested* on the NeuroPhone side. End-to-end runtime still
+waits on burble Phase 1 (the Android *emitter*), which does not block NeuroPhone's
+build — there is simply nothing on the air to receive until burble ships it. The
+remaining device-side scan glue must ride the gossamer surface (Rust/JNI) per #83,
+not Kotlin.
 
 == panll — PRECEDENT-ONLY
 
