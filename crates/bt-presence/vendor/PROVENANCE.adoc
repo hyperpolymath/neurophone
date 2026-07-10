@@ -1,0 +1,57 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
+= Vendored burble presence artefacts — provenance
+:toc: preamble
+
+The two files beside this one are *byte-exact vendored copies* of burble's
+FROZEN BLE-presence wire artefacts. They are the single source of truth this
+crate's codegen and tests pin against — vendored (not fetched) so the neurophone
+build is reproducible and offline-buildable, and pinned so any upstream change
+is a deliberate, reviewable re-vendor rather than silent drift.
+
+[cols="1,3",options="header"]
+|===
+| Field | Value
+
+| Upstream repo   | `https://github.com/hyperpolymath/burble`
+| Upstream commit | `2b5914b2760bdad40d4fb7651b94c37c58f91e2d` (PR #154, "Freeze BLE presence wire format v1")
+| Authority       | burble ADR-0015 (BLE presence wire format v1) + ADR-0010 (presence/zones)
+| Wire version    | v1 (`[metadata].wire-version = 1`, `status = "frozen"`)
+|===
+
+== Files
+
+`nearby-presence.a2ml`::
+  Source: `.machine_readable/descriptiles/nearby-presence.a2ml` @ the commit above. +
+  sha256: `687c758b0004ae14d9907d2855027f7dc6358b91130f937a1ce5d3ef4e46d559` +
+  The frozen presence-beacon wire spec. `build.rs` parses its `[presence-frame]`
+  offsets/sizes into `wire.rs` constants and *fails the build loudly* if
+  `[metadata].wire-version != 1` — so a v2 re-vendor cannot silently miscompile
+  a v1 decoder.
+
+`ble-spa-v1.json`::
+  Source: `.machine_readable/test-vectors/ble-spa-v1.json` @ the commit above. +
+  sha256: `f7067587742214d979ec4fde5e5b403d8d47ca0de1d442ab3b1908ce0650dc6b` +
+  Frozen conformance vectors. `tests/vectors.rs` replays the `presence` and
+  `presence`-relevant `knock_negative` cases and asserts byte-exact `beacon_id`
+  and resolve outcomes, so this crate's decoder is provably wire-compatible.
+
+== Freeze covenant (from burble)
+
+Per `nearby-presence.a2ml [freeze]`: the bytes are frozen; a change requires a
+superseding ADR + major `@version` bump + CHANGELOG "Protocol" entry +
+regenerated vectors. Re-vendoring here is therefore a deliberate act: bump the
+commit/sha above, re-copy both files, and let `build.rs`'s wire-version guard
+and `tests/vectors.rs` confirm compatibility (or fail loudly).
+
+== Re-vendor command
+
+[source,sh]
+----
+B=/path/to/burble ; C=<new-commit>
+git -C "$B" show "$C:.machine_readable/descriptiles/nearby-presence.a2ml" \
+  > crates/bt-presence/vendor/nearby-presence.a2ml
+git -C "$B" show "$C:.machine_readable/test-vectors/ble-spa-v1.json" \
+  > crates/bt-presence/vendor/ble-spa-v1.json
+# then update the commit + sha256 fields above
+----

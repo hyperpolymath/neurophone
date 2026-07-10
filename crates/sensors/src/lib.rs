@@ -31,13 +31,17 @@ pub enum SensorKind {
     Magnetometer,
     Light,
     Proximity,
+    /// Bluetooth nearby-presence: a single-channel decayed presence score
+    /// (0.0..=1.0) produced by the `bt-presence` crate from burble's BLE
+    /// beacon. Sensor-class like light/proximity; see `docs/BT-PRESENCE-PLAN.adoc`.
+    Presence,
 }
 
 impl SensorKind {
     pub const fn arity(self) -> usize {
         match self {
             Self::Accelerometer | Self::Gyroscope | Self::Magnetometer => 3,
-            Self::Light | Self::Proximity => 1,
+            Self::Light | Self::Proximity | Self::Presence => 1,
         }
     }
 
@@ -48,6 +52,7 @@ impl SensorKind {
             Self::Magnetometer => "magnetometer",
             Self::Light => "light",
             Self::Proximity => "proximity",
+            Self::Presence => "presence",
         }
     }
 }

@@ -5,6 +5,7 @@ members = [
     "crates/esn",
     "crates/bridge",
     "crates/sensors",
+    "crates/bt-presence",
     "crates/llm",
     "crates/claude-client",
     "crates/neurophone-core",
