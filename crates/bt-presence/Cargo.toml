@@ -10,8 +10,8 @@ description = "Read-only consumer of burble's frozen BLE nearby-presence beacon 
 
 [dependencies]
 sensors = { path = "../sensors" }
-hmac = "0.12"
-sha2 = "0.11"
+hmac = "0.13"
+sha2 = "0.10"
 subtle = "2.6"
 serde = { workspace = true }
 thiserror = { workspace = true }
