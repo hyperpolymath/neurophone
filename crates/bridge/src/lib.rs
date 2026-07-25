@@ -8,6 +8,9 @@
 #![forbid(unsafe_code)]
 #![cfg_attr(not(test), deny(clippy::unwrap_used, clippy::expect_used))]
 
+pub mod action_gate;
+pub use action_gate::{ActionGate, ActionGateError};
+
 use ndarray::{Array1, ArrayView1};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
