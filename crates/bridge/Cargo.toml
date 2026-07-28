@@ -7,6 +7,9 @@ edition.workspace = true
 [lib]
 name = "bridge"
 [dependencies]
+uuid = { version = "1", features = ["v4"] }
+policy-oracle = { git = "https://github.com/hyperpolymath/conative-gating", rev = "7baaf25ecb20ec2a75f138ec69c1681e7677021a" }
+gating-contract = { git = "https://github.com/hyperpolymath/conative-gating", rev = "7baaf25ecb20ec2a75f138ec69c1681e7677021a" }
 ndarray = { workspace = true }
 ndarray-rand = { workspace = true }
 rand = { workspace = true }
