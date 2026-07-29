@@ -1,0 +1,72 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= What is NeuroPhone? — In Plain Language
+:toc: preamble
+:icons: font
+
+_For readers with no technical background. No jargon, no code — just what
+NeuroPhone is, what it does, and why it is built the way it is._
+
+== The one-sentence version
+
+NeuroPhone turns an ordinary Android phone into a small, private "thinking"
+assistant that runs *on the phone itself* — so your data does not have to be
+sent to a company's servers to be useful.
+
+== Why that matters
+
+Most AI assistants today work by sending what you say (and sometimes what your
+sensors detect) to a large computer somewhere on the internet, which thinks
+about it and sends an answer back. That is powerful, but it means your words and
+your phone's signals leave your control.
+
+NeuroPhone flips that around. The thinking happens *inside your phone*. By
+default, nothing leaves the device. If you ever want extra help with a hard
+question, you can *choose* to let it ask a cloud service — but that is off unless
+you turn it on, and you are told each time it matters.
+
+== How it "thinks" (the gentle version)
+
+Think of it as three stages, like a relay race:
+
+. *Senses.* The phone quietly notices things it already can — movement, light,
+  orientation — a bit like how you notice you have picked your phone up without
+  thinking about it.
+. *A pool of ripples.* Those signals are dropped into what you can picture as a
+  pond. Each signal makes ripples that bounce around and fade. The *pattern* of
+  ripples at any moment is a rich summary of "what has been happening lately."
+  (Engineers call these pools _reservoirs_.)
+. *Making sense of it.* A small language model — the same family of technology
+  as the well-known chat assistants, but shrunk to fit a phone — reads that
+  summary and turns it into something useful in words.
+
+The "neuro-symbolic" name just means it combines two styles of thinking: the
+fuzzy, pattern-spotting kind (the ripples) and the tidy, rule-following kind
+(words and structure). Using both is the point.
+
+== What it is *not*
+
+* It is *not* a finished product. It is a working research-grade project, still
+  being built. Some parts are proven correct with mathematics; some parts are
+  honestly marked "not done yet." The project makes a point of *not* pretending
+  otherwise.
+* It is *not* a surveillance tool. The design goal is the opposite: keep data on
+  the device, make any exception visible and opt-in.
+* It is *not* locked to one company's ecosystem. It is open-source under a
+  licence (MPL-2.0) that lets others read, check, and build on it.
+
+== Who is behind it, and can I trust the claims?
+
+NeuroPhone is part of a family of open projects by an independent author. Because
+it is open-source, you do not have to take any claim on faith: everything is
+published, and the project keeps a dated "honesty receipt" (a file called
+`AFFIRMATION.adoc`) that says exactly what has and has not been checked, at a
+specific moment. If a claim cannot be backed by a real test, the project's own
+rules require it to be labelled as unproven.
+
+== Want to go one step deeper?
+
+* If you would like to *install or use it*, see link:for-users-faq.adoc[the User
+  FAQ].
+* If you are a *journalist or partner*, see
+  link:for-press-and-partners.adoc[For press & partners].

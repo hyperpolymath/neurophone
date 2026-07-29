@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: MPL-2.0
+# seambot.a2ml — Directives for seambot in neurophone
+
+project = "neurophone"
+schema_version = "1.0.0"
+
+[identity]
+bot = "seambot"
+role = "integration"
+
+[constraints]
+# Verify integration seams end-to-end whenever two components complete together.
+# The JNI seam (crates/neurophone-android <-> neurophone-core) must keep its
+#   host-testable bridge logic and its create->initialized->down lifecycle
+#   typestate (reset consumes the core via shutdown(self)) — see #110 / #93.
+# No ABI change without a matching proof update — MUST.contractile obligation.
+# The sole outbound-network seam is claude-client; the conative-gating GO/NO-GO
+#   egress veto (egress_gate.rs, #103) must remain wired at that choke point.
+# Neural->symbolic seam (core<->bridge Array1<f32>, bridge<->llm NeuralOutput)
+#   must preserve dimension/soundness invariants covered by the proptest suites.
+
+[targets]
+watch = [
+  "crates/neurophone-android/",
+  "crates/claude-client/src/egress_gate.rs",
+  "crates/bridge/",
+  "crates/",
+  "proofs/",
+  "docs/migrations/JNI-SURFACE-AUDIT.adoc",
+]

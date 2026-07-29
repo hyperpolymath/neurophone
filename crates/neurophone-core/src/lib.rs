@@ -214,6 +214,7 @@ pub struct NeuroSymbolicSystem<S = phase::Active> {
     state: SystemState,
     start_time: Instant,
     query_count: u64,
+    action_gate: ActionGate,
     _phase: PhantomData<S>,
 }
 
@@ -241,6 +242,7 @@ impl NeuroSymbolicSystem<phase::Created> {
             state: SystemState::default(),
             start_time: Instant::now(),
             query_count: 0,
+            action_gate: ActionGate::new(),
             _phase: PhantomData,
         })
     }
@@ -254,6 +256,7 @@ impl NeuroSymbolicSystem<phase::Created> {
             state: self.state,
             start_time: self.start_time,
             query_count: self.query_count,
+            action_gate: self.action_gate,
             _phase: PhantomData,
         })
     }
@@ -274,11 +277,22 @@ impl NeuroSymbolicSystem<phase::Active> {
         self.state.latency_ms = latency;
         self.state.timestamp_ms = event.timestamp_ms;
 
+        let confidence = 0.85;
+        let context = format!("Processed {} sensor", event.sensor_type);
+        
+        // Conative-gating: gate the bridge action
+        if let Err(e) = self.action_gate.check(confidence, &context) {
+            tracing::warn!("Bridge action vetoed by policy: {}", e);
+            // On Block/Escalate, we must not dispatch the action. 
+            // In a real flow, we might return a default or error. Here we return an error.
+            return Err(NeurophoneError::RuntimeError(format!("Vetoed: {}", e)));
+        }
+
         Ok(NeuralOutput {
             timestamp_ms: event.timestamp_ms,
             features,
-            context: format!("Processed {} sensor", event.sensor_type),
-            confidence: 0.85,
+            context,
+            confidence,
         })
     }
 
@@ -367,6 +381,7 @@ impl NeuroSymbolicSystem<phase::Active> {
             state: self.state,
             start_time: self.start_time,
             query_count: self.query_count,
+            action_gate: self.action_gate,
             _phase: PhantomData,
         }
     }

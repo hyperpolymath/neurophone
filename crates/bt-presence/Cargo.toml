@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: MPL-2.0
+[package]
+name = "bt-presence"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Read-only consumer of burble's frozen BLE nearby-presence beacon (wire v1, ADR-0015) — decode + contact resolution + presence decay, feeding the neurophone sensor pipeline."
+
+[dependencies]
+sensors = { path = "../sensors" }
+hmac = "0.13"
+sha2 = "0.11"
+subtle = "2.6"
+serde = { workspace = true }
+thiserror = { workspace = true }
+
+[build-dependencies]
+toml = { workspace = true }

@@ -1,0 +1,67 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+//
+// Dev Container configuration for neurophone.
+// Works with: VS Code Dev Containers, GitHub Codespaces, Gitpod.
+// Container runtime: Podman (recommended) or any OCI-compliant runtime.
+//
+// neurophone has no Containerfile (it is a plain Rust workspace), so this
+// devcontainer builds from a base image plus the standard toolchain features
+// rather than a repo-local Dockerfile.
+{
+  "name": "neurophone",
+
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+
+  "features": {
+    "ghcr.io/devcontainers/features/rust:1": {},
+    "ghcr.io/devcontainers/features/git:1": {
+      "ppa": false,
+      "version": "latest"
+    },
+    "ghcr.io/jdx/devcontainer-features/just:1": {},
+    "ghcr.io/nickel-lang/devcontainer-feature:0": {}
+  },
+
+  // Warm the dependency cache; tolerant of offline / restricted-egress builds.
+  "postCreateCommand": "cargo fetch || true",
+
+  "containerEnv": {
+    "EDITOR": "code --wait",
+    "LANG": "C.UTF-8"
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "EditorConfig.EditorConfig",
+        "eamodio.gitlens",
+        "rust-lang.rust-analyzer",
+        "streetsidesoftware.code-spell-checker",
+        "timonwong.shellcheck",
+        "tamasfe.even-better-toml",
+        "skellock.just",
+        "redhat.vscode-yaml",
+        "asciidoctor.asciidoctor-vscode",
+        "usernamehw.errorlens"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.insertSpaces": true,
+        "editor.tabSize": 4,
+        "files.trimTrailingWhitespace": true,
+        "files.insertFinalNewline": true,
+        "files.trimFinalNewlines": true
+      }
+    },
+    "codespaces": {
+      "openFiles": [
+        "README.adoc"
+      ]
+    }
+  },
+
+  "forwardPorts": [],
+
+  "shutdownAction": "stopContainer"
+}

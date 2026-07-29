@@ -1,0 +1,55 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= Audit Gate
+Codex
+v1.1, 2026-07-02
+:toc:
+:toclevels: 2
+:sectnums:
+
+== Purpose
+
+This root document exists so humans and bots can see the hard audit posture
+without having to discover the standards repository first.
+
+Canonical source documents live in the `standards` repository. This file is a
+repo-local audit gate summary for maintainers and automated agents working in
+neurophone.
+
+== Hard Rules
+
+* Do not call anything `stable`, `v1.0.0`, or full release unless the stable
+  release gate has been passed end to end.
+* Do not publish implementation-facing work below `B` in CRG unless the work is
+  genuinely abstract and makes no implementation-readiness claim.
+* `D` requires RSR compliance or a documented equivalent repository discipline.
+* `C` requires deep code and folder annotation, not just local confidence.
+* `B` means `beta-stable`: external breadth and safe broad trial, not merely
+  public visibility.
+* Papers, whitepapers, release notes, and READMEs must not outrun the proofs,
+  tests, or artefacts that support their claims. In particular, the proof
+  obligation map in `proofs/README.adoc` states which obligations are *checked*,
+  which are *property*-discharged, and which remain honestly *open* — no claim
+  may exceed that ledger.
+* Release paths must not ship with placeholders, stubs, `FIXME`, `XXX`,
+  template residue, fake fuzz, fake benches, or partial proof debt hidden as
+  if it were complete.
+* No proof escape hatches (`Admitted`, `sorry`, `believe_me`, `assert_total`,
+  `Obj.magic`, `unsafeCoerce`) — enforced by `.machine_readable/MUST.contractile`.
+
+== Canonical Standards
+
+Read these as the authoritative source:
+
+* `standards/component-readiness-grades/COMPONENT-READINESS-GRADES.md`
+* `standards/release-pre-flight/V1-GATE.adoc`
+* `standards/publication-pre-flight/PREFLIGHT.adoc`
+* `standards/publication-pre-flight/ESTATE-AUDIT-BASELINE-2026-03-30.adoc`
+* `standards/session-management-standards/README.adoc`
+
+== Bot Requirement
+
+Bots operating in this repository should treat this document as a key root audit
+document and should not make optimistic release or publication claims that
+conflict with it. See `.machine_readable/bot_directives/echidnabot.a2ml` for the
+proof-verification bot's scope.

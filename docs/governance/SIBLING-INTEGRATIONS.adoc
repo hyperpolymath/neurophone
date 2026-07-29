@@ -1,0 +1,236 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
+= NeuroPhone — Sibling-Integration Status
+:toc: preamble
+:toclevels: 3
+
+[NOTE]
+====
+*Purpose.* This document is the authoritative, ground-truthed record of how
+NeuroPhone relates to four sibling repositories that a repo audit flagged as
+"not integrated" — `groove`, `cleave`, `burble`, `panll` — plus the estate
+*launcher standard* carve-out. It exists so those rows stop reading as
+unexplained compliance gaps: each is either genuinely *not applicable*,
+*precedent-only*, or *blocked on upstream work that does not yet exist*.
+
+*Method.* Each disposition below was verified against the sibling repository's
+own source at the commit noted, not against design docs or memory. Where a
+NeuroPhone-side doc previously asserted an integration artifact, the assertion
+was checked against the upstream file it names. "EXISTS" means the artifact is
+present in the upstream tree today; "PLANNED" means it appears only in an
+upstream design doc.
+
+*Ground-truthed:* 2026-07-09.
+====
+
+== Summary
+
+[cols="1,2,3",options="header"]
+|===
+| Sibling | Classification | One-line disposition
+
+| `groove`
+| NOT-APPLICABLE
+| Runtime service-discovery protocol for HTTP services that offer capabilities. NeuroPhone runs no server and offers none.
+
+| `cleave`
+| NOT-APPLICABLE
+| Pre-alpha design corpus — zero implementation, no ABI/schema/SDK, no domain overlap.
+
+| `burble`
+| CONSUMER IMPLEMENTED (Phase-1 emitter pending)
+| burble froze the presence wire format v1 (ADR-0015, 2026-07-09). NeuroPhone's byte-exact consumer now ships in `crates/bt-presence/`, validated against burble's frozen vectors. Only burble's Android *emitter* (Phase 1) is still unbuilt.
+
+| `panll`
+| PRECEDENT-ONLY
+| Migration precedent (Tauri→Gossamer). No runtime data flow; panll's live ingest path is panll↔panic-attack, not panll↔neurophone.
+
+| launcher standard
+| CARVE-OUT
+| NeuroPhone is an Android app, not a desktop/server launcher target. The standard assumes a `server-url` runtime.
+|===
+
+The honest conclusion of the integration audit is that *none of the four is
+buildable today*: three are not-applicable or precedent-only by nature, and the
+one genuinely-substantive integration (`burble`) is blocked on `burble`
+completing its own unfinished Phase 0. Creating integration code for any of them
+now would be fabrication, not wiring.
+
+== groove — NOT-APPLICABLE
+
+*What it is.* A runtime service-discovery + capability-negotiation protocol
+(working draft v0.2.0, grade C+). Every groove-aware system MUST expose
+`GET /.well-known/groove` returning a manifest that advertises the capabilities
+it `offers` and `consumes`; peers probe local ports and compose.
+
+*Why NeuroPhone is out of scope.* NeuroPhone is a read-only, on-device Android
+app. It runs no HTTP server and offers no local capability to peer processes.
+The groove spec is explicit that this places it outside the protocol: a manifest
+with zero capabilities "SHOULD be flagged by tooling: a service that offers
+nothing has no reason to speak Groove" (groove `spec/SPEC.adoc` §2.1.1). There is
+also no Rust client SDK to call: `clients/` is JavaScript-only, and the
+`groove-core` Rust library the README references does not exist in the tree
+(removed per groove ADR 0001). Rust bindings are listed only as an aspiration.
+
+*Disposition.* No groove manifest, no groove code. NeuroPhone's
+`.github/workflows/dogfood-gate.yml` `groove-check` job is *advisory* (emits a
+non-blocking `::warning::`, never fails) and only fires when a repo has server
+code but no manifest — which NeuroPhone does not.
+
+[NOTE]
+====
+*Fixed defect (this change).* The `has_server` heuristic in `groove-check`
+grepped for a bare `TcpListener`, which matched NeuroPhone's *test-only* fake
+Claude server (`crates/claude-client/src/lib.rs`, inside a `#[cfg(test)]`
+module). That could surface a spurious — though non-blocking — groove warning in
+CI summaries. The detector now keys on production HTTP-server framework markers
+(`axum::serve`, `actix_web`, `hyper::Server`, `Bandit`, `Plug.Cowboy`, …), which
+a test loopback listener does not trip. The same fix was made at source in
+`rsr-template-repo`, the template this workflow is copied from.
+====
+
+== cleave — NOT-APPLICABLE
+
+*What it is.* A design corpus / draft specification for a proposed Rust
+"transmutable interface-engine" library. Its own status line: "Design corpus.
+ZERO lines of cleave-specific implementation exist. 0 of 7 proofs done"
+(cleave `README.adoc`).
+
+*Why NeuroPhone is out of scope.* There is nothing to integrate against — no
+crate, no header, no ABI, no wire format, no schema, no client SDK. cleave
+explicitly delegates wire encoding to `weft` and protocol/manifest handshake to
+`groove`, so even its aspirational "unified protocol endpoint" does not live in
+the repo. A repo-wide search for NeuroPhone's domain terms (sensor, reservoir,
+LSM/ESN, bluetooth, presence, android, on-device LLM) returns no matches.
+
+*Disposition.* No integration point exists or is planned. The only conceivable
+future tie is a conceptual analogy between cleave's (unbuilt) FFI-dial "kernel"
+and NeuroPhone's JNI/FFI boundary — an analogy, not an integration, and it
+cannot be specified until cleave writes its kernel.
+
+== burble — CONSUMER IMPLEMENTED (Phase-1 emitter pending)
+
+*What it is.* A self-hostable voice-first communications platform. Relevant to
+NeuroPhone via a Bluetooth Low Energy *nearby-presence* signal that NeuroPhone
+consumes read-only as one more sensor input (see `docs/BT-PRESENCE-PLAN.adoc`).
+
+*What changed (2026-07-09/10).* This section previously recorded burble as
+BLOCKED with every consumed artefact design-only. That flipped: burble PR #154
+(`2b5914b`) *froze the BLE presence wire format v1* under ADR-0015 and explicitly
+"unblock[ed] neurophone." The artefacts now exist upstream and are frozen, and
+NeuroPhone's Phase-2 consumer is now implemented and vector-validated.
+
+[cols="2,3,1",options="header"]
+|===
+| Artifact NeuroPhone's plan names | Reality in `burble` @ `2b5914b` | Status
+
+| `Burble.ABI.NearbyPresence` Idris2 wire type
+| Present; listed in `burble-abi.ipkg` module list
+| EXISTS (frozen)
+
+| `.machine_readable/descriptiles/nearby-presence.a2ml` (wire format)
+| Present; `status = "frozen"`, wire-version 1, full 24-byte layout + freeze covenant
+| EXISTS (frozen)
+
+| Frozen conformance vectors + reference impl
+| `.machine_readable/test-vectors/ble-spa-v1.json` + `server/lib/burble/presence/ble_spa.ex`
+| EXISTS (frozen)
+
+| Defined advertisement byte layout
+| `magic(0x42) | ver_type(0x12) | epoch:u32BE | HMAC-SHA256(secret,…)[0..18]`, company id `0xFFFF`
+| DEFINED (frozen)
+
+| burble Android client *emitting* the beacon (Phase-1 precondition)
+| No `client/android/` yet; ADR-0015 is `Status: Proposed`
+| STILL PENDING
+|===
+
+*NeuroPhone-side implementation (this repo).* `crates/bt-presence/` is a
+host-testable, pure-Rust consumer of the frozen v1 beacon:
+
+* `build.rs` code-generates the wire constants from a byte-exact vendored copy of
+  burble's frozen `nearby-presence.a2ml` (`vendor/`, provenance pinned to commit
+  `2b5914b` + sha256), and *fails the build loudly* if the vendored spec is not a
+  frozen v1 — no hand-copied protocol numbers, no silent fork.
+* `src/decode.rs` decodes the 24-byte frame, derives the epoch (`unix/900`), and
+  resolves the beacon against held contact secrets by reproducing
+  `HMAC-SHA256(secret, "BRBL-PRES-v1" ‖ magic ‖ ver_type ‖ epoch)[0..18]`
+  (constant-time compare, ±1 epoch freshness window).
+* `src/decay.rs` turns intermittent sightings into a smooth `0.0..=1.0` presence
+  score (RSSI-reinforced, exponential decay).
+* `tests/vectors.rs` replays burble's frozen vectors and asserts the beacon id is
+  *byte-exact* with burble's independent oracle (`presence_beacon_id_is_byte_exact`).
+* The score enters the pipeline through a new `sensors::SensorKind::Presence`
+  channel — sensor-class only, no microphone, no outbound advertising.
+
+*Disposition.* Consumer implemented and pinned to the frozen format; the
+integration is *wired and tested* on the NeuroPhone side. End-to-end runtime still
+waits on burble Phase 1 (the Android *emitter*), which does not block NeuroPhone's
+build — there is simply nothing on the air to receive until burble ships it. The
+remaining device-side scan glue must ride the gossamer surface (Rust/JNI) per #83,
+not Kotlin.
+
+== panll — PRECEDENT-ONLY
+
+*What it is.* A cognitive-relief, multi-pane "Human-Things Interface" desktop
+panel host (ReScript/TEA front end; Rust + Gossamer back end). Event-chain
+viewing is *one* panel feature, not its identity.
+
+*Why the relationship is precedent, not runtime.* The only relationship asserted
+in either repo's code or docs is a *migration precedent*: panll migrated
+`src-tauri/` → `src-gossamer/` (desktop only), and NeuroPhone's RFC cites that as
+the template for its own Kotlin→Rust Android migration
+(`docs/migrations/RFC-ANDROID-KOTLIN-TO-RUST.adoc`). No runtime data flow is
+claimed anywhere. panll's one *live* data-ingest path is panll↔`panic-attack`
+event-chain JSON (panll's `EventChain.res` parser), and in NeuroPhone `panic-attack` is
+only ever run as a scanner over NeuroPhone's own source — NeuroPhone emits no
+event chains.
+
+*Latent (design-only) options, none built.* panll offers three extension
+surfaces — a `DatabaseModule` ReScript protocol (internal, compile-time), a
+groove endpoint (fixed consumed-capability set), and a design-phase "transmutable
+panel" clade `.a2ml`. A future NeuroPhone↔panll link could ride any of them
+(e.g. NeuroPhone exporting `panic-attack`-shaped event-chain JSON that panll's
+Pane-W could load), but no NeuroPhone-side artifact for it exists today.
+
+*Disposition.* Recorded as precedent-only. No action required unless a runtime
+integration is later commissioned.
+
+== Launcher standard — CARVE-OUT
+
+*The standard.* The estate launcher standard
+(`standards/launcher/launcher-standard.a2ml` + `docs/UX-standards/launcher-standard.adoc`)
+describes a *desktop/server* application launcher. Its load-bearing assumption is
+`[runtime].kind = "server-url"`: a long-running local process bound to a
+`localhost` port, started by a shell `command`, tracked by a `pid-file`, and
+polled until its `url` responds (`wait-for-url-timeout-seconds`) — after which it
+opens a browser. Its `--integ`/`--disinteg` modes install XDG `.desktop` files,
+Start-Menu/Applications entries, and desktop icons on Linux/macOS/Windows. The
+reference descriptor `burble.launcher.a2ml` is exactly this shape
+(`kind = "server-url"`, port 4020, `mix phx.server`, XDG desktop categories).
+
+*Why NeuroPhone is a carve-out.* NeuroPhone is an on-device Android application
+(Rust workspace + JNI/Android surface). It has *no* server URL, no `localhost`
+port, no shell start `command`, no pid-file, and no desktop entry. An Android
+app's launch surface is the platform `LAUNCHER` intent declared in
+`AndroidManifest.xml` (`MainActivity` with `android.intent.action.MAIN` +
+`android.intent.category.LAUNCHER`) — provided by the OS, not by an estate
+launcher script. None of the `[runtime]` fields the standard requires can be
+populated for an APK.
+
+*Scope of the standard.* The standard is provisioned by `launch-scaffolder` for
+repos that ship a desktop/server app, and its lock-step CI gate runs only inside
+`standards` itself — it does not scan consumer repos. So this carve-out is a
+documentation/audit disposition, not a suppressed CI failure.
+
+*Disposition.* NeuroPhone is out of scope for the desktop/server launcher
+standard, by owner decision (2026-07-09). Recorded machine-readably in
+`.machine_readable/6a2/ECOSYSTEM.a2ml` `[carve-outs]`. If NeuroPhone ever ships a
+companion *desktop* control panel, that component — not the APK — would adopt the
+standard.
+
+== See also
+
+* link:../BT-PRESENCE-PLAN.adoc[BT-PRESENCE-PLAN.adoc] — the burble presence-sensor plan, now annotated with upstream status.
+* link:../migrations/RFC-ANDROID-KOTLIN-TO-RUST.adoc[RFC-ANDROID-KOTLIN-TO-RUST.adoc] — the panll migration precedent.
+* `../../.machine_readable/6a2/ECOSYSTEM.a2ml` — machine-readable related-projects + carve-outs.

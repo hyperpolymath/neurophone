@@ -146,4 +146,4 @@ Optimized for Oppo Reno 13 (Dimensity 8350):
 
 == Topology
 
-See link:../TOPOLOGY.md[TOPOLOGY.md] for a visual architecture map and completion dashboard.
+See link:../TOPOLOGY.adoc[TOPOLOGY.adoc] for a visual architecture map and completion dashboard.

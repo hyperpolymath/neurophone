@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Jewell"
+  given-names: "Jonathan D.A."
+title: "neurophone"
+version: 1.0.0
+date-released: "2026-07-02"
+url: "https://github.com/hyperpolymath/neurophone"
+repository-code: "https://github.com/hyperpolymath/neurophone"
+license: MPL-2.0
+keywords:
+  - "rsr"
+  - "neurosymbolic"
+  - "on-device-ai"
+  - "reservoir-computing"
+  - "liquid-state-machine"
+  - "echo-state-network"
+  - "rust"
+  - "android"
+  - "formal-verification"

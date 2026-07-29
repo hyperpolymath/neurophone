@@ -5,6 +5,7 @@ members = [
     "crates/esn",
     "crates/bridge",
     "crates/sensors",
+    "crates/bt-presence",
     "crates/llm",
     "crates/claude-client",
     "crates/neurophone-core",
@@ -26,8 +27,10 @@ ndarray-rand = "0.16"
 # rand 0.9). A dependabot bump to rand 0.10 broke the build: rand 0.10 is a
 # separate, incompatible rand in the tree (Distribution/Rng traits don't match
 # ndarray-rand's). Revert until ndarray-rand ships a rand-0.10-compatible release.
+# NB: dependabot re-bumped this to 0.10 in #175 (build re-broke); reverted again
+# here. Consider a dependabot ignore for rand until ndarray-rand catches up.
 rand = "0.9"
-rand_distr = "0.5"
+rand_distr = "0.6"
 rayon = "1.12"
 
 # Serialization
@@ -58,7 +61,7 @@ jni = "0.22"
 
 # Configuration
 config = "0.14"
-toml = "0.8"
+toml = "1.1"
 
 # Testing
 approx = "0.5"

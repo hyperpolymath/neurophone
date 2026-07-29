@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: MPL-2.0
+# Pre-commit hooks for neurophone (hyperpolymath RSR repo).
+# Install: pipx install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+#
+# NOTE: pre-commit itself is a Python tool used only as dev tooling; it runs no
+# Python in this repo's own code (the estate Python ban is about authored source,
+# not third-party dev tooling — cf. the same allowance in rsr-template-repo).
+
+repos:
+  # --- Standard hooks ---
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: detect-private-key
+      - id: check-added-large-files
+        args: ['--maxkb=1024']
+
+  # --- A2ML manifest validation ---
+  - repo: https://github.com/hyperpolymath/a2ml-pre-commit
+    rev: 40adffc73f2d4be1e8dfda8a7de93e4fc11730dc  # a2ml-pre-commit @ main 2026-06-23
+    hooks:
+      - id: validate-a2ml
+        name: Validate A2ML manifests
+
+  # --- K9 contract validation ---
+  - repo: https://github.com/hyperpolymath/k9-pre-commit
+    rev: 9b82e1f7a6b6c0f99df72c145d7dee8851803c30  # k9-pre-commit @ main 2026-06-23
+    hooks:
+      - id: validate-k9
+        name: Validate K9 contracts
+
+  # --- Shell linting ---
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+
+  # --- EditorConfig ---
+  - repo: https://github.com/editorconfig-checker/editorconfig-checker.python
+    rev: 3.2.1
+    hooks:
+      - id: editorconfig-checker
+        exclude: '(\.git|node_modules|target|_build|deps|\.deno|external_corpora|\.lake)/'
+
+  # --- Secret detection ---
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.24.3
+    hooks:
+      - id: gitleaks

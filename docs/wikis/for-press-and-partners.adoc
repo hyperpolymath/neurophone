@@ -1,0 +1,96 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= NeuroPhone — For Press & Partners
+:toc: preamble
+:icons: font
+
+_A grounded briefing for journalists, analysts, and prospective partners. Every
+claim here is meant to be verifiable; where something is not yet done, this page
+says so. Please read the "How to verify" section before quoting._
+
+[IMPORTANT]
+====
+NeuroPhone is *pre-1.0, in active development*. Do not describe it as "released",
+"stable", or "version 1.0". The accurate framing is: a working, open-source,
+research-grade neurosymbolic AI runtime for Android, with parts formally verified
+and parts still openly in progress.
+====
+
+== The story in one paragraph
+
+NeuroPhone is an open-source Android application that runs a *neurosymbolic AI
+pipeline entirely on the device*: phone sensors feed reservoir-computing neural
+substrates (a Liquid State Machine and an Echo State Network), a "bridge"
+converts that neural state into symbolic context, and a *local* language model
+(Llama-class, via llama.cpp) produces the result — with a cloud model (Claude)
+available only as an explicit, opt-in fallback. The design commitment is
+*privacy by locality*: by default, data does not leave the phone.
+
+== What is genuinely distinctive
+
+* *On-device by default.* The default path uses no network. The one outbound
+  network component (the optional cloud fallback) is confined to a single Rust
+  module and is gated by a GO/NO-GO "egress veto": a `Block` verdict provably
+  results in zero network calls (tested against a real local server).
+* *Neurosymbolic, not just an LLM wrapper.* The novel part is the reservoir →
+  bridge → LLM pipeline, not the language model alone.
+* *Correctness is treated as a first-class deliverable.* The repository ships a
+  proof corpus with an *honest ledger* (`proofs/README.adoc`): some obligations
+  are formally checked (e.g. an Echo State contraction property in Lean; a
+  bounded-membrane-potential property in Dafny), some are property-tested, and
+  some are marked openly unproven. The project's own rules forbid "proof escape
+  hatches" and silent green.
+* *Memory-safe systems core.* The engine is a Rust workspace; safety-critical
+  crates forbid `unsafe` code outright.
+
+== What is *not* done (state this plainly)
+
+* It is pre-1.0; interfaces and behaviour may change.
+* Several correctness obligations are honestly *open* (documented as such in
+  `proofs/README.adoc`) — notably a full formal bridge from the code's actual
+  spectral-radius invariant to the classical Echo State condition, and
+  concurrency-safety (currently N/A under a single-owner design).
+* Independent security review has not been completed; claims here are the
+  author's, backed by tests and proofs, not a third-party audit.
+
+== Key facts (for a fact box)
+
+[cols="1,2",options="header"]
+|===
+| Field | Value
+| What | On-device neurosymbolic AI runtime for Android
+| Core tech | Reservoir computing (LSM + ESN) → symbolic bridge → local LLM (llama.cpp), optional Claude fallback
+| Implementation | Rust multi-crate workspace + a JNI surface to an Android shell
+| Privacy model | On-device by default; cloud fallback is opt-in and egress-gated
+| Licence (code) | MPL-2.0
+| Licence (docs) | CC-BY-SA-4.0
+| Status | Pre-1.0, active development
+| Verification | Formal proofs (Lean, Dafny), model checking (TLA+/TLC), property tests — see `proofs/README.adoc`
+| Source | https://github.com/hyperpolymath/neurophone
+|===
+
+== Suggested (accurate) framings — and ones to avoid
+
+*Accurate:* "An open-source project that runs a privacy-first neurosymbolic AI on
+the phone itself, with parts of its correctness formally proven and the rest
+openly marked as work in progress."
+
+*Avoid:* "A finished private AI phone"; "provably secure"; "replaces cloud AI".
+None of those are claims the project makes. It is a runtime, pre-1.0, with a
+specific and limited set of *proven* properties.
+
+== How to verify any claim here
+
+. Read `AFFIRMATION.adoc` at the repo root — a dated, signed-in-intent snapshot
+  of what was checkable at a specific commit, including what was *not* checked.
+. Read `proofs/README.adoc` — the obligation-by-obligation ledger (checked /
+  property / open).
+. The code is public; the proofs are runnable (`just proof`), and CI runs the
+  test suite on every change.
+
+== Licensing & partnership
+
+Code is MPL-2.0 (file-level copyleft; compatible with combining into larger
+works). Documentation is CC-BY-SA-4.0. For partnership, integration, or
+interview enquiries, contact the maintainer: Jonathan D.A. Jewell
+<j.d.a.jewell@open.ac.uk>. Please cite using the repository's `CITATION.cff`.

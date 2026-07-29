@@ -41,5 +41,37 @@
     "type": "GS007",
     "file": ".",
     "note": "Operational/transient, not a code defect: this repo has an active multi-branch workflow (feature branches, workstream branches from parallel agent sessions) and the non-main remote branch count fluctuates by the hour as branches are opened and merged/deleted. Baselining the rule itself rather than a point-in-time count; do not read a specific branch-count number into this entry. Owner should periodically review `git branch -r` and delete fully-merged branches, but that is a routine housekeeping call, not something this baseline should force. Same uppercase-`type` schema caveat as the SD022 entry above (\"GS007\" vs `^[a-z][a-z0-9_]*$`)."
+  },
+  {
+    "severity": "critical",
+    "rule_module": "security_errors",
+    "type": "secret_detected",
+    "file": "crates/claude-client/src/egress_gate.rs",
+    "note": "Audited false positive -- NOT a real secret. The unit test `hardcoded_secret_is_blocked_even_in_an_otherwise_allowed_class` (line 292) uses the literal placeholder `api_key = \"sk-not-a-real-secret-value\"` as its fixture, asserting the egress gate BLOCKS a hardcoded-secret pattern regardless of declared class. The string literally reads 'sk-not-a-real-secret-value'; no credential is committed (corroborated by the estate secret-scanner gate, which is green). Verified at source 2026-07-03. hypatia's Generic-API-key regex cannot distinguish a test/demo placeholder from a real key. First flagged in #168; baselined here. Same absolute-path caveat as the code_safety entries above -- the finding is matched on its repo-relative file after the gate relativises hypatia's output.",
+    "tracking_issue": null
+  },
+  {
+    "severity": "critical",
+    "rule_module": "security_errors",
+    "type": "secret_detected",
+    "file": "audits/audit-install-scripts.adoc",
+    "note": "Audited false positive -- NOT a real secret. This audit document (introduced in #166) QUOTES the commented-out placeholder `# api_key = \"sk-ant-...\"` from scripts/install-termux.sh (around line 41) precisely to record it as an audited-sound false positive; the `sk-ant-...` is a literal ellipsis placeholder showing users where their OWN key goes, not a committed credential. hypatia's Generic-API-key regex matches the quoted example. Verified at source 2026-07-03.",
+    "tracking_issue": null
+  },
+  {
+    "severity": "medium",
+    "rule_module": "structural_drift",
+    "type": "SD022",
+    "file": "android/README.adoc",
+    "note": "Cross-repo reference, not local drift. The gossamer-migration README (introduced in #167 / epic #83) references gossamer's own `src/interface/abi/Types.idr` and `src/interface/ffi/src/main.zig` (around lines 96 and 119) when describing gossamer's Zig/Idris2 core -- those paths live in the sibling `gossamer` repo, not here. SD022's rename-drift heuristic has no cross-repo awareness, so it flags any `src/<dir>/` it cannot resolve locally. Same class as the docs/BT-PRESENCE-PLAN.adoc entry. Uppercase-`type` schema caveat applies (\"SD022\" vs `^[a-z][a-z0-9_]*$`). Verified at source 2026-07-03.",
+    "tracking_issue": null
+  },
+  {
+    "severity": "medium",
+    "rule_module": "structural_drift",
+    "type": "SD022",
+    "file": "audits/assail-classifications.a2ml",
+    "note": "Cross-repo reference, not local drift. This classification file (introduced in #166) references `panic-attack src/assail/mod.rs` (line 5) -- the analyzer module in the sibling `panic-attack` repo that produces these classifications -- not a path that exists (or ever existed) in neurophone. SD022 has no cross-repo awareness. Same class as the docs/BT-PRESENCE-PLAN.adoc and android/README.adoc entries. Uppercase-`type` schema caveat applies. Verified at source 2026-07-03.",
+    "tracking_issue": null
   }
 ]
