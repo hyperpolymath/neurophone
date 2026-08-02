@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 # Prevention workflow - validates all workflows have proper security config
 name: Workflow Security Linter
-
 on:
   pull_request:
     paths:
@@ -9,9 +8,7 @@ on:
   push:
     paths:
       - '.github/workflows/**'
-
 permissions: read-all
-
 jobs:
   lint-workflows:
     runs-on: ubuntu-latest
@@ -30,7 +27,6 @@ jobs:
             fi
           done
           exit $errors
-
       - name: Check permissions declaration
         run: |
           errors=0
@@ -42,7 +38,6 @@ jobs:
             fi
           done
           exit $errors
-
       - name: Check pinned actions
         run: |
           errors=0
