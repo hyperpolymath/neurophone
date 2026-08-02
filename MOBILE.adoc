@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+= Mobile target
+
+The mobile client MUST use *Tauri 2.0+* or *Dioxus* (Rust-first) per the estate
+language policy. Kotlin/Gradle/Swift are banned for mobile.
+
+The previous Kotlin/Gradle Android client (`android/`) was removed 2026-06-24 as a
+policy violation (recoverable from git history). Rebuild the mobile target in
+Tauri/Dioxus. Note: the Rust core (NativeLib JNI surface) is reusable via Tauri.

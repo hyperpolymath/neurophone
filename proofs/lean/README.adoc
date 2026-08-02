@@ -1,16 +1,39 @@
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: CC-BY-SA-4.0
 = Lean / Coq proofs
 
 Obligations discharged here (see issue #84):
 
-* *1.1 Echo State Property* — the ESN update map
-  `x' = (1-a)·x + a·tanh(W·x + W_in·u)` is a contraction whenever the
-  recurrent matrix satisfies `‖W‖∞ < 1` (the sufficient condition the code
-  currently enforces via `scale_to_spectral_radius`). tanh is 1-Lipschitz and
-  the leaking-rate convex combination is non-expansive, so the composite map is
-  a contraction in the ∞-norm ⇒ the Echo State (fading-memory) Property holds.
+* *1.1 Echo State Property* — `proofs/lean/EsnEcho.lean` (Lean 4 + Mathlib,
+  toolchain pinned in `proofs/lean/lean-toolchain`). **Proven, no `sorry`**:
+  the ESN update map `x' = (1-a)·x + a·tanh(W·x + b)` (exactly
+  `EchoStateNetwork::step` in `crates/esn/src/lib.rs`, with `b` the
+  per-step input contribution shared by both trajectories being compared) is
+  a contraction whenever the recurrent matrix satisfies `‖W‖∞ < 1` (max
+  absolute row sum). `tanh` is 1-Lipschitz (proved from its derivative,
+  `1/cosh²`, being in `(0, 1]`, via the mean-value theorem) and the
+  leaking-rate convex combination is non-expansive, so the composite map has
+  Lipschitz constant `(1-a) + a·ρ < 1` whenever `0 < a ≤ 1` and `ρ < 1`.
+  Iterating over an arbitrary shared input sequence therefore forgets the
+  initial state exponentially fast — the Echo State (fading-memory)
+  Property (`iterateUpdate_forgets_initial_state`).
++
+**Honest scope note.** The proof's hypothesis is `‖W‖∞ < 1`, matching the
+  classical sufficient condition. `crates/esn/src/lib.rs::scale_to_spectral_radius`
+  scales the reservoir by the matrix's *true spectral radius*
+  (`estimate_spectral_radius`, power iteration) — **not** the infinity norm.
+  For a general (non-normal) real matrix the spectral radius can be
+  *strictly smaller* than every induced operator norm, so
+  `spectral_radius(W) < 1` does **not**, in general, imply `‖W‖∞ < 1` (a
+  known subtlety in the reservoir-computing literature — see e.g. Yildiz,
+  Jaeger & Kiebel 2012, "Re-visiting the echo state property"). That bridge
+  lemma is a separate, harder, unattempted theorem (see the file's header
+  comment and `proofs/README.adoc`); this file does not close it, and does
+  not claim to.
 * *1.3 Bridge soundness* — the neural→symbolic encoding in `crates/bridge` is
-  total and deterministic, and round-trips within tolerance.
+  total and deterministic, and round-trips within tolerance. *(Spec only —
+  no `.lean` file yet; property-tested in `crates/bridge/tests/proptest_soundness.rs`.)*
 
 No `sorry` / `admit` is permitted (enforced by `MUST.contractile`); a file lands
-here only when its theorems are fully proved.
+here only when its theorems are fully proved. Reproduce with
+`just proof-lean` (or `cd proofs/lean && lake build`); self-skips if `lake`
+isn't on `PATH`.

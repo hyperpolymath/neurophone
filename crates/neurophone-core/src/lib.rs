@@ -20,9 +20,9 @@
 #![cfg_attr(not(test), deny(clippy::unwrap_used, clippy::expect_used))]
 
 use ndarray::Array1;
-use std::marker::PhantomData;
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::marker::PhantomData;
 use std::time::Instant;
 use thiserror::Error;
 use tracing::{debug, info, warn};
@@ -136,6 +136,22 @@ impl fmt::Display for InferenceModel {
     }
 }
 
+/// Explicit model routing for a query.
+///
+/// `Auto` uses the word-count complexity heuristic against `local_threshold`;
+/// `ForceLocal` / `ForceCloud` pin the model regardless of complexity. The JNI
+/// surface's `queryLocal` / `queryClaude` need hard routing, which `prefer_local`
+/// alone cannot express (it only *permits* local when the query is simple).
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub enum QueryRoute {
+    /// Heuristic auto-routing (local only when complexity < `local_threshold`).
+    Auto,
+    /// Always route to the local Llama, regardless of complexity.
+    ForceLocal,
+    /// Always route to cloud Claude, regardless of complexity.
+    ForceCloud,
+}
+
 /// Lifecycle phase markers (typestate). Illegal transitions are compile errors.
 pub mod phase {
     /// Constructed but not yet initialised.
@@ -155,11 +171,50 @@ pub mod phase {
 /// `new() -> Created`, then `initialize() -> Active`, then `shutdown() -> Down`.
 /// `process_sensor_event` and `query` exist only on `Active`, so using the system
 /// before initialisation or after shutdown does not compile. Shutdown is terminal.
+///
+/// # Typestate safety (proof obligations 2.1 / 2.3, issue #84)
+///
+/// These examples are part of the proof surface: each is a `compile_fail`
+/// doc-test, so `cargo test` fails if any of them ever *starts* compiling — i.e.
+/// if the typestate protection regresses. They complement the TLC model check in
+/// `proofs/tla/Lifecycle.tla` (the runtime protocol) with the compile-time
+/// guarantee (the API shape).
+///
+/// Use before initialisation does not compile (`query` exists only on `Active`):
+/// ```compile_fail
+/// use neurophone_core::{NeuroSymbolicSystem, SystemConfig};
+/// let mut s = NeuroSymbolicSystem::new(SystemConfig::default()).unwrap();
+/// let _ = s.query("hi", true); // no `query` on Created
+/// ```
+///
+/// Use after shutdown does not compile (`Down` has no `query`):
+/// ```compile_fail
+/// use neurophone_core::{NeuroSymbolicSystem, SystemConfig};
+/// let s = NeuroSymbolicSystem::new(SystemConfig::default())
+///     .unwrap()
+///     .initialize()
+///     .unwrap();
+/// let down = s.shutdown();
+/// let _ = down.query("hi", true); // no `query` on Down
+/// ```
+///
+/// Releasing (shutting down) twice does not compile — `shutdown` consumes
+/// `self`, so the resource is released exactly once:
+/// ```compile_fail
+/// use neurophone_core::{NeuroSymbolicSystem, SystemConfig};
+/// let s = NeuroSymbolicSystem::new(SystemConfig::default())
+///     .unwrap()
+///     .initialize()
+///     .unwrap();
+/// let _first = s.shutdown();
+/// let _second = s.shutdown(); // use of moved value: `s`
+/// ```
 pub struct NeuroSymbolicSystem<S = phase::Active> {
     config: SystemConfig,
     state: SystemState,
     start_time: Instant,
     query_count: u64,
+    action_gate: ActionGate,
     _phase: PhantomData<S>,
 }
 
@@ -187,6 +242,7 @@ impl NeuroSymbolicSystem<phase::Created> {
             state: SystemState::default(),
             start_time: Instant::now(),
             query_count: 0,
+            action_gate: ActionGate::new(),
             _phase: PhantomData,
         })
     }
@@ -200,13 +256,13 @@ impl NeuroSymbolicSystem<phase::Created> {
             state: self.state,
             start_time: self.start_time,
             query_count: self.query_count,
+            action_gate: self.action_gate,
             _phase: PhantomData,
         })
     }
 }
 
 impl NeuroSymbolicSystem<phase::Active> {
-
     /// Process a sensor event
     pub fn process_sensor_event(
         &mut self,
@@ -221,19 +277,53 @@ impl NeuroSymbolicSystem<phase::Active> {
         self.state.latency_ms = latency;
         self.state.timestamp_ms = event.timestamp_ms;
 
+        let confidence = 0.85;
+        let context = format!("Processed {} sensor", event.sensor_type);
+        
+        // Conative-gating: gate the bridge action
+        if let Err(e) = self.action_gate.check(confidence, &context) {
+            tracing::warn!("Bridge action vetoed by policy: {}", e);
+            // On Block/Escalate, we must not dispatch the action. 
+            // In a real flow, we might return a default or error. Here we return an error.
+            return Err(NeurophoneError::RuntimeError(format!("Vetoed: {}", e)));
+        }
+
         Ok(NeuralOutput {
             timestamp_ms: event.timestamp_ms,
             features,
-            context: format!("Processed {} sensor", event.sensor_type),
-            confidence: 0.85,
+            context,
+            confidence,
         })
     }
 
-    /// Query the system with inference
+    /// Query the system with inference, auto-routing by complexity.
+    ///
+    /// Preserves the historical contract: `prefer_local == false` always routes
+    /// to cloud; `prefer_local == true` routes local only when the query is
+    /// simple enough (complexity < `local_threshold`). Implemented on top of
+    /// [`query_routed`](Self::query_routed).
     pub fn query(
         &mut self,
         message: &str,
         prefer_local: bool,
+    ) -> Result<InferenceResult, NeurophoneError> {
+        let route = if prefer_local {
+            QueryRoute::Auto
+        } else {
+            QueryRoute::ForceCloud
+        };
+        self.query_routed(message, route)
+    }
+
+    /// Query with an explicit [`QueryRoute`], forcing the model when requested.
+    ///
+    /// This is the routing primitive the JNI `queryLocal` / `queryClaude`
+    /// surfaces need: `ForceLocal` / `ForceCloud` pin the model regardless of
+    /// the complexity heuristic.
+    pub fn query_routed(
+        &mut self,
+        message: &str,
+        route: QueryRoute,
     ) -> Result<InferenceResult, NeurophoneError> {
         if message.is_empty() {
             return Err(NeurophoneError::InferenceError(
@@ -244,15 +334,7 @@ impl NeuroSymbolicSystem<phase::Active> {
         let start = Instant::now();
         self.query_count += 1;
 
-        // Complexity heuristic: count words
-        let complexity = (message.split_whitespace().count() as f32) / 100.0;
-        let should_use_local = prefer_local && complexity < self.config.local_threshold;
-
-        let model = if should_use_local {
-            InferenceModel::LocalLlama
-        } else {
-            InferenceModel::CloudClaude
-        };
+        let model = self.select_model(message, route);
 
         let response = format!("Response to: {}", message);
         let latency = start.elapsed().as_millis() as u32;
@@ -273,6 +355,23 @@ impl NeuroSymbolicSystem<phase::Active> {
         })
     }
 
+    /// Select the inference model for a message under a routing policy.
+    fn select_model(&self, message: &str, route: QueryRoute) -> InferenceModel {
+        match route {
+            QueryRoute::ForceLocal => InferenceModel::LocalLlama,
+            QueryRoute::ForceCloud => InferenceModel::CloudClaude,
+            QueryRoute::Auto => {
+                // Complexity heuristic: count words, normalise, compare to threshold.
+                let complexity = (message.split_whitespace().count() as f32) / 100.0;
+                if complexity < self.config.local_threshold {
+                    InferenceModel::LocalLlama
+                } else {
+                    InferenceModel::CloudClaude
+                }
+            }
+        }
+    }
+
     /// Shut down the system, transitioning `Active -> Down` (terminal).
     pub fn shutdown(mut self) -> NeuroSymbolicSystem<phase::Down> {
         debug!("Shutting down NeuroPhone");
@@ -282,6 +381,7 @@ impl NeuroSymbolicSystem<phase::Active> {
             state: self.state,
             start_time: self.start_time,
             query_count: self.query_count,
+            action_gate: self.action_gate,
             _phase: PhantomData,
         }
     }
@@ -289,7 +389,6 @@ impl NeuroSymbolicSystem<phase::Active> {
 
 /// Inspectors available in every lifecycle phase.
 impl<S> NeuroSymbolicSystem<S> {
-
     /// Get current system state
     pub fn get_state(&self) -> SystemState {
         self.state.clone()
@@ -308,6 +407,24 @@ impl<S> NeuroSymbolicSystem<S> {
     /// Get configuration
     pub fn config(&self) -> &SystemConfig {
         &self.config
+    }
+
+    /// Render a compact neural-context summary string.
+    ///
+    /// This is the format the Android service embeds as LLM context. It is
+    /// composed strictly from real [`SystemState`] fields (no invented salience
+    /// value): activity, last latency, whether the LSM/ESN reservoirs hold
+    /// state, and the last processed timestamp.
+    pub fn get_neural_context(&self) -> String {
+        let s = &self.state;
+        format!(
+            "[NEURAL_STATE] active={} latency_ms={} lsm={} esn={} ts={} [/NEURAL_STATE]",
+            s.is_active,
+            s.latency_ms,
+            s.lsm_state.is_some(),
+            s.esn_state.is_some(),
+            s.timestamp_ms
+        )
     }
 }
 
@@ -712,5 +829,68 @@ mod tests {
         // Even with tight timing, should complete
         let result = system.query("test query", true);
         assert!(result.is_ok());
+    }
+
+    // ========== QueryRoute Tests ==========
+
+    #[test]
+    fn test_query_force_local_overrides_complexity() {
+        // A long query would auto-route to cloud, but ForceLocal pins it local.
+        let system = NeuroSymbolicSystem::new(SystemConfig {
+            local_threshold: 0.1,
+            ..Default::default()
+        })
+        .expect("system creation");
+        let mut system = system.initialize().expect("init");
+
+        let long = "word ".repeat(100);
+        let r = system
+            .query_routed(&long, QueryRoute::ForceLocal)
+            .expect("query");
+        assert_eq!(r.model, InferenceModel::LocalLlama);
+    }
+
+    #[test]
+    fn test_query_force_cloud_overrides_simplicity() {
+        // A trivial query would auto-route local, but ForceCloud pins it cloud.
+        let system = NeuroSymbolicSystem::new(SystemConfig::default()).expect("system creation");
+        let mut system = system.initialize().expect("init");
+
+        let r = system
+            .query_routed("hi", QueryRoute::ForceCloud)
+            .expect("query");
+        assert_eq!(r.model, InferenceModel::CloudClaude);
+    }
+
+    #[test]
+    fn test_query_delegates_preserving_legacy_behaviour() {
+        let system = NeuroSymbolicSystem::new(SystemConfig::default()).expect("system creation");
+        let mut system = system.initialize().expect("init");
+
+        // prefer_local == false must always be cloud (historical contract).
+        let cloud = system.query("hi", false).expect("query");
+        assert_eq!(cloud.model, InferenceModel::CloudClaude);
+
+        // prefer_local == true on a simple query is local (Auto).
+        let local = system.query("hi", true).expect("query");
+        assert_eq!(local.model, InferenceModel::LocalLlama);
+    }
+
+    #[test]
+    fn test_get_neural_context_format() {
+        let system = NeuroSymbolicSystem::new(SystemConfig::default()).expect("system creation");
+        let mut system = system.initialize().expect("init");
+        let event = SensorEvent {
+            sensor_type: "accelerometer".to_string(),
+            timestamp_ms: 4242,
+            values: vec![1.0, 2.0, 3.0],
+        };
+        system.process_sensor_event(&event).ok();
+
+        let ctx = system.get_neural_context();
+        assert!(ctx.starts_with("[NEURAL_STATE]"));
+        assert!(ctx.ends_with("[/NEURAL_STATE]"));
+        assert!(ctx.contains("active=true"));
+        assert!(ctx.contains("ts=4242"));
     }
 }

@@ -1,13 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
 SPDX-License-Identifier: MPL-2.0
-SPDX-FileCopyrightText: 2025 Jonathan D.A. Jewell
--->
-<!--
-  Configure activity dropped (owner decision, epic #83): the widget now works
-  with no setup step. android:configure="...NeurophoneWidgetConfigureActivity"
-  and android:widgetFeatures="reconfigurable|configuration_optional" were
-  removed alongside NeurophoneWidgetConfigureActivity.kt.
+SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell
+
+Configure activity dropped: matches the drop decision already made once in
+this repo's history (`git show b0de78c`, since deleted with the rest of the
+legacy Kotlin tree) and docs/migrations/RFC-ANDROID-KOTLIN-TO-RUST.adoc Q3.
+Issue #113 still frames this as an open owner question — repeated here
+rather than silently assumed; the widget works with no configure step.
+`android:previewImage` is omitted (the legacy `@drawable/widget_preview` PNG
+was never recovered/re-authored — cosmetic-only gap for the widget picker).
 -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:minWidth="180dp"
@@ -21,6 +23,5 @@ SPDX-FileCopyrightText: 2025 Jonathan D.A. Jewell
     android:resizeMode="horizontal|vertical"
     android:updatePeriodMillis="1800000"
     android:initialLayout="@layout/widget_neurophone"
-    android:previewImage="@drawable/widget_preview"
     android:previewLayout="@layout/widget_neurophone"
     android:widgetCategory="home_screen" />

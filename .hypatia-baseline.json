@@ -4,7 +4,74 @@
     "rule_module": "cicd_rules",
     "type": "banned_language_file",
     "file_pattern": "android/**",
-    "note": "Android/Kotlin scaffold is being migrated to Gossamer; see RFC PR #97. The android/ tree is owner-authored work-in-flight, not vendored upstream. Exempt until the Gossamer migration lands and android/ is removed.",
-    "tracking_issue": "hyperpolymath/neurophone#97"
+    "note": "The legacy Kotlin/Gradle android/ tree (tracked by this entry pre-2026-07) has been fully deleted (issue #83/#115). This entry now covers the *replacement* hand-written Java shims added under android/app/src/main/java/ai/neurophone/**  (issues #109/#111/#112/#113). Those files are additionally exempt structurally via the estate-wide `android/**/src/**/*.java` carve-out in hyperpolymath/standards governance-reusable.yml (RFC docs/migrations/RFC-ANDROID-KOTLIN-TO-RUST.adoc Q1, standards#341) which the governance /Language job actually enforces; this baseline entry exists as a second layer for Hypatia's own scanner (the separate 'Validate Hypatia Baseline' job), which does not yet share that path-based carve-out. Kept broad (android/**) rather than narrowed, since it also still harmlessly covers the (currently empty) legacy paths.",
+    "tracking_issue": "hyperpolymath/neurophone#83"
+  },
+  {
+    "severity": "high",
+    "rule_module": "honest_completion",
+    "type": "no_tests",
+    "file": ".",
+    "note": "Scanner-limitation false positive: honest_completion's has_tests_dir check only looks for a root-level test/ or tests/ directory, and its test_files counter only matches .test.js/.test.ts/_test.exs/_test.res suffixes -- it has no Rust/Cargo-workspace convention (no .rs extension, no per-crate tests/ recognition). neurophone is a Cargo workspace with real, extensive tests under crates/*/tests/*.rs plus #[cfg(test)] inline modules (see e.g. crates/neurophone-core/tests/, crates/lsm/tests/); `cargo test` runs them all. Verified via hypatia source (lib/rules/honest_completion.ex collect_evidence/1) 2026-07-01 while investigating this finding -- there is no lightweight fix on the neurophone side (adding a fake root tests/ dir would be theater, not a real fix); the fix belongs in hypatia's rule. Caveat: hypatia's own `file` value for this finding is the scan root's Path.expand(path) (an absolute host path in practice, e.g. the CI runner's checkout dir), not a literal repo-relative \".\" -- exact `file` matching against this entry may not actually apply until hypatia relativizes its own output, a gap distinct from hypatia#566/standards#449 discovered while writing this entry. See hyperpolymath/neurophone PR introducing this baseline for the full writeup."
+  },
+  {
+    "severity": "high",
+    "rule_module": "code_safety",
+    "type": "unwrap_without_check",
+    "file_pattern": "crates/*/benches/**",
+    "note": "Bench-harness setup code, not an operational path. proofs/README.adoc's obligation 0.1 (panic-freedom) is explicitly scoped to operational paths; Criterion bench setup (crates/{sensors,llm,esn,bridge,neurophone-core}/benches/*.rs) legitimately panics on setup failure by design -- it is dev-only tooling that is never part of a shipped build. Rewriting bench harnesses to add defensive handling for scenarios that can't/shouldn't be handled would be needless churn (contrary to this repo's own philosophy, see MUST.contractile). Caveat: hypatia's code_safety module reports an absolute host path in `file` (built from `find <expanded-repo-path> ...`), not repo-relative as the baseline schema expects -- this file_pattern may not exact-match until hypatia relativizes its own output."
+  },
+  {
+    "severity": "medium",
+    "rule_module": "code_safety",
+    "type": "expect_in_hot_path",
+    "file_pattern": "crates/*/benches/**",
+    "note": "Same rationale and same absolute-path caveat as the unwrap_without_check entry above: crates/{lsm,neurophone-core}/benches/*.rs are bench-harness setup code, not operational paths, and are out of scope for obligation 0.1."
+  },
+  {
+    "severity": "medium",
+    "rule_module": "structural_drift",
+    "type": "SD022",
+    "file": "docs/BT-PRESENCE-PLAN.adoc",
+    "note": "Not rename-drift: this is a design-only cross-repo plan document (\"Status: Design only -- no code yet\") whose ownership-boundary table explicitly splits paths between the sibling `burble` repo (\"Lives in burble\" column) and neurophone (\"Lives in neurophone\" column). `src/Burble/ABI/NearbyPresence.idr` is listed under \"Lives in burble\" -- it describes a planned path in the OTHER repo, not a stale reference to something that used to exist here. SD022's rename-drift heuristic has no cross-repo awareness, so it flags any `src/<dir>/` it can't resolve locally. Verified via `git log` (no such path was ever committed in neurophone; nothing to rename-sweep) and via reading the doc's own explicit repo-ownership table 2026-07-01. Caveat: hypatia reports `type` as literal \"SD022\" (uppercase), which does not match the baseline schema's `^[a-z][a-z0-9_]*$` pattern for `type` -- a schema/hypatia-output mismatch discovered while writing this entry; kept as the exact uppercase value so the entry can actually match once baseline-consuming CI is wired up, at the cost of failing strict schema validation today."
+  },
+  {
+    "severity": "medium",
+    "rule_module": "git_state",
+    "type": "GS007",
+    "file": ".",
+    "note": "Operational/transient, not a code defect: this repo has an active multi-branch workflow (feature branches, workstream branches from parallel agent sessions) and the non-main remote branch count fluctuates by the hour as branches are opened and merged/deleted. Baselining the rule itself rather than a point-in-time count; do not read a specific branch-count number into this entry. Owner should periodically review `git branch -r` and delete fully-merged branches, but that is a routine housekeeping call, not something this baseline should force. Same uppercase-`type` schema caveat as the SD022 entry above (\"GS007\" vs `^[a-z][a-z0-9_]*$`)."
+  },
+  {
+    "severity": "critical",
+    "rule_module": "security_errors",
+    "type": "secret_detected",
+    "file": "crates/claude-client/src/egress_gate.rs",
+    "note": "Audited false positive -- NOT a real secret. The unit test `hardcoded_secret_is_blocked_even_in_an_otherwise_allowed_class` (line 292) uses the literal placeholder `api_key = \"sk-not-a-real-secret-value\"` as its fixture, asserting the egress gate BLOCKS a hardcoded-secret pattern regardless of declared class. The string literally reads 'sk-not-a-real-secret-value'; no credential is committed (corroborated by the estate secret-scanner gate, which is green). Verified at source 2026-07-03. hypatia's Generic-API-key regex cannot distinguish a test/demo placeholder from a real key. First flagged in #168; baselined here. Same absolute-path caveat as the code_safety entries above -- the finding is matched on its repo-relative file after the gate relativises hypatia's output.",
+    "tracking_issue": null
+  },
+  {
+    "severity": "critical",
+    "rule_module": "security_errors",
+    "type": "secret_detected",
+    "file": "audits/audit-install-scripts.adoc",
+    "note": "Audited false positive -- NOT a real secret. This audit document (introduced in #166) QUOTES the commented-out placeholder `# api_key = \"sk-ant-...\"` from scripts/install-termux.sh (around line 41) precisely to record it as an audited-sound false positive; the `sk-ant-...` is a literal ellipsis placeholder showing users where their OWN key goes, not a committed credential. hypatia's Generic-API-key regex matches the quoted example. Verified at source 2026-07-03.",
+    "tracking_issue": null
+  },
+  {
+    "severity": "medium",
+    "rule_module": "structural_drift",
+    "type": "SD022",
+    "file": "android/README.adoc",
+    "note": "Cross-repo reference, not local drift. The gossamer-migration README (introduced in #167 / epic #83) references gossamer's own `src/interface/abi/Types.idr` and `src/interface/ffi/src/main.zig` (around lines 96 and 119) when describing gossamer's Zig/Idris2 core -- those paths live in the sibling `gossamer` repo, not here. SD022's rename-drift heuristic has no cross-repo awareness, so it flags any `src/<dir>/` it cannot resolve locally. Same class as the docs/BT-PRESENCE-PLAN.adoc entry. Uppercase-`type` schema caveat applies (\"SD022\" vs `^[a-z][a-z0-9_]*$`). Verified at source 2026-07-03.",
+    "tracking_issue": null
+  },
+  {
+    "severity": "medium",
+    "rule_module": "structural_drift",
+    "type": "SD022",
+    "file": "audits/assail-classifications.a2ml",
+    "note": "Cross-repo reference, not local drift. This classification file (introduced in #166) references `panic-attack src/assail/mod.rs` (line 5) -- the analyzer module in the sibling `panic-attack` repo that produces these classifications -- not a path that exists (or ever existed) in neurophone. SD022 has no cross-repo awareness. Same class as the docs/BT-PRESENCE-PLAN.adoc and android/README.adoc entries. Uppercase-`type` schema caveat applies. Verified at source 2026-07-03.",
+    "tracking_issue": null
   }
 ]

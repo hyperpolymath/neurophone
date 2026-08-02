@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: CC-BY-SA-4.0
 // SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell
 = NeuroPhone — Bluetooth Presence Sensor Plan
 :toc: preamble
@@ -10,6 +10,50 @@
 *Authoritative source:* `burble/docs/architecture/ANDROID-CLIENT.adoc` (in the sibling
 `https://github.com/hyperpolymath/burble[burble]` repo) is the canonical plan for the
 cross-repo Bluetooth integration. This document covers only the neurophone side.
+====
+
+[IMPORTANT]
+====
+*Upstream status — Phase 0 DONE; Phase-2 consumer IMPLEMENTED; Phase-1 emitter still pending (ground-truthed 2026-07-10 against burble @ `2b5914b`).*
+
+burble *froze the BLE presence wire format v1* on 2026-07-09 (PR #154, ADR-0015),
+which unblocked NeuroPhone's build-time consumer work. The artefacts this plan
+depends on now exist upstream and are frozen:
+
+* `Burble.ABI.NearbyPresence` (Idris2 wire type) — *exists*, now listed in
+  burble's `burble-abi.ipkg` module list.
+* `.machine_readable/descriptiles/nearby-presence.a2ml` (wire format) — *exists*,
+  `status = "frozen"`, wire-version 1, with a complete 24-byte layout and a freeze
+  covenant.
+* Frozen conformance vectors (`ble-spa-v1.json`) and an Elixir reference impl
+  (`ble_spa.ex`) — *exist*.
+
+*NeuroPhone's Phase-2 consumer is now implemented* in `crates/bt-presence/`: a
+byte-exact decoder + contact resolution + presence decay, with the wire constants
+code-generated from a vendored byte-exact copy of the frozen spec and validated
+against burble's frozen vectors (`presence_beacon_id_is_byte_exact`). The decoded
+presence score enters the pipeline via a new `SensorKind::Presence` channel.
+
+*What still blocks end-to-end runtime* is **Phase 1** (burble-side): burble does
+not yet ship the Android client that *emits* the beacon (`client/android/` is
+absent), and ADR-0015 is `Status: Proposed`. So there is nothing on the air to
+receive yet — but the consumer is built, tested, and pinned to the frozen v1
+format, ready for the emitter. Full audit:
+link:governance/SIBLING-INTEGRATIONS.adoc[SIBLING-INTEGRATIONS.adoc].
+
+*Path correction.* Earlier revisions of this doc pointed the codegen at
+`burble/.machine_readable/6a2/nearby-presence.a2ml`. That was wrong: `6a2/` is
+*NeuroPhone's* machine-readable namespace, not burble's. The frozen file lives at
+`.machine_readable/descriptiles/nearby-presence.a2ml` (vendored into
+`crates/bt-presence/vendor/`). The citations below have been corrected.
+
+*Toolchain correction.* The Kotlin scanner files in the file-by-file plan below
+(`*.kt`) predate the gossamer Android migration (#83) and NeuroPhone's current
+language policy, which bans Kotlin/Java for mobile. The implemented decode/decay
+core is pure Rust (`crates/bt-presence/`); the remaining device-side scan glue
+must be expressed through the gossamer surface (Rust/JNI), not reintroduced as
+Kotlin. The `.kt` entries are retained only as a functional sketch of the
+scanner's responsibilities.
 ====
 
 == Scope
@@ -36,7 +80,7 @@ Burble owns the wire protocol and the voice client. NeuroPhone owns only the con
 |===
 | Lives in burble | Lives in neurophone
 
-| `.machine_readable/6a2/nearby-presence.a2ml` (wire format)
+| `.machine_readable/descriptiles/nearby-presence.a2ml` (wire format) — _planned in burble; not yet authored_
 | `crates/bt-presence/` (scanner + decoder + decay)
 
 | `src/Burble/ABI/NearbyPresence.idr` (Idris2 type)
@@ -51,6 +95,8 @@ Burble owns the wire protocol and the voice client. NeuroPhone owns only the con
 
 The neurophone build pulls the a2ml manifest from burble at build time (via
 `crates/bt-presence/build.rs` codegen) — single source of truth, no protocol fork.
+_(Blocked: the manifest does not yet exist in burble — see the Upstream status
+note above.)_
 
 == File-by-file plan
 
@@ -116,9 +162,9 @@ NeuroPhone work begins at Phase 2 in the cross-repo plan:
 == Cross-references
 
 * link:../README.adoc[README.adoc] — privacy commitments to preserve.
-* link:../TOPOLOGY.md[TOPOLOGY.md] — existing sensor → LSM → ESN → bridge pipeline diagram.
+* link:../TOPOLOGY.adoc[TOPOLOGY.adoc] — existing sensor → LSM → ESN → bridge pipeline diagram.
 * `burble/docs/architecture/ANDROID-CLIENT.adoc` — authoritative cross-repo plan.
-* `burble/.machine_readable/6a2/nearby-presence.a2ml` — wire format that codegen reads.
+* `burble/.machine_readable/descriptiles/nearby-presence.a2ml` — wire format that codegen reads (planned in burble; not yet authored).
 
 == Memory pointer
 

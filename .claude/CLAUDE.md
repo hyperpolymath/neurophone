@@ -21,13 +21,14 @@ The following files in `.machine_readable/` contain structured project metadata:
 |---------------|----------|-------|
 | **AffineScript** | Primary application code | Affine-typed, compiles to typed-wasm or Deno-ESM |
 | **Deno** | Runtime & package management | Replaces Node/npm/bun |
-| **Rust** | Performance-critical, systems, WASM | Preferred for CLI tools |
+| **Rust/SPARK** | Performance-critical, systems, WASM, CLI, safety-critical | "Rust" always means Rust with SPARK integration as the default stance |
+| **Zig** | APIs, FFIs, gateways, client SDKs | Estate default for FFI/gateway work; Idris2 owns ABIs |
+| **Idris2** | Formal verification (ABI-style proofs) | Proven-library status in `proven` repo |
 | **Tauri 2.0+** | Mobile apps (iOS/Android) | Rust backend + web UI |
 | **Dioxus** | Mobile apps (native UI) | Pure Rust, React-like |
 | **Gleam** | Backend services | Runs on BEAM or compiles to JS |
 | **Bash/POSIX Shell** | Scripts, automation | Keep minimal |
-| **JavaScript** | Only where AffineScript cannot | MCP protocol glue, Deno APIs |
-| **Python** | SaltStack only | No other Python permitted |
+| **JavaScript** | Only where AffineScript cannot | MCP protocol glue, Deno APIs (transitional) |
 | **Nickel** | Configuration language | For complex configs |
 | **Guile Scheme** | State/meta files | .machine_readable/6a2/STATE.a2ml, .machine_readable/6a2/META.a2ml, .machine_readable/6a2/ECOSYSTEM.a2ml |
 | **Julia** | Batch scripts, data processing | Per RSR |
@@ -43,9 +44,14 @@ The following files in `.machine_readable/` contain structured project metadata:
 | npm | Deno |
 | Bun | Deno |
 | pnpm/yarn | Deno |
-| Go | Rust |
-| Python (general) | ReScript/Rust |
-| Java/Kotlin | Rust/Tauri/Dioxus |
+| Go | Rust/SPARK |
+| **Python** (fully banned, no exceptions) | AffineScript/Rust/Julia |
+| **ReScript** (banned 2026-04-30) | AffineScript |
+| **V-lang** (banned 2026-04-10) | Zig |
+| **ATS2** | Idris2 (formal) / Rust/SPARK |
+| **Nix** | Guix (guix.scm) |
+| **Makefiles** | Mustfile/justfile |
+| Java/Kotlin | Rust/SPARK, Tauri, Dioxus |
 | Swift | Tauri/Dioxus |
 | React Native | Tauri/Dioxus |
 | Flutter/Dart | Tauri/Dioxus |
@@ -64,14 +70,13 @@ Both are FOSS with independent governance (no Big Tech).
 1. **No new TypeScript files** - Convert existing TS to AffineScript
 2. **No package.json for runtime deps** - Use deno.json imports
 3. **No node_modules in production** - Deno caches deps automatically
-4. **No Go code** - Use Rust instead
-5. **Python only for SaltStack** - All other Python must be rewritten
-6. **No Kotlin/Swift for mobile** - Use Tauri 2.0+ or Dioxus
+4. **No Go code** - Use Rust/SPARK instead
+5. **No Python** - fully banned (SaltStack exception removed 2026-01-03); use Rust/SPARK, Julia, or AffineScript
+6. **No Kotlin/Swift for mobile** - Use Tauri 2.0+ or Dioxus (this repo's Android client migrates to gossamer per #83)
 
 ### Package Management
 
-- **Primary**: Guix (guix.scm)
-- **Fallback**: Nix (flake.nix)
+- **Primary**: Guix (guix.scm) — this repo is Guix-only (flake.nix removed; Nix is banned estate-wide)
 - **JS deps**: Deno (deno.json imports)
 
 ### Security Requirements

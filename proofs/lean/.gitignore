@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: MPL-2.0
+# Lake build cache and vendored dependencies (Mathlib + transitive deps).
+# Not committed — reproducible from `lakefile.lean` / `lake-manifest.json`
+# (pinned Mathlib revision) via `lake build`.
+.lake/

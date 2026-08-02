@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 //! Claude API Client - Cloud Connection
 //!
 //! Connects to Claude (Anthropic's AI) for advanced reasoning
@@ -18,6 +20,9 @@ use std::time::Duration;
 use thiserror::Error;
 use tracing::{debug, warn};
 
+pub mod egress_gate;
+pub use egress_gate::{EgressClass, EgressGate, EgressGateError};
+
 /// Claude API errors
 #[derive(Error, Debug)]
 pub enum ClaudeError {
@@ -35,6 +40,11 @@ pub enum ClaudeError {
     Timeout,
     #[error("Configuration error: {0}")]
     ConfigError(String),
+    /// Obligation 3.1: the egress GO/NO-GO veto refused this payload. The
+    /// network call is guaranteed to NOT have been attempted when this
+    /// variant is returned -- see `ClaudeClient::create_message`.
+    #[error("egress denied by policy veto: {0}")]
+    EgressDenied(#[from] EgressGateError),
 }
 
 /// Claude model variants
@@ -209,6 +219,10 @@ pub struct ClaudeClient {
     config: ClaudeConfig,
     client: Client,
     conversation_history: Vec<Message>,
+    /// Obligation 3.1: every outbound call goes through this veto first --
+    /// see `create_message`, the single choke point that actually performs
+    /// the network request.
+    egress: EgressGate,
 }
 
 impl ClaudeClient {
@@ -227,6 +241,7 @@ impl ClaudeClient {
             config,
             client,
             conversation_history: Vec::new(),
+            egress: EgressGate::new(),
         })
     }
 
@@ -235,10 +250,14 @@ impl ClaudeClient {
         Self::new(ClaudeConfig::default())
     }
 
-    /// Send a simple message and get response
+    /// Send a simple message and get response. Classified as plain user text
+    /// for the egress veto (obligation 3.1) -- it carries no sensor/neural
+    /// provenance.
     pub async fn send_message(&mut self, content: &str) -> Result<String, ClaudeError> {
         let messages = vec![Message::user(content)];
-        let response = self.create_message(messages, None).await?;
+        let response = self
+            .create_message(messages, None, EgressClass::UserText)
+            .await?;
 
         // Extract text from response
         let text = response
@@ -255,17 +274,24 @@ impl ClaudeClient {
         Ok(text)
     }
 
-    /// Send message with neural context
+    /// Send message with neural context. `class` is the caller's declared
+    /// classification of `neural_context` for the egress veto (obligation
+    /// 3.1) -- e.g. `EgressClass::RawNeuralState` if it is raw reservoir
+    /// state, `EgressClass::DerivedInference` if it has already been
+    /// summarised/aggregated. The veto enforces policy on whatever is
+    /// declared; it cannot independently prove the declaration is honest
+    /// (see `egress_gate` module docs).
     pub async fn send_message_with_context(
         &mut self,
         content: &str,
         neural_context: &str,
+        class: EgressClass,
     ) -> Result<String, ClaudeError> {
         // Prepend neural context to the system prompt (only when enabled).
         let system = self.build_system(neural_context);
 
         let messages = vec![Message::user(content)];
-        let response = self.create_message(messages, system).await?;
+        let response = self.create_message(messages, system, class).await?;
 
         let text = response
             .content
@@ -277,7 +303,9 @@ impl ClaudeClient {
         Ok(text)
     }
 
-    /// Continue conversation with history
+    /// Continue conversation with history. Classified as plain user text for
+    /// the egress veto (obligation 3.1); this method has no neural-context
+    /// parameter to begin with.
     pub async fn chat(&mut self, content: &str) -> Result<String, ClaudeError> {
         self.conversation_history.push(Message::user(content));
 
@@ -285,6 +313,7 @@ impl ClaudeClient {
             .create_message(
                 self.conversation_history.clone(),
                 self.config.system_prompt.clone(),
+                EgressClass::UserText,
             )
             .await?;
 
@@ -300,13 +329,25 @@ impl ClaudeClient {
         Ok(text)
     }
 
-    /// Create a message with full control
+    /// Create a message with full control.
+    ///
+    /// This is the single choke point that performs the actual outbound
+    /// HTTP request to the Claude API (every other method funnels through
+    /// here). Obligation 3.1: the egress veto runs first, against the exact
+    /// text that is about to be serialized onto the wire; on `Block`/
+    /// `Escalate` this returns `Err(ClaudeError::EgressDenied(_))` and the
+    /// network call is never made.
     pub async fn create_message(
         &self,
         messages: Vec<Message>,
         system: Option<String>,
+        class: EgressClass,
     ) -> Result<MessageResponse, ClaudeError> {
         let api_key = self.config.api_key.as_ref().ok_or(ClaudeError::NoApiKey)?;
+
+        let outbound_text = Self::render_outbound_text(&system, &messages);
+        self.egress
+            .check(class, &self.config.base_url, &outbound_text)?;
 
         let request = CreateMessageRequest {
             model: self.config.model.as_str().to_string(),
@@ -404,6 +445,26 @@ impl ClaudeClient {
         } else {
             self.config.system_prompt.clone()
         }
+    }
+
+    /// Render exactly the text that `create_message` is about to serialize
+    /// onto the wire (system prompt + all message bodies), for the egress
+    /// veto (obligation 3.1) to scan. Kept separate from JSON construction so
+    /// the veto sees plain text, not the JSON envelope.
+    fn render_outbound_text(system: &Option<String>, messages: &[Message]) -> String {
+        let mut text = String::new();
+        if let Some(sys) = system {
+            text.push_str(sys);
+            text.push('\n');
+        }
+        for message in messages {
+            for block in &message.content {
+                let ContentBlock::Text { text: block_text } = block;
+                text.push_str(block_text);
+                text.push('\n');
+            }
+        }
+        text
     }
 
     /// Exponential backoff for retry `attempt`, saturating and capped at 60s so
@@ -608,10 +669,16 @@ mod tests {
             "stream",
         ];
         for k in obj.keys() {
-            assert!(ALLOWED.contains(&k.as_str()), "unexpected egress field: {k}");
+            assert!(
+                ALLOWED.contains(&k.as_str()),
+                "unexpected egress field: {k}"
+            );
         }
         for forbidden in ["api_key", "x-api-key", "key", "device", "sensor", "secret"] {
-            assert!(!obj.contains_key(forbidden), "sensitive field leaked: {forbidden}");
+            assert!(
+                !obj.contains_key(forbidden),
+                "sensitive field leaked: {forbidden}"
+            );
         }
     }
 
@@ -654,6 +721,27 @@ mod tests {
     }
 
     #[test]
+    fn total_retry_budget_is_finite() {
+        // 3.2 (bounded external interaction): the retry loop runs a *bounded*
+        // number of attempts (`for attempt in 0..=max_retries`), and each wait is
+        // the capped backoff — so the worst-case total wait across the whole
+        // interaction is finite and bounded, not just each individual delay.
+        let max_retries = ClaudeConfig::default().max_retries;
+        let mut total = Duration::ZERO;
+        for a in 0..=(max_retries as u32) {
+            total = total
+                .checked_add(ClaudeClient::backoff_delay(a))
+                .expect("total backoff must not overflow");
+        }
+        // (max_retries + 1) attempts, each capped at 60s.
+        let ceiling = Duration::from_secs(60) * (max_retries as u32 + 1);
+        assert!(
+            total <= ceiling,
+            "total retry budget {total:?} exceeds bound {ceiling:?}"
+        );
+    }
+
+    #[test]
     fn user_content_cannot_inject_into_request_json() {
         // 3.2: user content is typed JSON, so quotes/braces are escaped and cannot
         // break out of the message structure.
@@ -668,7 +756,121 @@ mod tests {
             stream: None,
         };
         let v = serde_json::to_value(&req).unwrap();
-        assert!(v.get("injected").is_none(), "content broke out of its field");
-        assert_eq!(v["messages"][0]["content"][0]["text"].as_str().unwrap(), nasty);
+        assert!(
+            v.get("injected").is_none(),
+            "content broke out of its field"
+        );
+        assert_eq!(
+            v["messages"][0]["content"][0]["text"].as_str().unwrap(),
+            nasty
+        );
+    }
+}
+
+/// Obligation 3.1: end-to-end proof that the egress veto actually gates the
+/// real network call inside `create_message`, not just the standalone
+/// `EgressGate` unit (see `egress_gate::tests`).
+///
+/// Rather than adding a mocking framework/transport-trait abstraction, these
+/// tests spin up a tiny real HTTP/1.1 server on loopback that counts
+/// accepted connections. `ClaudeClient` is pointed at it via `base_url` and
+/// makes real `reqwest` calls against it -- so "zero calls" here means
+/// literally zero TCP connections were made to the (fake) API, not "a mock
+/// was not invoked".
+#[cfg(test)]
+mod egress_integration_tests {
+    use super::*;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
+
+    /// A minimal, valid `MessageResponse` JSON body.
+    const FAKE_RESPONSE_BODY: &str = r#"{"id":"msg_test","type":"message","role":"assistant","content":[{"type":"text","text":"ok"}],"model":"m","stop_reason":null,"stop_sequence":null,"usage":{"input_tokens":1,"output_tokens":1}}"#;
+
+    /// Spawn a fake Claude API endpoint on `127.0.0.1` that counts every
+    /// accepted connection and replies with `FAKE_RESPONSE_BODY`. Returns the
+    /// `http://host:port` base URL and a shared call counter.
+    async fn spawn_fake_claude_server() -> (String, Arc<AtomicUsize>) {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("bind loopback listener");
+        let addr = listener.local_addr().expect("read local addr");
+        let calls = Arc::new(AtomicUsize::new(0));
+        let calls_for_task = calls.clone();
+
+        tokio::spawn(async move {
+            loop {
+                let Ok((mut socket, _)) = listener.accept().await else {
+                    break;
+                };
+                calls_for_task.fetch_add(1, Ordering::SeqCst);
+                tokio::spawn(async move {
+                    let mut buf = vec![0u8; 8192];
+                    // Best-effort read of the request; we don't need to parse
+                    // it, just drain enough that reqwest sees a response.
+                    let _ = socket.read(&mut buf).await;
+                    let response = format!(
+                        "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                        FAKE_RESPONSE_BODY.len(),
+                        FAKE_RESPONSE_BODY
+                    );
+                    let _ = socket.write_all(response.as_bytes()).await;
+                    let _ = socket.shutdown().await;
+                });
+            }
+        });
+
+        (format!("http://{addr}"), calls)
+    }
+
+    fn test_config(base_url: String) -> ClaudeConfig {
+        ClaudeConfig {
+            api_key: Some("test-key".to_string()),
+            base_url,
+            max_retries: 0,
+            ..Default::default()
+        }
+    }
+
+    #[tokio::test]
+    async fn blocked_egress_never_reaches_the_network() {
+        let (base_url, calls) = spawn_fake_claude_server().await;
+        let client = ClaudeClient::new(test_config(base_url)).expect("client config is valid");
+
+        let result = client
+            .create_message(
+                vec![Message::user("raw sensor payload")],
+                None,
+                EgressClass::RawSensor,
+            )
+            .await;
+
+        assert!(
+            matches!(result, Err(ClaudeError::EgressDenied(_))),
+            "expected EgressDenied, got {result:?}"
+        );
+        assert_eq!(
+            calls.load(Ordering::SeqCst),
+            0,
+            "a blocked request must never open a connection to the transport"
+        );
+    }
+
+    #[tokio::test]
+    async fn allowed_egress_reaches_the_network_exactly_once() {
+        let (base_url, calls) = spawn_fake_claude_server().await;
+        let client = ClaudeClient::new(test_config(base_url)).expect("client config is valid");
+
+        let result = client
+            .create_message(vec![Message::user("hello")], None, EgressClass::UserText)
+            .await;
+
+        assert!(result.is_ok(), "expected Ok, got {result:?}");
+        assert_eq!(
+            calls.load(Ordering::SeqCst),
+            1,
+            "an allowed request must reach the transport exactly once"
+        );
     }
 }

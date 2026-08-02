@@ -1,67 +1,79 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-SPDX-License-Identifier: MPL-2.0
-SPDX-FileCopyrightText: 2025 Jonathan D.A. Jewell
+  SPDX-License-Identifier: MPL-2.0
+  SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell
+
+  NeuroPhone Android manifest — Gossamer/Java-shim tree (issue #83, #109-#115).
+  Surface + permission set mirrors docs/OS_INTEGRATION.adoc exactly; kept in
+  sync deliberately so that doc stays the single source of truth for "what
+  the app touches on the platform".
+
+  STAGED / UNVERIFIED ON-DEVICE: no Android SDK/NDK/aapt2 is available in the
+  environment this manifest was authored in, so this file has not been run
+  through a real manifest merger or installed on a device or emulator. It is
+  reviewed for correctness against the Android platform docs and the deleted
+  legacy manifest (recoverable via `git show f389983^:android/app/src/main/AndroidManifest.xml`
+  from before the Kotlin-removal commit), not executed.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="ai.neurophone">
 
-    <!-- Permissions -->
-    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Sensor stream (docs/OS_INTEGRATION.adoc "Permissions"). -->
     <uses-permission android:name="android.permission.BODY_SENSORS" />
     <uses-permission android:name="android.permission.HIGH_SAMPLING_RATE_SENSORS" />
+    <!-- Claude cloud fallback, only used when enabled. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Long-running sensor -> LSM -> ESN -> bridge -> LLM pipeline. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <!-- Service-status notification (Android 13+). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Restart the pipeline after reboot if the user had it running. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Keep the CPU on for the rare frames where 50 Hz sampling would miss. -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
-    <!-- Features (optional, for sensor availability checks) -->
-    <uses-feature android:name="android.hardware.sensor.accelerometer" android:required="false" />
-    <uses-feature android:name="android.hardware.sensor.gyroscope" android:required="false" />
-    <uses-feature android:name="android.hardware.sensor.compass" android:required="false" />
-    <uses-feature android:name="android.hardware.sensor.light" android:required="false" />
-    <uses-feature android:name="android.hardware.sensor.proximity" android:required="false" />
-
     <application
-        android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
         android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher_round"
-        android:supportsRtl="true"
-        android:theme="@style/Theme.AppCompat.Light.DarkActionBar"
-        android:extractNativeLibs="true">
+        android:icon="@mipmap/ic_launcher"
+        android:theme="@android:style/Theme.NoTitleBar">
 
         <activity
-            android:name=".MainActivity"
+            android:name=".NeurophoneActivity"
             android:exported="true"
-            android:screenOrientation="portrait">
+            android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- Voice / share entry point -->
+            <!-- Long-press-home ASSIST surface, per docs/OS_INTEGRATION.adoc. -->
             <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <action android:name="android.intent.action.SEND" />
                 <action android:name="android.intent.action.ASSIST" />
                 <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
+            </intent-filter>
+            <!-- Share-sheet target for plain-text "Share" actions. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/plain" />
-                <data android:scheme="neurophone" />
+            </intent-filter>
+            <!-- neurophone://query?q=... deep link. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="neurophone" android:host="query" />
             </intent-filter>
         </activity>
 
-        <!-- Long-running foreground service that owns the sensor → LSM → ESN loop -->
         <service
             android:name=".NeurophoneService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
-        <!-- Boot receiver: optionally restart service on phone reboot -->
         <receiver
             android:name=".BootReceiver"
-            android:enabled="true"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
@@ -69,33 +81,20 @@ SPDX-FileCopyrightText: 2025 Jonathan D.A. Jewell
             </intent-filter>
         </receiver>
 
-        <!--
-          Quick-query receiver used by the home-screen widget tap.
-          NeurophoneWidgetConfigureActivity was dropped (owner decision,
-          epic #83); it had no manifest <activity> entry, so nothing is
-          removed here. The android:configure hook was removed from
-          res/xml/neurophone_widget_info.xml instead.
-        -->
-        <receiver
-            android:name=".widget.NeurophoneWidgetActions"
-            android:exported="false" />
-
-        <!-- Home-screen App Widget -->
         <receiver
             android:name=".widget.NeurophoneAppWidget"
-            android:exported="true"
-            android:label="@string/widget_label">
+            android:exported="false">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="ai.neurophone.widget.ACTION_REFRESH" />
-                <action android:name="ai.neurophone.widget.ACTION_QUERY" />
-                <action android:name="ai.neurophone.widget.ACTION_TOGGLE" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/neurophone_widget_info" />
         </receiver>
 
-    </application>
+        <receiver
+            android:name=".widget.NeurophoneWidgetActions"
+            android:exported="false" />
 
+    </application>
 </manifest>

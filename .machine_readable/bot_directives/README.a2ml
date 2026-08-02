@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: MPL-2.0
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# README.a2ml — index of per-bot directives for neurophone.
+#
+# This directory holds fleet-specific directives (one file per bot). It is
+# distinct from `.machine_readable/agent_instructions/`, which holds session
+# methodology (how any agent works), and from `AGENTIC.a2ml`, which holds
+# permissions/gating. See agent_instructions/README.adoc §"Relationship to
+# Other Files".
+
+project = "neurophone"
+schema_version = "1.0.0"
+
+[bot-directives]
+notes = "Repo-specific per-bot constraints for neurophone (the estate gitbot fleet)."
+version = "1.0.0"
+
+[fleet]
+# The standard hyperpolymath bot fleet, each with a repo-local directive file.
+echidnabot  = "formal verification + fuzzing — keeps proofs/ honest"
+finishbot   = "task completion — no unfinished stubs; behavioural coverage before close"
+glambot     = "documentation — .adoc format, SPDX headers, no licence edits"
+rhodibot    = "git operations — no force-push, SHA-pin actions, always sign"
+seambot     = "integration — verify the JNI seam and crate boundaries end-to-end"
+sustainabot = "dependency updates — pinned, no npm/bun/yarn, guard the rand 0.9 trap"

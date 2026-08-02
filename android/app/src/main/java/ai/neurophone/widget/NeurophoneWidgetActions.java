@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-// SPDX-FileCopyrightText: 2025 Jonathan D.A. Jewell
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell
 package ai.neurophone.widget;
 
 import android.content.BroadcastReceiver;
@@ -9,25 +9,15 @@ import android.content.Intent;
 import ai.neurophone.NativeLib;
 
 /**
- * Lightweight broadcast receiver dispatched by non-widget callers (the
- * foreground service, the boot receiver, the share-intent handler) to drive
- * the widget without holding a reference to it.
+ * Lightweight {@link BroadcastReceiver} shim (sub-issue #113, second third of
+ * the widget triple) dispatched by non-widget callers (service, boot
+ * receiver, share-intent handler) to drive the widget without holding a
+ * reference to it.
  *
- * <p>Thin hand-written Java {@link BroadcastReceiver} shim, part of the Android
- * Kotlin->Rust/Gossamer migration (epic #83). It replaces the former Kotlin
- * {@code NeurophoneWidgetActions.kt}.
- *
- * <p>The pre-migration {@code PUBLISH_STATE} path carried neural state in the
- * intent extras and stashed it in SharedPreferences. That is gone: the Rust
- * core is now the single source of truth, so callers only need to nudge the
- * widget into re-reading it via {@link NativeLib#getState()}.
- *
- * <p>Two actions:
- * <ul>
- *   <li>{@code ACTION_FORCE_REFRESH} -> re-render every mounted widget</li>
- *   <li>{@code ACTION_QUERY} -> run a one-shot query against the core via
- *       {@link NativeLib#query(String, boolean)}, then refresh</li>
- * </ul>
+ * <p>Replaces the legacy Kotlin {@code NeurophoneWidgetActions.kt}. The
+ * pre-migration {@code PUBLISH_STATE} path (intent extras stashed into
+ * SharedPreferences) is gone: the Rust core is the single source of truth,
+ * so callers only need to nudge the widget into re-reading it.
  */
 public final class NeurophoneWidgetActions extends BroadcastReceiver {
 
@@ -56,19 +46,15 @@ public final class NeurophoneWidgetActions extends BroadcastReceiver {
     }
 
     /**
-     * Fire a query into the Rust core. Result handling (surfacing the answer in
-     * a notification / activity) is owned elsewhere; here we only ensure the
-     * core advances so the next render reflects it.
+     * Fire a query into the Rust core. Result handling (surfacing the answer)
+     * is owned elsewhere; here we only ensure the core advances so the next
+     * render reflects it.
      */
     private static void runQuery(String query, boolean preferLocal) {
-        // TODO(#83 rebase): NativeLib is the Kotlin `object` from the
-        //  pre-migration tree (hence `.INSTANCE`); sub-PR #3/#4/#5 may
-        //  republish it as a Java facade. Until the JNI bridge lands the call
-        //  resolves against the stub, so guard against UnsatisfiedLinkError.
         try {
-            NativeLib.INSTANCE.query(query, preferLocal);
+            NativeLib.query(query, preferLocal);
         } catch (Throwable t) {
-            // No-op: a failed query must not crash the broadcasting caller.
+            // A failed query must not crash the broadcasting caller.
         }
     }
 }

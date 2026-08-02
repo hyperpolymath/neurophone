@@ -7,27 +7,23 @@ import android.content.Context;
 import android.content.Intent;
 
 /**
- * Thin {@link BroadcastReceiver} shim that restarts the neurophone foreground
- * {@link NeurophoneService} after the device finishes booting.
+ * Thin {@link BroadcastReceiver} shim (sub-issue #112) that restarts the
+ * foreground {@link NeurophoneService} after boot.
  *
- * <p>This is a deliberately minimal, hand-written Java shim that replaces the
- * previous Kotlin {@code BootReceiver}. It is part of the Android Kotlin to
- * Rust/Gossamer migration (epic #83). The receiver contains <em>no</em>
- * business logic: any decision about whether the service should actually run
- * (e.g. honouring persisted "was running" state) belongs in the Rust JNI layer
- * ({@code crates/neurophone-android}) and is reached through the service start
- * path, not here.
+ * <p>Replaces the legacy Kotlin {@code BootReceiver.kt}. gossamer has no
+ * {@code BroadcastReceiver} primitive at all (verified: zero foundation in
+ * {@code hyperpolymath/gossamer} for this Android surface), so this is a
+ * from-scratch minimal shim &mdash; not an adaptation of anything gossamer
+ * provides.
  *
- * <p>Hand-written Java is permitted only under {@code android/} via the
- * {@code .hypatia-baseline.json} exemption for the in-flight Gossamer
- * migration.
- *
- * <p>TODO(#83): once the Rust JNI boot-policy entrypoint lands, delegate the
- * "should we restart?" decision to {@code crates/neurophone-android} rather
- * than unconditionally starting the service.
- * <p>TODO(#83 rebase): depends on sub-PRs #4 (NativeLib to Rust) and #5
- * (Service shim); re-point the {@code NeurophoneService} reference if those
- * sub-PRs rename or relocate the service entrypoint.
+ * <p>Carries no policy: it does not persist or consult a "was running before
+ * reboot" flag (the legacy Kotlin service delegated that decision to
+ * SharedPreferences written by the now-removed widget code). Every boot,
+ * unconditionally, it starts the service; the service's own {@code onCreate}
+ * decides whether {@link NativeLib#init}/{@link NativeLib#start} succeed.
+ * TODO(#83): if a persisted autostart preference is wanted, it should be
+ * read via a new JNI accessor into {@code crates/neurophone-android}, not
+ * Android SharedPreferences read here.
  */
 public final class BootReceiver extends BroadcastReceiver {
 
@@ -41,8 +37,6 @@ public final class BootReceiver extends BroadcastReceiver {
                 && !Intent.ACTION_LOCKED_BOOT_COMPLETED.equals(action)) {
             return;
         }
-        // Thin shim: start the foreground service from sub-PR #5. All runtime
-        // policy and inference lives behind the Rust JNI in NeurophoneService.
         final Intent serviceIntent = new Intent(context, NeurophoneService.class);
         context.startForegroundService(serviceIntent);
     }

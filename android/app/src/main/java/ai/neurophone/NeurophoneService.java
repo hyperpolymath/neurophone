@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-// SPDX-FileCopyrightText: 2025 Jonathan D.A. Jewell
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell
 package ai.neurophone;
 
 import android.app.Notification;
@@ -18,38 +18,37 @@ import android.os.IBinder;
 import android.os.PowerManager;
 
 /**
- * Thin foreground {@link Service} shim for the Gossamer migration.
+ * Thin foreground {@link Service} shim (sub-issue #111).
  *
  * <p>All business logic (sensor &rarr; LSM &rarr; ESN &rarr; bridge loop,
- * salience computation, widget publishing) now lives in Rust behind the
- * {@code crates/neurophone-android} JNI boundary. This Java shim only:
- * <ul>
- *   <li>holds the foreground notification + wake lock so Android keeps us
- *       alive,</li>
- *   <li>calls {@link NativeLib#start()} on create and {@link NativeLib#stop()}
- *       on destroy,</li>
- *   <li>forwards raw sensor events into Rust via
- *       {@link NativeLib#processSensor(int, float[], long, int)}.</li>
- * </ul>
+ * salience computation) lives behind the {@code crates/neurophone-android}
+ * JNI boundary (issue #110, already merged). This Java shim only does what
+ * Android's platform APIs require a JVM class for: the foreground
+ * notification/wake-lock ceremony, and forwarding raw
+ * {@link SensorEventListener} callbacks into {@link NativeLib#processSensor}.
  *
- * <p>Hand-written Java is permitted only under {@code android/} (see
- * {@code .hypatia-baseline.json}); every method below is deliberately minimal.
+ * <p>Replaces the legacy Kotlin {@code NeurophoneService.kt}. gossamer itself
+ * has no {@code Service}-lifecycle primitive to extend (verified: gossamer's
+ * Android surface is limited to the WebView Activity + JS bridge in
+ * {@code hyperpolymath/gossamer android/src/main/java/io/gossamer/}); this
+ * class extends {@code android.app.Service} directly, per
+ * {@code docs/migrations/RFC-ANDROID-KOTLIN-TO-RUST.adoc} "Path (A)" (hand-
+ * written Java shim, immediate JNI delegation). See {@code android/README.adoc}
+ * for why this supersedes the RFC's Q6 "gossamer-android-services upstream
+ * companion" plan, which was never implemented upstream.
  *
- * <p>TODO(#83): this shim is the migration seam. Once sub-PR #4
- * (NativeLib&rarr;Rust JNI) and sub-PR #3 (Gossamer scaffolding) land, the
- * remaining Android-owned concerns (foreground notification, wake lock,
- * sensor registration) should move behind Gossamer/Rust and this file should
- * shrink further or be removed entirely with the rest of {@code android/}.
+ * <p>Permission set + notification channel match
+ * {@code docs/OS_INTEGRATION.adoc} "Foreground service" / "Permissions".
  */
 public final class NeurophoneService extends Service implements SensorEventListener {
 
     private static final String CHANNEL_ID = "neurophone_runtime";
     private static final int NOTIF_ID = 0x4E50; // 'NP'
 
-    /** Sensor sampling cadence; ~50 Hz, matching the prior Kotlin service. */
+    /** Sensor sampling cadence; ~50 Hz per docs/OS_INTEGRATION.adoc. */
     private static final int SENSOR_DELAY = SensorManager.SENSOR_DELAY_GAME;
 
-    /** Default reported accuracy when a real value is unavailable. */
+    /** Reported accuracy when Android doesn't hand us a real value. */
     private static final int DEFAULT_ACCURACY = 3; // SENSOR_STATUS_ACCURACY_HIGH
 
     private SensorManager sensorManager;
@@ -67,14 +66,14 @@ public final class NeurophoneService extends Service implements SensorEventListe
         wakeLock.setReferenceCounted(false);
         wakeLock.acquire(10 * 60 * 1000L);
 
-        // TODO(#83 rebase): NativeLib is a Kotlin `object`; once sub-PR #4 lands
-        // the Rust JNI library `neurophone_android` must export init/start/stop/
-        // processSensor. Guard so dev hardware without the native lib still runs.
+        // Guarded: dev builds / test devices without the native lib loaded
+        // must not crash the service on create.
         try {
-            NativeLib.INSTANCE.init(null);
-            NativeLib.INSTANCE.start();
+            NativeLib.init(null);
+            NativeLib.start();
         } catch (Throwable t) {
-            // dev mode: no native library present yet
+            // No native lib present yet — service still starts so the
+            // notification/UI shell is inspectable.
         }
     }
 
@@ -91,9 +90,9 @@ public final class NeurophoneService extends Service implements SensorEventListe
             sensorManager.unregisterListener(this);
         }
         try {
-            NativeLib.INSTANCE.stop();
+            NativeLib.stop();
         } catch (Throwable t) {
-            // dev mode: no native library present yet
+            // No native lib present yet.
         }
         if (wakeLock != null && wakeLock.isHeld()) {
             wakeLock.release();
@@ -109,14 +108,11 @@ public final class NeurophoneService extends Service implements SensorEventListe
     @Override
     public void onSensorChanged(SensorEvent event) {
         int typeId = typeIdFor(event.sensor.getType());
-        // Replicate the prior Kotlin convenience mapping: callers identified
-        // sensors by name, here we collapse to the same numeric id space and
-        // forward straight to Rust. timestamp ms -> ns.
         long timestampNs = System.currentTimeMillis() * 1_000_000L;
         try {
-            NativeLib.INSTANCE.processSensor(typeId, event.values, timestampNs, DEFAULT_ACCURACY);
+            NativeLib.processSensor(typeId, event.values, timestampNs, DEFAULT_ACCURACY);
         } catch (Throwable t) {
-            // dev mode without JNI
+            // No native lib present yet.
         }
     }
 
@@ -126,11 +122,10 @@ public final class NeurophoneService extends Service implements SensorEventListe
     }
 
     /**
-     * Maps an Android {@link Sensor} type constant to the compact id space the
-     * Rust core expects. Mirrors the sensor-name &rarr; id table that lived in
-     * {@code NativeLib.pushSensorEvent} on the Kotlin side:
-     * accelerometer=1, magnetometer=2, gyroscope=4, light=5, proximity=8,
-     * everything else=0.
+     * Maps an Android {@link Sensor} type constant to the compact id space
+     * {@code sensor_map.rs} expects: accelerometer=1, magnetometer=2,
+     * gyroscope=4, light=5, proximity=8, everything else=0 (unmapped, the
+     * Rust side rejects it).
      */
     private static int typeIdFor(int sensorType) {
         switch (sensorType) {
@@ -153,9 +148,15 @@ public final class NeurophoneService extends Service implements SensorEventListe
         if (sensorManager == null) {
             return;
         }
-        // TODO(#83): widen beyond accelerometer once the Rust core consumes the
-        // full sensor set; the type-id mapping above already covers them.
-        registerIfPresent(Sensor.TYPE_ACCELEROMETER);
+        for (int type : new int[] {
+                Sensor.TYPE_ACCELEROMETER,
+                Sensor.TYPE_GYROSCOPE,
+                Sensor.TYPE_MAGNETIC_FIELD,
+                Sensor.TYPE_LIGHT,
+                Sensor.TYPE_PROXIMITY,
+        }) {
+            registerIfPresent(type);
+        }
     }
 
     private void registerIfPresent(int sensorType) {
@@ -168,7 +169,7 @@ public final class NeurophoneService extends Service implements SensorEventListe
     private void startForegroundCompat() {
         PendingIntent open = PendingIntent.getActivity(
                 this, 0,
-                new Intent(this, MainActivity.class),
+                new Intent(this, NeurophoneActivity.class),
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         Notification notif = new Notification.Builder(this, CHANNEL_ID)

@@ -1,16 +1,19 @@
 <!DOCTYPE html>
 <!--
   SPDX-License-Identifier: MPL-2.0
+  SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell
 
-  Gossamer webview entry for the NeuroSymbolic Phone UI.
-  Loads the AffineScript UI compiled to Deno-ESM (dist/ui.mjs).
+  Webview entry loaded by NeurophoneActivity
+  (file:///android_asset/gossamer-ui/index.html). Structural equivalent of
+  the legacy Android view tree in res/layout/activity_main.xml; element ids
+  match those queried by dist/ui.mjs.
 
-  This markup is the structural equivalent of the old Android view tree in
-  res/layout/activity_main.xml; element ids match those queried by ui.affine.
-
-  TODO(#83 rebase): the Gossamer host is expected to serve this file as the
-    webview's root document and to inject the `gossamer` host bridge object
-    before module scripts run. Confirm the asset URL scheme used by #3.
+  dist/ui.mjs calls window.NeurophoneBridge directly (synchronous
+  addJavascriptInterface, see NeurophoneBridge.java) and imports the
+  genuinely-compiled dist/logic.deno.js (from src/logic.affine) for pure
+  decision logic — see README.adoc "AffineScript verification". There is no
+  gossamer `window.gossamer` / `__gossamer_invoke` object to wait for here,
+  so the script can run immediately.
 -->
 <html lang="en">
 <head>
@@ -52,13 +55,13 @@
   <h2 class="section-title">Response:</h2>
   <div id="responseText" class="response" aria-live="polite">Response will appear here...</div>
 
-  <footer>Sensors → LSM → Bridge → LLM ↔ ESN → Output</footer>
+  <footer>Sensors → Service (Java/JNI) → Rust core ↔ LLM → Widget/UI</footer>
 
   <!--
-    dist/ui.mjs is produced by build.sh (AffineScript → Deno-ESM). A committed
-    stub (dist/ui.mjs) keeps the webview functional / inspectable before the
-    AffineScript toolchain is wired in CI. TODO(#83): replace stub with real
-    compiled output.
+    dist/ui.mjs is a hand-written DOM + NeurophoneBridge harness (not
+    compiler output); it imports dist/logic.deno.js, which IS genuine
+    `affinescript compile --deno-esm` output of src/logic.affine. See
+    dist/ui.mjs's own header and README.adoc "AffineScript verification".
   -->
   <script type="module" src="dist/ui.mjs"></script>
 </body>

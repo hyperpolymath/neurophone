@@ -1,8 +1,12 @@
 /* SPDX-License-Identifier: MPL-2.0
+ * SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell
  *
- * Styling for the Gossamer webview NeuroSymbolic Phone UI.
- * Visual parity with the old Android layout (res/layout/activity_main.xml):
- * 16dp page padding, centred header, monospace neural-context panel, etc.
+ * Styling for the NeurophoneActivity webview UI. Visual parity with the
+ * legacy Android layout (res/layout/activity_main.xml, deleted): 16dp page
+ * padding, centred header, monospace neural-context panel, etc. Pure
+ * presentation — recovered near-verbatim from neurophone's own prior
+ * AffineScript UI attempt (commit a3487cc, since deleted); nothing here
+ * depends on the bridge shape, so no adaptation was needed.
  */
 
 :root {

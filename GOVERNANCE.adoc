@@ -1,35 +1,33 @@
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: CC-BY-SA-4.0
 // SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 = Governance Model
 :toc: preamble
 
-This document describes the governance model for this repository.
+Governance model for **neurophone** (on-device neurosymbolic AI). This repo
+follows the hyperpolymath estate governance pattern; the canonical estate policy
+lives in https://github.com/hyperpolymath/standards[hyperpolymath/standards].
 
 == Overview
 
-This repository follows a **Sole Maintainer Governance Model**:
+neurophone follows a **Benevolent Dictator (BDFL)** model:
 
-* Single maintainer (@hyperpolymath) has full authority over the project
-* All contributions are welcome and reviewed by the maintainer
-* Decisions are made transparently through GitHub issues and discussions
-* The project adheres to the hyperpolymath estate policies where applicable
+* A single champion (@hyperpolymath) holds the project's vision and final
+  decision authority, while actively welcoming contributions and delegating.
+* *Current reality:* a sole maintainer. That is a staffing fact, not a closed
+  door — contributions are welcomed and reviewed, and authority is delegable to
+  anyone who demonstrably carries the project's essence.
+* Decisions are made transparently through GitHub issues and pull requests.
 
 == Core Principles
 
 [cols="1,2"]
 |===
 | Principle | Description
-
-| **Benevolent Dictatorship** | Maintainer has final decision authority but seeks community input
-
-| **Meritocracy** | Contributions are judged on technical merit, not contributor identity
-
-| **Transparency** | All significant decisions are documented publicly
-
-| **Consensus-Seeking** | Maintainer prefers consensus but will decide when necessary
-
-| **Open Contribution** | Anyone can contribute via fork and pull request
-
+| **Benevolent Dictatorship** | Maintainer has final authority but seeks input.
+| **Meritocracy** | Contributions are judged on technical merit.
+| **Transparency** | Significant decisions are documented publicly.
+| **Fail loudly, seal soundly** | No silent green; seams (ABI/FFI) are sealed and, where load-bearing, proved.
+| **Report faithfully** | No overclaiming — proof obligations are discharged or honestly left open (never faked).
 |===
 
 == Roles and Permissions
@@ -37,126 +35,42 @@ This repository follows a **Sole Maintainer Governance Model**:
 [cols="1,2,2"]
 |===
 | Role | Permissions | Assignment
-
-| **Maintainer** | Write access, merge rights, admin | @hyperpolymath
-| **Contributors** | Read access, fork, submit PRs | All GitHub users
-| **Users** | Use the software, report issues | All GitHub users
-
+| **Maintainer** | Write, merge, admin | @hyperpolymath
+| **Contributors** | Fork, submit PRs | All GitHub users
+| **Agents (LLM)** | Bounded per `.machine_readable/6a2/AGENTIC.a2ml` | Automated assistants
 |===
 
-== Decision Making Framework
+== Decision-Making Framework
 
-=== Routine Decisions
+Routine (bug fixes, docs, minor features, dependency updates) — maintainer or a
+delegate merges after CI is green. Significant (architecture, ABI/FFI seam
+changes, proof-obligation changes, security policy, licence) — require explicit
+maintainer review; these are gated by the estate policies below.
 
-* Bug fixes
-* Documentation improvements
-* Minor feature additions
-* Dependency updates
+=== Licence changes — owner-only
 
-**Process**: Maintainer reviews and merges PRs that meet quality standards.
+Per the estate guardrail, **licence and SPDX changes are manual, per-file, and
+owner-approved only**. Agents and automation must not generate licence-change PRs
+or sweep SPDX headers; findings about licence drift are flag-only. neurophone is a
+sole-owner repo: code is **MPL-2.0**, documentation is **CC-BY-SA-4.0**.
 
-=== Significant Changes
+=== Security-critical changes
 
-* New major features
-* API changes
-* Architecture modifications
-* Breaking changes
+Changes to the Trustfile, CI/security/release workflows, cryptographic material,
+the JNI FFI boundary, or the `proofs/` corpus require explicit review. See
+`.machine_readable/contractiles/trust/Trustfile.a2ml` (`[CAPABILITY_GATEWAY]`).
 
-**Process**:
-. Open issue describing the change
-. Discuss with community (minimum 72 hours)
-. Maintainer makes final decision
-. Document rationale in issue/PR
+== Machine-Readable Governance
 
-=== Structural Decisions
+The normative substrate is authoritative where it applies:
 
-* Repository purpose/renaming
-* License changes
-* Ownership transfer
-* Deprecation/archival
+* `.machine_readable/6a2/AGENTIC.a2ml` — agent permissions / risk gating.
+* `.machine_readable/6a2/META.a2ml` — architecture decisions.
+* `.machine_readable/contractiles/` — MUST / TRUST / INTEND / ADJUST / DUST / BUST
+  contracts (e.g. `MUST.contractile` bans proof escape hatches).
+* `proofs/README.adoc` — proof-obligation map and status.
 
-**Process**: 
-. Extended discussion (minimum 1 week)
-. Maintainer makes final decision
-. Document in CHANGELOG and governance docs
+== Code of Conduct
 
-== Contribution Lifecycle
-
-[cols="1,2"]
-|===
-| Stage | Process
-
-| **Ideation** | Open issue, discuss feasibility
-
-| **Development** | Fork, implement, test thoroughly
-
-| **Review** | Submit PR, maintainer reviews within 7 days
-
-| **Merge** | Maintainer merges or requests changes
-
-| **Release** | Maintainer publishes according to project conventions
-
-|===
-
-== Conflict Resolution
-
-In case of disagreements:
-
-. Discuss in the relevant GitHub issue or PR
-. Provide technical justification for positions
-. Maintainer mediates and makes final decision
-. Decision is documented and can be revisited later
-
-== Project Policies
-
-This repository adheres to hyperpolymath estate-wide policies:
-
-* **License**: MPL-2.0 for code, CC-BY-SA-4.0 for prose (per standards/LICENCE-POLICY.adoc)
-* **Code of Conduct**: Follows hyperpolymath CODE_OF_CONDUCT.md
-* **Security**: Follows hyperpolymath SECURITY.md
-* **Contributing**: Follows hyperpolymath CONTRIBUTING.adoc conventions
-
-== Repository-Specific Conventions
-
-[cols="1,2"]
-|===
-| Convention | Description
-
-| **Signing** | All commits must be signed (SSH or GPG)
-
-| **SPDX Headers** | All source files must have SPDX license identifiers
-
-| **Contractiles** | Mustfile, Trustfile, Intendfile, Adjustfile in root
-
-| **Machine Readable** | META.a2ml in .machine_readable/6a2/
-
-| **CI/CD** | GitHub Actions workflows in .github/workflows/
-
-|===
-
-== Governance Evolution
-
-As the project grows, this governance model may evolve:
-
-* **Adding Co-Maintainers**: When contribution volume warrants it
-* **Forming a Team**: For complex multi-maintainer projects
-* **Adopting TPCF**: For large, multi-repository projects (see rhodium-standard-repositories)
-
-Changes to this document require the same process as Significant Changes above.
-
-== See Also
-
-* link:MAINTAINERS.adoc[Maintainers]
-* link:CODE_OF_CONDUCT.md[Code of Conduct]
-* link:CONTRIBUTING.adoc[Contributing Guide]
-* link:https://github.com/hyperpolymath/standards/blob/main/LICENCE-POLICY.adoc[Estate License Policy]
-* link:https://github.com/hyperpolymath/standards[rhodium-standard-repositories (TPCF)]
-
-== Changelog
-
-[cols="1,1,1"]
-|===
-| Date | Change | By
-
-| 2026-06-07 | Initial governance model established | @hyperpolymath
-|===
+Participation is governed by `CODE_OF_CONDUCT.md`. Report concerns via the
+security/contact channels in `SECURITY.md`.

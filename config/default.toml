@@ -59,7 +59,8 @@ model_type = "Llama3_2_1B"  # Model variant
 
 # Claude Configuration (optional)
 [claude]
-# api_key = "sk-ant-..."  # Set via ANTHROPIC_API_KEY env var
+# API key is not configured here — set it via the ANTHROPIC_API_KEY
+# environment variable instead (never commit a key to this file).
 base_url = "https://api.anthropic.com/v1"
 model = "claude-sonnet-4-20250514"
 timeout_secs = 60

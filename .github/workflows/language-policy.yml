@@ -18,9 +18,11 @@ jobs:
   check-banned-languages:
     name: Check for Banned Languages
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+
       # TypeScript check delegated to rsr-antipattern.yml (which honours the
       # universal allowlist and the .claude/CLAUDE.md exemptions table). The
       # blunt `find -name "*.ts"` form previously here false-positived on
@@ -143,9 +145,11 @@ jobs:
   check-required-files:
     name: Check Required Files
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+
       - name: Check for .machine_readable directory
         run: |
           if [ ! -d ".machine_readable" ]; then

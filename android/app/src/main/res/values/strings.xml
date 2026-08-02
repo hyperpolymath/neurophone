@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
 SPDX-License-Identifier: MPL-2.0
-SPDX-FileCopyrightText: 2025 Jonathan D.A. Jewell
+SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell
+
+Recovered near-verbatim from the pre-deletion legacy tree (`git show
+f389983^:android/app/src/main/res/values/strings.xml`); user-facing copy, so
+no adaptation needed for the Rust/Gossamer migration.
 -->
 <resources>
     <string name="app_name">NeuroPhone</string>
@@ -17,7 +21,8 @@ SPDX-FileCopyrightText: 2025 Jonathan D.A. Jewell
     <string name="widget_query_now">Ask NeuroPhone</string>
     <string name="widget_toggle">Toggle service</string>
     <string name="widget_refresh">Refresh state</string>
-    <!-- widget_configure_* strings removed: configure activity dropped (epic #83). -->
+    <!-- widget_configure_* strings intentionally absent: configure activity
+         dropped, see res/xml/neurophone_widget_info.xml. -->
 
     <!-- Foreground service notification -->
     <string name="service_channel_name">NeuroPhone runtime</string>

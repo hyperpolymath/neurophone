@@ -1,0 +1,82 @@
+# SPDX-License-Identifier: MPL-2.0
+# Validates the canonical Trustfile (estate baseline v2026.2.5-final) and runs
+# its fast integrity checks. Placeholder crypto tokens ({{...}}) are owner-supplied
+# at signing time, so they only hard-fail on `main` — on branches/PRs they warn.
+name: Trustfile Validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      TRUSTFILE: .machine_readable/contractiles/trust/Trustfile.a2ml
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Trustfile present and structurally complete
+        run: |
+          set -euo pipefail
+          test -f "$TRUSTFILE" || { echo "::error::$TRUSTFILE is missing"; exit 1; }
+          missing=""
+          for section in META THREAT_MODEL TRUSTFILE ESTATE_STANDARD \
+                         REPOSITORY_SPECIFIC PROOF_ARTIFACTS CAPABILITY_GATEWAY \
+                         CRYPTO_AGILITY SIGNATURE_BLOCK DEPLOYMENT; do
+            grep -qE "^### \[$section\]" "$TRUSTFILE" || missing="$missing $section"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Trustfile missing required section(s):$missing"
+            exit 1
+          fi
+          echo "All required Trustfile sections present."
+
+      - name: Placeholder policy (WARN on branches, ERROR on main)
+        run: |
+          set -euo pipefail
+          count=$(grep -cE '\{\{[A-Za-z0-9_]+\}\}' "$TRUSTFILE" || true)
+          if [ "$count" -eq 0 ]; then
+            echo "No unresolved placeholders."
+            exit 0
+          fi
+          if [ "${GITHUB_REF:-}" = "refs/heads/main" ]; then
+            echo "::error::$count unresolved {{PLACEHOLDER}} token(s) on main — owner must fill crypto/provenance before release."
+            grep -nE '\{\{[A-Za-z0-9_]+\}\}' "$TRUSTFILE" | head -20
+            exit 1
+          else
+            echo "::warning::$count unresolved {{PLACEHOLDER}} token(s) (owner-supplied at signing time; allowed on branches)."
+          fi
+
+      - name: Integrity-hash drift report (informational)
+        run: |
+          set -euo pipefail
+          # Report the current digests so drift is visible; never auto-commit on a
+          # protected branch (that is a signing-time, owner-side step).
+          if command -v b3sum >/dev/null 2>&1; then echo "blake3:  $(b3sum "$TRUSTFILE" | awk '{print $1}')"; fi
+          echo "sha3-512: $(openssl dgst -sha3-512 "$TRUSTFILE" | awk '{print $2}')"
+
+      - name: Runnable integrity checks
+        run: |
+          set -euo pipefail
+          # license-content: sole-owner repo must be MPL-2.0
+          grep -q 'Mozilla Public License\|MPL-2.0' LICENSE \
+            || { echo "::error::LICENSE is not MPL-2.0"; exit 1; }
+          # no secrets committed
+          if [ -f .env ] || [ -f credentials.json ] || [ -f .env.local ]; then
+            echo "::error::secret/credential file committed"; exit 1
+          fi
+          echo "Runnable integrity checks passed."

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: CC-BY-SA-4.0
 // SPDX-FileCopyrightText: 2025 Jonathan D.A. Jewell (hyperpolymath)
 = NeuroPhone: AI-Assisted Installation Guide
 :toc:
@@ -205,9 +205,10 @@ spike_threshold = 0.5
 reservoir_size = 300
 spectral_radius = 0.95
 
-# Uncomment to enable Claude API fallback:
+# To enable Claude API fallback, prefer exporting ANTHROPIC_API_KEY in
+# your shell rather than storing a key in this file. If you do want it
+# here instead, uncomment and fill in:
 # [claude]
-# api_key = "sk-ant-..."
 # model = "claude-sonnet-4-20250514"
 EOF
 
@@ -419,4 +420,4 @@ Keep it simple:
 
 Copyright (c) 2025 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 
-SPDX-License-Identifier: MPL-2.0
+SPDX-License-Identifier: CC-BY-SA-4.0

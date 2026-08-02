@@ -1,33 +1,46 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: MPL-2.0
+# SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell
 #
-# Build wiring: compile the AffineScript Gossamer UI (src/*.affine) to a
-# Deno-ESM module (dist/ui.mjs) that the Android webview loads via index.html.
+# Build wiring: compile the AffineScript pure-logic module (src/logic.affine)
+# to a Deno-ESM module (dist/logic.deno.js) via the real `affinescript`
+# compiler:
+#   affinescript check   src/logic.affine
+#   affinescript compile --deno-esm -o dist/logic.deno.js src/logic.affine
 #
-# Pipeline (per the AffineScript toolchain — OCaml/Dune `affinescript` CLI):
-#   affinescript check   src/*.affine      # affine/ownership + type check
-#   affinescript fmt     src/*.affine      # formatting (with --fmt)
-#   affinescript compile --target deno-esm -o dist/ui.mjs src/ui.affine
+# Unlike an earlier draft of this UI (neurophone commit a3487cc, since
+# deleted, which assumed the toolchain wasn't vendored anywhere and shipped
+# a hand-written "generated-output stub"), this repo's authoring environment
+# had a real `affinescript` (hyperpolymath/affinescript) on PATH, so
+# dist/logic.deno.js committed alongside this script IS genuine compiler
+# output, not a stub — see android/README.adoc "AffineScript verification"
+# for the exact transcript. This script still degrades gracefully if
+# `affinescript` is absent (e.g. a CI runner that hasn't vendored it): it
+# leaves the already-committed dist/logic.deno.js in place rather than
+# failing the build.
 #
-# TODO(#83 rebase): the `affinescript` compiler is NOT yet vendored in this repo
-#   or CI. Until it is, this script DOES NOT regenerate dist/ui.mjs; the
-#   committed hand-written stub (dist/ui.mjs) stands in. When the toolchain
-#   lands: drop the stub, flip USE_STUB=0, and wire `deno task build:ui` into CI.
+# dist/ui.mjs is NOT produced by this script — it is a hand-written DOM +
+# NeurophoneBridge harness (see its own file header for why: no typed DOM
+# binding exists in this compiler yet, and extern fn lowering can't express
+# `window.NeurophoneBridge.method(...)`-shaped calls). Only dist/logic.deno.js
+# is compiler output.
 #
 # Usage:
-#   bash build.sh              # build dist/ui.mjs from src/*.affine
-#   bash build.sh --check-only # type/ownership check only
-#   bash build.sh --fmt        # format src/*.affine in place
+#   bash build.sh              # compile src/logic.affine -> dist/logic.deno.js, then run the harness
+#   bash build.sh --check-only # type check only (no compile, no harness run)
+#   bash build.sh --fmt        # format src/logic.affine in place — NOTE: as
+#                              #   tested in this session, the installed
+#                              #   `affinescript fmt` exits 125
+#                              #   ("Code formatting not yet implemented");
+#                              #   this is an upstream compiler gap, not a
+#                              #   bug here. Left wired for when it lands.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SRC_DIR="$HERE/src"
+SRC="$HERE/src/logic.affine"
 DIST_DIR="$HERE/dist"
-OUT="$DIST_DIR/ui.mjs"
-ENTRY="$SRC_DIR/ui.affine"
-
-# TODO(#83): set to 0 once the affinescript compiler is available in CI/dev.
-USE_STUB=1
+OUT="$DIST_DIR/logic.deno.js"
+HARNESS="$DIST_DIR/logic.harness.mjs"
 
 mode="build"
 case "${1:-}" in
@@ -39,26 +52,27 @@ esac
 
 if ! command -v affinescript >/dev/null 2>&1; then
   echo "[build.sh] 'affinescript' compiler not found on PATH."
-  echo "[build.sh] TODO(#83): vendor/pin the AffineScript toolchain (OCaml/Dune)."
-  if [ "$USE_STUB" = "1" ]; then
-    echo "[build.sh] Using committed stub: $OUT (no regeneration)."
-    [ -f "$OUT" ] || { echo "[build.sh] ERROR: stub $OUT missing." >&2; exit 1; }
-    exit 0
-  fi
-  exit 1
+  echo "[build.sh] Leaving the already-committed $OUT in place (not regenerating)."
+  [ -f "$OUT" ] || { echo "[build.sh] ERROR: $OUT missing and no compiler to produce it." >&2; exit 1; }
+  exit 0
 fi
 
 case "$mode" in
   check)
-    affinescript check "$SRC_DIR"/*.affine
+    affinescript check "$SRC"
     ;;
   fmt)
-    affinescript fmt "$SRC_DIR"/*.affine
+    affinescript fmt "$SRC"
     ;;
   build)
-    affinescript check "$SRC_DIR"/*.affine
+    affinescript check "$SRC"
     mkdir -p "$DIST_DIR"
-    affinescript compile --target deno-esm -o "$OUT" "$ENTRY"
+    affinescript compile --deno-esm -o "$OUT" "$SRC"
     echo "[build.sh] Wrote $OUT"
+    if command -v deno >/dev/null 2>&1; then
+      deno run --allow-read "$HARNESS"
+    else
+      echo "[build.sh] 'deno' not found — skipping $HARNESS regression run."
+    fi
     ;;
 esac

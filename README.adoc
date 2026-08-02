@@ -1,8 +1,8 @@
-image:https://img.shields.io/badge/License-PMPL--1.0-blue.svg[License: PMPL-1.0,link="https://github.com/hyperpolymath/palimpsest-license"]
+image:https://img.shields.io/badge/License-MPL--2.0-blue.svg[License: MPL-2.0,link="https://github.com/hyperpolymath/neurophone/blob/main/LICENSE"]
 image:https://img.shields.io/badge/Philosophy-Palimpsest-indigo.svg[Palimpsest,link="https://github.com/hyperpolymath/palimpsest-license"]
 
 
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: CC-BY-SA-4.0
 // SPDX-FileCopyrightText: 2025 Jonathan D.A. Jewell
 = NeuroPhone - Neurosymbolic AI Android Application
 :toc:
@@ -352,17 +352,19 @@ adb push llama-3.2-1b-instruct-q4_k_m.gguf /data/local/tmp/
 
 === Configure
 
-Set Claude API key (for cloud fallback):
+Set your Claude API key (for cloud fallback) via the `ANTHROPIC_API_KEY`
+environment variable:
 
 ```bash
-export ANTHROPIC_API_KEY="your-api-key"
+export ANTHROPIC_API_KEY=<your-anthropic-api-key>
 ```
 
-Or in `config/default.toml`:
+Alternatively, the `api_key` field under `[claude]` in `config/default.toml`
+can hold it directly, but the environment variable is preferred so the key
+never has to live in a checked-in file:
 
 ```toml
 [claude]
-api_key = "your-api-key"
 model = "claude-sonnet-4-20250514"
 
 [llm]
@@ -521,7 +523,7 @@ Contributions welcome! See link:CONTRIBUTING.md[CONTRIBUTING.md].
 
 == License
 
-Palimpsest-MPL-1.0 License - See LICENSE file
+MPL-2.0 License - See the LICENSE file. Documentation is CC-BY-SA-4.0.
 
 == Citation
 
@@ -547,4 +549,4 @@ Palimpsest-MPL-1.0 License - See LICENSE file
 
 == Architecture
 
-See link:TOPOLOGY.md[TOPOLOGY.md] for a visual architecture map and completion dashboard.
+See link:TOPOLOGY.adoc[TOPOLOGY.adoc] for a visual architecture map and completion dashboard.

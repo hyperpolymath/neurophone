@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: MPL-2.0
+# sustainabot.a2ml — Directives for sustainabot in neurophone
+
+project = "neurophone"
+schema_version = "1.0.0"
+
+[identity]
+bot = "sustainabot"
+role = "dependency-updates"
+
+[constraints]
+# All dependency updates must be SHA-pinned (GitHub Actions) or version-pinned (Cargo).
+# No upgrade of Cargo.lock without passing CI.
+# Do not introduce npm, bun, pnpm, or yarn dependencies — Deno only for JS.
+# KNOWN TRAP: do not bump `rand` past 0.9 / `rand_distr` past 0.5 — 0.10/0.6 break
+#   the esn/lsm build (ndarray-rand 0.16 compat). A dependabot bump already caused
+#   this regression once (#152/#154). Guard it.
+# Security advisories are high-priority; ping the maintainer before auto-merging.
+# The conative-gating git dependency (crates/claude-client) is pinned by rev —
+#   do not float it; a rev bump needs a deliberate, CI-verified change.
+
+[targets]
+watch = [
+  "Cargo.toml",
+  "Cargo.lock",
+  ".github/workflows/",
+  ".github/dependabot.yml",
+  "guix.scm",
+]

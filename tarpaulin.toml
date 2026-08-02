@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: MPL-2.0
+# cargo-tarpaulin configuration.
+#
+# Force the LLVM (source-based) coverage engine. The default ptrace engine
+# segfaults on the CI runners while instrumenting the property-test binary
+# ("Failed to run tests: A segfault occurred while executing tests") — a known
+# cargo-tarpaulin ptrace flake, not a real test failure (the suite passes under
+# `cargo test`, and the ptrace engine does not even reproduce the segfault
+# locally). The LLVM engine avoids ptrace entirely.
+#
+# The standards rust-ci reusable runs `cargo tarpaulin --out Xml`, which reads
+# this [default] profile, so the engine switch needs no reusable change. Verified
+# locally: `cargo tarpaulin --out Xml` then activates LLVM_PROFILE_FILE coverage
+# and produces cobertura.xml cleanly (exit 0).
+[default]
+engine = "Llvm"

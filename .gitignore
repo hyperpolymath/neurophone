@@ -84,3 +84,23 @@ deps/
 .cache/
 build/
 dist/
+
+# Exception: the Android webview UI's dist/ holds committed build output —
+# real `affinescript compile --deno-esm` output (dist/logic.deno.js) plus
+# its hand-written harness/test companions (dist/ui.mjs,
+# dist/logic.harness.mjs). See android/app/src/main/assets/gossamer-ui/
+# README.adoc "AffineScript verification" (issue #83/#114). gitignore
+# requires un-ignoring the directory itself before per-file negations
+# take effect.
+!android/app/src/main/assets/gossamer-ui/dist
+!android/app/src/main/assets/gossamer-ui/dist/*
+
+# TLA+ model-checker jar cache (fetched by `just proof-tla`)
+.tlacache/
+
+# Dafny release cache (fetched by `just proof-dafny`)
+.dafnycache/
+
+# Lean/Lake build cache and vendored Mathlib checkout (fetched/built by
+# `just proof-lean`); see proofs/lean/.gitignore.
+proofs/lean/.lake/

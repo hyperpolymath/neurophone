@@ -1,52 +1,61 @@
 // SPDX-License-Identifier: MPL-2.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell
 //
-// GENERATED-OUTPUT STUB — hand-written stand-in for the Deno-ESM that the
-// AffineScript compiler will emit from src/ui.affine + src/bridge.affine.
+// Hand-written DOM + NeurophoneBridge harness for NeurophoneActivity's
+// webview. Loaded by ../index.html as a module script.
 //
-// Why this exists: the AffineScript toolchain (OCaml/Dune `affinescript`
-// compiler, see README.adoc "Build wiring") is not yet vendored in this repo or
-// CI. Committing a faithful stub keeps the Gossamer webview loadable and
-// reviewable today. `build.sh` overwrites this file with real compiled output
-// once the toolchain is available.
+// This is deliberately NOT compiled from AffineScript. Everything that
+// benefits from being typed and verified — status-label selection, message
+// formatting, config-to-JSON encoding, response fallbacks — lives in
+// ../src/logic.affine and is imported below from the genuinely compiled
+// ./logic.deno.js (`affinescript compile --deno-esm`, committed, see
+// android/README.adoc "AffineScript verification"). What's left here is
+// exactly the DOM event wiring and the `window.NeurophoneBridge.*` calls,
+// neither of which this compiler can express yet:
+//   * DOM bindings: `stdlib/Canvas.affine` (hyperpolymath/affinescript)
+//     documents that even Canvas2D crosses the boundary as opaque `Json`
+//     today, pending `affinescript-dom` runtime support (blocked on that
+//     project's issue #255) — there is no `getElementById`/
+//     `addEventListener` typed surface to target.
+//   * `window.NeurophoneBridge.query(...)`-shaped calls: the deno-esm
+//     backend's `extern fn` lowering (`lib/codegen_deno.ml`) only supports
+//     a compiler-maintained intrinsic table or a bare same-named global
+//     *function* call — it cannot express an arbitrary caller-supplied
+//     `obj.method(args)`, which is what the Android JS-interface object is.
 //
-// TODO(#83 rebase): delete this stub once `deno task build:ui` (or CI) produces
-//   dist/ui.mjs from the .affine sources. Keep behaviour in sync with ui.affine
-//   until then.
+// This mirrors the shape of this compiler's own `tests/codegen-deno/
+// *.harness.mjs` test convention (hand-written JS harness imports compiled
+// pure functions and drives them) — not a new pattern invented for this PR.
 //
-// This stub mirrors src/ui.affine 1:1 and the bridge contract in
-// src/bridge.affine. It assumes the Gossamer host injects `globalThis.gossamer`
-// with `invoke(cmd, args) => Promise<string>`.
+// Every `NeurophoneBridge.*` call is synchronous (Android's
+// addJavascriptInterface semantics — see NeurophoneBridge.java); there is
+// no gossamer-style async `Promise`/postMessage round-trip to wait on here.
 
-const host = globalThis.gossamer ?? {
-  // Fallback shim so the page is inspectable in a plain browser during dev.
-  // TODO(#83): remove once the real host is always present.
-  invoke: async (cmd) => {
-    console.warn(`[gossamer-ui] no host bridge; stub invoke('${cmd}')`);
-    return cmd === "get_neural_context" ? "[stub] no native bridge" : "";
-  },
+import {
+  NeuralConfig,
+  statusLabel,
+  statusMessage,
+  initMessage,
+  startFailureMessage,
+  neuralContextOrPlaceholder,
+  queryEmptyMessage,
+  responseOrFallback,
+  sanitizeQuery,
+  isQueryNonEmpty,
+} from "./logic.deno.js";
+
+const host = globalThis.NeurophoneBridge ?? {
+  // Fallback shim so the page is inspectable in a plain desktop browser
+  // during UI development, where no NeurophoneBridge JS-interface exists.
+  init: () => { console.warn("[neurophone-ui] no NeurophoneBridge host; stub init()"); return false; },
+  start: () => false,
+  stop: () => {},
+  isRunning: () => false,
+  query: () => null,
+  getNeuralContext: () => null,
+  reset: () => {},
 };
 
-// --- bridge.affine port ---------------------------------------------------
-const defaultConfig = {
-  loop_interval_ms: 20,
-  debug: false,
-  sensor: { sample_rate_hz: 50.0, buffer_size: 100, output_dim: 32 },
-  lsm: { dimensions: [8, 8, 8], spectral_radius: 0.9 },
-  esn: { reservoir_size: 300, spectral_radius: 0.95 },
-};
-
-const bridge = {
-  init: async (config) => (await host.invoke("init", { configJson: JSON.stringify(config) })) === "true",
-  start: async () => (await host.invoke("start", {})) === "true",
-  stop: async () => { await host.invoke("stop", {}); },
-  query: (message, preferLocal) => host.invoke("query", { message, preferLocal }),
-  queryLocal: (message) => host.invoke("query_local", { message }),
-  queryClaude: (message) => host.invoke("query_claude", { message }),
-  getNeuralContext: () => host.invoke("get_neural_context", {}),
-  getState: () => host.invoke("get_state", {}),
-};
-
-// --- ui.affine port -------------------------------------------------------
 const $ = (id) => document.getElementById(id);
 const el = {
   statusText: $("statusText"),
@@ -62,16 +71,17 @@ const el = {
 let isSystemRunning = false;
 let contextTimer = null;
 
-function updateUI() {
-  el.startButton.textContent = isSystemRunning ? "Stop" : "Start";
+function updateUiEnabled() {
+  el.startButton.textContent = statusLabel(isSystemRunning);
   el.sendButton.disabled = !isSystemRunning;
   el.inputField.disabled = !isSystemRunning;
 }
 
-async function pollContextOnce() {
+function pollContextOnce() {
   if (!isSystemRunning) return;
   try {
-    el.neuralContextText.textContent = await bridge.getNeuralContext();
+    const ctx = host.getNeuralContext();
+    el.neuralContextText.textContent = neuralContextOrPlaceholder(ctx ?? "");
   } catch (_e) {
     // non-fatal; keep polling
   }
@@ -81,35 +91,38 @@ async function pollContextOnce() {
 function startContextUpdates() { contextTimer = setTimeout(pollContextOnce, 500); }
 function stopContextUpdates() { if (contextTimer != null) { clearTimeout(contextTimer); contextTimer = null; } }
 
-async function startSystem() {
-  if (await bridge.start()) {
+function startSystem() {
+  if (host.start()) {
     isSystemRunning = true;
     startContextUpdates();
-    updateUI();
-    el.statusText.textContent = "System running";
+    updateUiEnabled();
+    el.statusText.textContent = statusMessage(true);
   } else {
-    el.statusText.textContent = "Failed to start";
+    el.statusText.textContent = startFailureMessage();
   }
 }
 
-async function stopSystem() {
-  await bridge.stop();
+function stopSystem() {
+  host.stop();
   isSystemRunning = false;
   stopContextUpdates();
-  updateUI();
-  el.statusText.textContent = "System stopped";
+  updateUiEnabled();
+  el.statusText.textContent = statusMessage(false);
 }
 
 const toggleSystem = () => (isSystemRunning ? stopSystem() : startSystem());
 
-async function sendQuery() {
-  const message = el.inputField.value.trim();
-  if (message === "") { el.responseText.textContent = "Please enter a message"; return; }
+function sendQuery() {
+  const message = sanitizeQuery(el.inputField.value);
+  if (!isQueryNonEmpty(el.inputField.value)) {
+    el.responseText.textContent = queryEmptyMessage();
+    return;
+  }
   el.activityIndicator.hidden = false;
   el.sendButton.disabled = true;
   try {
-    const response = await bridge.query(message, el.localSwitch.checked);
-    el.responseText.textContent = response === "" ? "No response received" : response;
+    const response = host.query(message, el.localSwitch.checked);
+    el.responseText.textContent = responseOrFallback(response ?? "");
   } catch (e) {
     el.responseText.textContent = "Error: " + e.message;
   } finally {
@@ -118,21 +131,25 @@ async function sendQuery() {
   }
 }
 
-async function initializeSystem() {
+function initializeSystem() {
   el.statusText.textContent = "Initializing...";
   try {
-    const ok = await bridge.init(defaultConfig);
-    el.statusText.textContent = ok ? "System initialized" : "Initialization failed";
+    const config = new NeuralConfig();
+    (async () => {
+      const configJson = await config.configToJson();
+      const ok = host.init(configJson);
+      el.statusText.textContent = initMessage(ok);
+    })();
   } catch (e) {
     el.statusText.textContent = "Error: " + e.message;
   }
 }
 
-async function main() {
+function main() {
   el.startButton.addEventListener("click", toggleSystem);
   el.sendButton.addEventListener("click", sendQuery);
-  updateUI();
-  await initializeSystem();
+  updateUiEnabled();
+  initializeSystem();
 }
 
 main();

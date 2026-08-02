@@ -1,0 +1,36 @@
+# SPDX-License-Identifier: MPL-2.0
+# Enforces the MUST.contractile invariants on every PR — the
+# "quality.yml runs must-check on every PR" promise in MUST.contractile
+# [enforcement] — via the portable must-check enforcer, plus an advisory
+# EditorConfig pass. No path filters, so it is always created as a stable check.
+name: Code Quality
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  must-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: MUST.contractile invariants (must-check)
+        run: bash .machine_readable/contractiles/k9/must-check.sh
+
+      - name: EditorConfig (advisory)
+        uses: editorconfig-checker/action-editorconfig-checker@840e866d93b8e032123c23bac69dece044d4d84c # v2.2.0
+        continue-on-error: true

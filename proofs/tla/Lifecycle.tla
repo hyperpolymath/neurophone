@@ -51,5 +51,10 @@ NoUseBeforeInit == (work > 0) => (phase \in {"initialized", "down"})
 \* Once down, we never perform more work and never leave "down".
 NoUseAfterShutdown == [][ (phase = "down") => (phase' = "down" /\ work' = work) ]_vars
 
+\* State constraint to keep the model finite for TLC. `work` is unbounded in the
+\* real system (ProcessOrQuery may fire arbitrarily often); five iterations
+\* suffice to exercise every transition and both safety invariants.
+WorkBound == work =< 5
+
 THEOREM Spec => [](TypeOK /\ NoUseBeforeInit)
 ==========================================================================

@@ -11,8 +11,28 @@ permissions:
 jobs:
   dispatch:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
+      # Presence gate: the `secrets` context is not usable directly in a
+      # step-level `if:`, so read it into `env:` here and publish a plain
+      # boolean via $GITHUB_OUTPUT. The dispatch step below is gated on
+      # that output rather than on the secret itself. Without this, a repo
+      # where FARM_DISPATCH_TOKEN hasn't been propagated fails this
+      # workflow on every push/release instead of skipping cleanly.
+      - name: Check FARM_DISPATCH_TOKEN presence
+        id: check-secret
+        env:
+          FARM_DISPATCH_TOKEN: ${{ secrets.FARM_DISPATCH_TOKEN }}
+        run: |
+          if [ -n "${FARM_DISPATCH_TOKEN}" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::FARM_DISPATCH_TOKEN secret is not set on this repo; skipping cross-forge propagation dispatch to hyperpolymath/.git-private-farm."
+          fi
+
       - name: Trigger Propagation
+        if: steps.check-secret.outputs.present == 'true'
         uses: peter-evans/repository-dispatch@28959ce8df70de7be546dd1250a005dd32156697 # v3
         with:
           token: ${{ secrets.FARM_DISPATCH_TOKEN }}
@@ -26,4 +46,5 @@ jobs:
               "forges": ""
             }
       - name: Confirm
+        if: steps.check-secret.outputs.present == 'true'
         run: echo "::notice::Propagation triggered for ${{ github.event.repository.name }}"

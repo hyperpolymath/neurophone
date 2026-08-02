@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
 SPDX-License-Identifier: MPL-2.0
-SPDX-FileCopyrightText: 2025 Jonathan D.A. Jewell
+SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell
+
+Recovered near-verbatim from the pre-deletion legacy tree (`git show
+f389983^:android/app/src/main/res/drawable/ic_widget_refresh.xml`).
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"

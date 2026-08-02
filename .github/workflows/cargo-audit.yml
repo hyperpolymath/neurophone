@@ -17,8 +17,10 @@ permissions: read-all
 jobs:
   audit:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+
       - name: Install cargo-audit
         run: cargo install cargo-audit --locked
       - name: Run cargo audit
@@ -28,12 +30,14 @@ jobs:
   # Optional: Create issues for vulnerabilities
   create-issue:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     needs: audit
     if: failure()
     permissions:
       issues: write
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+
       - name: Create vulnerability issue
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

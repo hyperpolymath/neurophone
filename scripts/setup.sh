@@ -8,14 +8,18 @@ echo "=== NeuroPhone Development Setup ==="
 # Check Rust
 if ! command -v rustc &> /dev/null; then
     echo "Installing Rust..."
-# WARNING: Pipe-to-shell is unsafe — download and verify first
-# WARNING: Pipe-to-shell is unsafe — download and verify first
-# WARNING: Pipe-to-shell is unsafe — download and verify first
-# WARNING: Pipe-to-shell is unsafe — download and verify first
-# WARNING: Pipe-to-shell is unsafe — download and verify first
-# WARNING: Pipe-to-shell is unsafe — download and verify first
-# WARNING: Pipe-to-shell is unsafe — download and verify first
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+    # Download rustup-init to a temp file first rather than piping the
+    # remote script straight into `sh` (CWE-494). rustup.rs re-issues the
+    # installer script on every release with no stable, publishable
+    # checksum to pin, so this can't be a real signature check — but
+    # downloading first means a truncated/interrupted transfer can't
+    # partially execute, and the script is available on disk for
+    # inspection before it runs.
+    RUSTUP_INIT="$(mktemp)"
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o "$RUSTUP_INIT"
+    chmod +x "$RUSTUP_INIT"
+    sh "$RUSTUP_INIT" -y
+    rm -f "$RUSTUP_INIT"
     source "$HOME/.cargo/env"
 fi
 
