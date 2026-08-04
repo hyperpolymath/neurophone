@@ -10,8 +10,9 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: read
   contents: read
 
 jobs:
   governance:
-    uses: hyperpolymath/standards/.github/workflows/governance-reusable.yml@fcb8669169b4e9f5d9848608df880ae5fae812b4 # bumped 2026-07-03: standards #455 (baseline consulted) + #464 (filter runs under bash -e) + #466 (scan a clean caller tree, not the .standards-checkout tooling). Other standards reusables intentionally left at 7c9db0e.
+    uses: hyperpolymath/standards/.github/workflows/governance-reusable.yml@bd0df9ead7faf0cdfe0e13e7966d91e28d0101d4 # bumped 2026-07-03: standards #455 (baseline consulted) + #464 (filter runs under bash -e) + #466 (scan a clean caller tree, not the .standards-checkout tooling). Other standards reusables intentionally left at 7c9db0e.
