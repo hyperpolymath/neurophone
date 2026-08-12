@@ -2,9 +2,12 @@
 // SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell
 //! Neural-to-symbolic Action Gate (policy enforcement).
 
-use gating_contract::{ContractRunner, GatingDecision, GatingRequest, Verdict};
-use policy_oracle::{EnforcementConfig, ForbiddenPattern, LanguagePolicy, PatternPolicy, Policy, Proposal, ToolchainPolicy, ActionType};
 use gating_contract::ContractError;
+use gating_contract::{ContractRunner, GatingDecision, GatingRequest, Verdict};
+use policy_oracle::{
+    ActionType, EnforcementConfig, ForbiddenPattern, LanguagePolicy, PatternPolicy, Policy,
+    Proposal, ToolchainPolicy,
+};
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -29,14 +32,13 @@ fn action_policy() -> Policy {
         languages: LanguagePolicy::default(),
         toolchain: ToolchainPolicy::default(),
         patterns: PatternPolicy {
-            forbidden_patterns: vec![
-                ForbiddenPattern {
-                    name: "low_confidence_action".to_string(),
-                    regex: r"\[\[ACTION_CONFIDENCE:LOW\]\]".to_string(),
-                    file_types: vec!["*".to_string()],
-                    reason: "Low-confidence neural inferences cannot trigger symbolic effectors".to_string(),
-                },
-            ],
+            forbidden_patterns: vec![ForbiddenPattern {
+                name: "low_confidence_action".to_string(),
+                regex: r"\[\[ACTION_CONFIDENCE:LOW\]\]".to_string(),
+                file_types: vec!["*".to_string()],
+                reason: "Low-confidence neural inferences cannot trigger symbolic effectors"
+                    .to_string(),
+            }],
         },
         enforcement: EnforcementConfig::default(),
     }
@@ -62,7 +64,7 @@ impl ActionGate {
     ) -> Result<GatingDecision, ActionGateError> {
         let tag = if confidence < 0.6 { "LOW" } else { "HIGH" };
         let content = format!("[[ACTION_CONFIDENCE:{}]]\n{}", tag, action_desc);
-        
+
         let proposal = Proposal {
             id: Uuid::new_v4(),
             action_type: ActionType::ExecuteCommand {
@@ -72,7 +74,7 @@ impl ActionGate {
             files_affected: vec!["effector://bridge".to_string()],
             llm_confidence: confidence,
         };
-        
+
         let request = GatingRequest::new(proposal);
         let decision = self.runner.evaluate(&request)?;
         let audit = self.runner.audit(&request, &decision);
@@ -83,17 +85,29 @@ impl ActionGate {
                 Ok(decision)
             }
             Verdict::Warn => {
-                let reason = decision.refusal.as_ref().map(|r| r.message.clone()).unwrap_or_default();
+                let reason = decision
+                    .refusal
+                    .as_ref()
+                    .map(|r| r.message.clone())
+                    .unwrap_or_default();
                 tracing::warn!(request_id = %audit.request_id, %reason, "action allowed with warning");
                 Ok(decision)
             }
             Verdict::Block => {
-                let reason = decision.refusal.as_ref().map(|r| r.message.clone()).unwrap_or_else(|| "blocked by policy".to_string());
+                let reason = decision
+                    .refusal
+                    .as_ref()
+                    .map(|r| r.message.clone())
+                    .unwrap_or_else(|| "blocked by policy".to_string());
                 tracing::warn!(request_id = %audit.request_id, %reason, "action BLOCKED by policy veto");
                 Err(ActionGateError::Blocked { reason })
             }
             Verdict::Escalate => {
-                let reason = decision.refusal.as_ref().map(|r| r.message.clone()).unwrap_or_else(|| "escalation required".to_string());
+                let reason = decision
+                    .refusal
+                    .as_ref()
+                    .map(|r| r.message.clone())
+                    .unwrap_or_else(|| "escalation required".to_string());
                 tracing::warn!(request_id = %audit.request_id, %reason, "action ESCALATED for human review");
                 Err(ActionGateError::Escalated { reason })
             }

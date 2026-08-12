@@ -18,7 +18,11 @@ fn main() {
     // Strip SPDX license header comments which toml 0.8 cannot parse
     let text_no_spdx = text
         .lines()
-        .skip_while(|line| line.trim().starts_with("# SPDX") || line.trim().starts_with("# Copyright") || line.trim().is_empty())
+        .skip_while(|line| {
+            line.trim().starts_with("# SPDX")
+                || line.trim().starts_with("# Copyright")
+                || line.trim().is_empty()
+        })
         .collect::<Vec<_>>()
         .join("\n");
     let spec: toml::Value = text_no_spdx

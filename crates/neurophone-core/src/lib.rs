@@ -280,11 +280,11 @@ impl NeuroSymbolicSystem<phase::Active> {
 
         let confidence = 0.85;
         let context = format!("Processed {} sensor", event.sensor_type);
-        
+
         // Conative-gating: gate the bridge action
         if let Err(e) = self.action_gate.check(confidence, &context) {
             tracing::warn!("Bridge action vetoed by policy: {}", e);
-            // On Block/Escalate, we must not dispatch the action. 
+            // On Block/Escalate, we must not dispatch the action.
             // In a real flow, we might return a default or error. Here we return an error.
             return Err(NeurophoneError::RuntimeError(format!("Vetoed: {}", e)));
         }
