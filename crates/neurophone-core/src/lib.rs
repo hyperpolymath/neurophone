@@ -19,6 +19,7 @@
 #![forbid(unsafe_code)]
 #![cfg_attr(not(test), deny(clippy::unwrap_used, clippy::expect_used))]
 
+use bridge::ActionGate;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::fmt;

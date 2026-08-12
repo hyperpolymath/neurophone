@@ -15,7 +15,13 @@ fn main() {
 
     let text =
         std::fs::read_to_string(manifest).unwrap_or_else(|e| panic!("cannot read {manifest}: {e}"));
-    let spec: toml::Value = text
+    // Strip SPDX license header comments which toml 0.8 cannot parse
+    let text_no_spdx = text
+        .lines()
+        .skip_while(|line| line.trim().starts_with("# SPDX") || line.trim().starts_with("# Copyright") || line.trim().is_empty())
+        .collect::<Vec<_>>()
+        .join("\n");
+    let spec: toml::Value = text_no_spdx
         .parse()
         .unwrap_or_else(|e| panic!("{manifest} is not parseable as TOML/a2ml: {e}"));
 

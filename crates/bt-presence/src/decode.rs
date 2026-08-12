@@ -16,7 +16,7 @@
 //! for each held contact.
 
 use crate::wire;
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit, Mac};
 use sha2::Sha256;
 use subtle::ConstantTimeEq;
 use thiserror::Error;
