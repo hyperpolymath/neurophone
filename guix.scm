@@ -1,17 +1,28 @@
-; SPDX-License-Identifier: MPL-2.0
-;; guix.scm — GNU Guix package definition for neurophone
-;; Usage: guix shell -f guix.scm
+;; SPDX-License-Identifier: MPL-2.0
+;; Guix development environment.
+;; Usage: guix shell -D -f guix.scm
 
 (use-modules (guix packages)
              (guix build-system gnu)
-             (guix licenses))
+             (guix licenses)
+             (gnu packages base)
+             (gnu packages bash)
+             (gnu packages base)
+             (gnu packages java)
+             (gnu packages rust)
+             (gnu packages cmake)
+             (gnu packages zig)
+             (gnu packages golang)
+             (gnu packages node)
+             (gnu packages python))
 
 (package
   (name "neurophone")
   (version "0.1.0")
   (source #f)
   (build-system gnu-build-system)
+  (inputs (list coreutils bash  make openjdk rust cmake zig go node python))
   (synopsis "neurophone")
   (description "neurophone — part of the hyperpolymath ecosystem.")
   (home-page "https://github.com/hyperpolymath/neurophone")
-  (license mpl2.0))
+  (license ((@@ (guix licenses) license) "MPL-2.0" "https://github.com/hyperpolymath/palimpsest-license")))
