@@ -29,7 +29,7 @@ ndarray-rand = "0.16"
 # ndarray-rand's). Revert until ndarray-rand ships a rand-0.10-compatible release.
 # NB: dependabot re-bumped this to 0.10 in #175 (build re-broke); reverted again
 # here. Consider a dependabot ignore for rand until ndarray-rand catches up.
-rand = "0.9"
+rand = "0.10"
 rand_distr = "0.5.1"
 rayon = "1.12"
 
