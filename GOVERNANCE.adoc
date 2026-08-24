@@ -1,76 +1,60 @@
-// SPDX-License-Identifier: CC-BY-SA-4.0
-// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
-= Governance Model
-:toc: preamble
+== Governance
 
-Governance model for **neurophone** (on-device neurosymbolic AI). This repo
-follows the hyperpolymath estate governance pattern; the canonical estate policy
-lives in https://github.com/hyperpolymath/standards[hyperpolymath/standards].
+=== Overview
 
-== Overview
+This project is governed by the following principles and structures to
+ensure transparent, inclusive, and effective decision-making.
 
-neurophone follows a **Benevolent Dictator (BDFL)** model:
+=== Roles and Responsibilities
 
-* A single champion (@hyperpolymath) holds the project's vision and final
-  decision authority, while actively welcoming contributions and delegating.
-* *Current reality:* a sole maintainer. That is a staffing fact, not a closed
-  door — contributions are welcomed and reviewed, and authority is delegable to
-  anyone who demonstrably carries the project's essence.
-* Decisions are made transparently through GitHub issues and pull requests.
+==== Maintainers
 
-== Core Principles
+Maintainers are responsible for: - Reviewing and merging pull requests -
+Managing releases and versioning - Ensuring code quality and standards -
+Triaging issues and bug reports - Community engagement and support
 
-[cols="1,2"]
-|===
-| Principle | Description
-| **Benevolent Dictatorship** | Maintainer has final authority but seeks input.
-| **Meritocracy** | Contributions are judged on technical merit.
-| **Transparency** | Significant decisions are documented publicly.
-| **Fail loudly, seal soundly** | No silent green; seams (ABI/FFI) are sealed and, where load-bearing, proved.
-| **Report faithfully** | No overclaiming — proof obligations are discharged or honestly left open (never faked).
-|===
+==== Contributors
 
-== Roles and Permissions
+Contributors are expected to: - Follow the code of conduct - Submit
+well-documented pull requests - Write tests for new functionality -
+Maintain existing tests - Update documentation as needed
 
-[cols="1,2,2"]
-|===
-| Role | Permissions | Assignment
-| **Maintainer** | Write, merge, admin | @hyperpolymath
-| **Contributors** | Fork, submit PRs | All GitHub users
-| **Agents (LLM)** | Bounded per `.machine_readable/6a2/AGENTIC.a2ml` | Automated assistants
-|===
+=== Decision Making
 
-== Decision-Making Framework
+==== Minor Changes
 
-Routine (bug fixes, docs, minor features, dependency updates) — maintainer or a
-delegate merges after CI is green. Significant (architecture, ABI/FFI seam
-changes, proof-obligation changes, security policy, licence) — require explicit
-maintainer review; these are gated by the estate policies below.
+* Can be made by any maintainer
+* Include bug fixes, documentation updates, dependency updates
 
-=== Licence changes — owner-only
+==== Major Changes
 
-Per the estate guardrail, **licence and SPDX changes are manual, per-file, and
-owner-approved only**. Agents and automation must not generate licence-change PRs
-or sweep SPDX headers; findings about licence drift are flag-only. neurophone is a
-sole-owner repo: code is **MPL-2.0**, documentation is **CC-BY-SA-4.0**.
+* Require discussion in issues or pull requests
+* Include new features, architectural changes, API changes
+* Need approval from at least 2 maintainers
 
-=== Security-critical changes
+==== Breaking Changes
 
-Changes to the Trustfile, CI/security/release workflows, cryptographic material,
-the JNI FFI boundary, or the `proofs/` corpus require explicit review. See
-`.machine_readable/contractiles/trust/Trustfile.a2ml` (`[CAPABILITY_GATEWAY]`).
+* Require RFC (Request for Comments) process
+* Need approval from majority of maintainers
+* Must include migration guide
 
-== Machine-Readable Governance
+=== Code of Conduct
 
-The normative substrate is authoritative where it applies:
+All participants are expected to follow our Code of Conduct. Violations
+can be reported to the maintainers.
 
-* `.machine_readable/6a2/AGENTIC.a2ml` — agent permissions / risk gating.
-* `.machine_readable/6a2/META.a2ml` — architecture decisions.
-* `.machine_readable/contractiles/` — MUST / TRUST / INTEND / ADJUST / DUST / BUST
-  contracts (e.g. `MUST.contractile` bans proof escape hatches).
-* `proofs/README.adoc` — proof-obligation map and status.
+=== Communication
 
-== Code of Conduct
+* *Issues*: For bug reports and feature requests
+* *Discussions*: For questions and general discussion
+* *Pull Requests*: For code contributions
 
-Participation is governed by `CODE_OF_CONDUCT.md`. Report concerns via the
-security/contact channels in `SECURITY.md`.
+=== Licensing
+
+All contributions are made under the terms of the repository’s LICENSE
+file. By submitting a pull request, you agree to license your
+contributions accordingly.
+
+'''''
+
+_Last updated: 2026-07-18_
