@@ -20,7 +20,7 @@ The following files in `.machine_readable/` contain structured project metadata:
 | Language/Tool | Use Case | Notes |
 |---------------|----------|-------|
 | **AffineScript** | Primary application code | Affine-typed, compiles to typed-wasm or ESM |
-| **Bun** | JS/TS runtime & package management (tier 1) | Default for all new work. Executes `.ts` directly, no build step. Uses an npm-compatible `package.json` plus `bun.lock` — both are expected, not anti-patterns. |
+| **Bun** | JS runtime & package management (tier 1) | Default for all new work. Runs compiled ESM/JS directly — no bundler step. Uses an npm-compatible `package.json` plus `bun.lock` — both are expected, not anti-patterns. |
 | **Rust/SPARK** | Performance-critical, systems, WASM, CLI, safety-critical | "Rust" always means Rust with SPARK integration as the default stance |
 | **Zig** | APIs, FFIs, gateways, client SDKs | Estate default for FFI/gateway work; Idris2 owns ABIs |
 | **Idris2** | Formal verification (ABI-style proofs) | Proven-library status in `proven` repo |
@@ -40,6 +40,7 @@ The following files in `.machine_readable/` contain structured project metadata:
 | Banned | Replacement |
 |--------|-------------|
 | TypeScript | AffineScript |
+| Deno | Bun |
 | Node.js | Bun |
 | npm | Bun |
 | pnpm/yarn | Bun |
@@ -76,7 +77,7 @@ Both are FOSS with independent governance (no Big Tech).
 ### Package Management
 
 - **Primary**: Guix (guix.scm) — this repo is Guix-only (flake.nix removed; Nix is banned estate-wide)
-- **JS deps**: Bun (`package.json` + `bun.lock`); `bunx <tool>` for one-off tooling
+- **JS deps**: Bun (`package.json` + `bun.lock`). Declare tooling as a devDependency and run `bunx --no-install --bun <tool>` — a bare `bunx <tool>` can fetch an unpinned package and may start Node via its shebang.
 
 ### Security Requirements
 
