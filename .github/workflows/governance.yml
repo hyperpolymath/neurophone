@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: PMPL-1.0-or-later
 # This workflow is managed by gh actions-lock.
+# This workflow is managed by gh actions-lock.
 name: Governance
 
 on:
@@ -15,4 +16,4 @@ permissions:
 
 jobs:
   governance:
-    uses: hyperpolymath/standards/.github/workflows/governance-reusable.yml@892497fe373744874316710966b81ae6f0ea9e66 # bumped 2026-07-03: standards #455 (baseline consulted) + #464 (filter runs under bash -e) + #466 (scan a clean caller tree, not the .standards-checkout tooling). Other standards reusables intentionally left at 7c9db0e.
+    uses: hyperpolymath/standards/.github/workflows/governance-reusable.yml@84355587cb2a1f86e6882de83514a32db2646e7a # bumped 2026-07-03: standards #455 (baseline consulted) + #464 (filter runs under bash -e) + #466 (scan a clean caller tree, not the .standards-checkout tooling). Other standards reusables intentionally left at 7c9db0e.

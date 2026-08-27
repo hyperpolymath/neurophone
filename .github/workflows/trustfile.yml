@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 # This workflow is managed by gh actions-lock.
+# This workflow is managed by gh actions-lock.
 # Validates the canonical Trustfile (estate baseline v2026.2.5-final) and runs
 # its fast integrity checks. Placeholder crypto tokens ({{...}}) are owner-supplied
 # at signing time, so they only hard-fail on `main` — on branches/PRs they warn.
