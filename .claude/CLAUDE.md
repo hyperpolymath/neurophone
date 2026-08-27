@@ -19,8 +19,8 @@ The following files in `.machine_readable/` contain structured project metadata:
 
 | Language/Tool | Use Case | Notes |
 |---------------|----------|-------|
-| **AffineScript** | Primary application code | Affine-typed, compiles to typed-wasm or Deno-ESM |
-| **Deno** | Runtime & package management | Replaces Node/npm/bun |
+| **AffineScript** | Primary application code | Affine-typed, compiles to typed-wasm or ESM |
+| **Bun** | JS runtime & package management (tier 1) | Default for all new work. Runs compiled ESM/JS directly — no bundler step. Uses an npm-compatible `package.json` plus `bun.lock` — both are expected, not anti-patterns. |
 | **Rust/SPARK** | Performance-critical, systems, WASM, CLI, safety-critical | "Rust" always means Rust with SPARK integration as the default stance |
 | **Zig** | APIs, FFIs, gateways, client SDKs | Estate default for FFI/gateway work; Idris2 owns ABIs |
 | **Idris2** | Formal verification (ABI-style proofs) | Proven-library status in `proven` repo |
@@ -40,10 +40,11 @@ The following files in `.machine_readable/` contain structured project metadata:
 | Banned | Replacement |
 |--------|-------------|
 | TypeScript | AffineScript |
-| Node.js | Deno |
-| npm | Deno |
-| Bun | Deno |
-| pnpm/yarn | Deno |
+| ReScript | AffineScript |
+| Deno | Bun |
+| Node.js | Bun |
+| npm | Bun |
+| pnpm/yarn | Bun |
 | Go | Rust/SPARK |
 | **Python** (fully banned, no exceptions) | AffineScript/Rust/Julia |
 | **ReScript** (banned 2026-04-30) | AffineScript |
@@ -68,8 +69,8 @@ Both are FOSS with independent governance (no Big Tech).
 ### Enforcement Rules
 
 1. **No new TypeScript files** - Convert existing TS to AffineScript
-2. **No package.json for runtime deps** - Use deno.json imports
-3. **No node_modules in production** - Deno caches deps automatically
+2. **Use `package.json` + `bun.lock` for JS runtime deps** - Bun is npm-compatible; a manifest is REQUIRED
+3. **`bun install --production --frozen-lockfile` for production deps** - resolved from `package.json` and pinned via `bun.lock`; `--frozen-lockfile` makes a lockfile mismatch a build failure rather than a silent re-resolve
 4. **No Go code** - Use Rust/SPARK instead
 5. **No Python** - fully banned (SaltStack exception removed 2026-01-03); use Rust/SPARK, Julia, or AffineScript
 6. **No Kotlin/Swift for mobile** - Use Tauri 2.0+ or Dioxus (this repo's Android client migrates to gossamer per #83)
@@ -77,7 +78,7 @@ Both are FOSS with independent governance (no Big Tech).
 ### Package Management
 
 - **Primary**: Guix (guix.scm) — this repo is Guix-only (flake.nix removed; Nix is banned estate-wide)
-- **JS deps**: Deno (deno.json imports)
+- **JS deps**: Bun (`package.json` + `bun.lock`). Declare tooling as a devDependency and run `bunx --no-install --bun <tool>` — a bare `bunx <tool>` can fetch an unpinned package and may start Node via its shebang.
 
 ### Security Requirements
 
