@@ -40,6 +40,7 @@ The following files in `.machine_readable/` contain structured project metadata:
 | Banned | Replacement |
 |--------|-------------|
 | TypeScript | AffineScript |
+| ReScript | AffineScript |
 | Deno | Bun |
 | Node.js | Bun |
 | npm | Bun |
@@ -69,7 +70,7 @@ Both are FOSS with independent governance (no Big Tech).
 
 1. **No new TypeScript files** - Convert existing TS to AffineScript
 2. **Use `package.json` + `bun.lock` for JS runtime deps** - Bun is npm-compatible; a manifest is REQUIRED
-3. **`bun install --production` for production deps** - resolved from `package.json`, pinned via `bun.lock`
+3. **`bun install --production --frozen-lockfile` for production deps** - resolved from `package.json` and pinned via `bun.lock`; `--frozen-lockfile` makes a lockfile mismatch a build failure rather than a silent re-resolve
 4. **No Go code** - Use Rust/SPARK instead
 5. **No Python** - fully banned (SaltStack exception removed 2026-01-03); use Rust/SPARK, Julia, or AffineScript
 6. **No Kotlin/Swift for mobile** - Use Tauri 2.0+ or Dioxus (this repo's Android client migrates to gossamer per #83)
