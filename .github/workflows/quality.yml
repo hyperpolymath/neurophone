@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 # This workflow is managed by gh actions-lock.
+# This workflow is managed by gh actions-lock.
 # Enforces the MUST.contractile invariants on every PR — the
 # "quality.yml runs must-check on every PR" promise in MUST.contractile
 # [enforcement] — via the portable must-check enforcer, plus an advisory
