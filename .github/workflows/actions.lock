@@ -33,6 +33,8 @@ workflows:
     '.github/workflows/hypatia-scan.yml': []
     '.github/workflows/instant-sync.yml':
         - 'peter-evans/repository-dispatch@v4.0.1'
+    '.github/workflows/label-triage.yml': []
+    '.github/workflows/labels.yml': []
     '.github/workflows/language-policy.yml':
         - 'actions/checkout@v7.0.1'
     '.github/workflows/mirror.yml': []
