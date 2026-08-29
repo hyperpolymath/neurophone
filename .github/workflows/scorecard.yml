@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 # This workflow is managed by gh actions-lock.
+# This workflow is managed by gh actions-lock.
 # Delegates to the canonical standards Scorecard reusable, which runs Scorecard
 # in JSON mode + `publish_results` and uploads the result as an artifact — it
 # does NOT push a SARIF file into GitHub Code Scanning. That reconciles this
@@ -20,7 +21,7 @@ permissions:
 
 jobs:
   analysis:
-    uses: hyperpolymath/standards/.github/workflows/scorecard-reusable.yml@892497fe373744874316710966b81ae6f0ea9e66
+    uses: hyperpolymath/standards/.github/workflows/scorecard-reusable.yml@84355587cb2a1f86e6882de83514a32db2646e7a
     permissions:
       contents: read
       security-events: write
