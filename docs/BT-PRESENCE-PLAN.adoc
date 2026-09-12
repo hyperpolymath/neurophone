@@ -118,7 +118,7 @@ neurophone/
 └── android/app/src/main/
     ├── AndroidManifest.xml                # add BLUETOOTH_SCAN (neverForLocation), BLUETOOTH_CONNECT
     ├── java/ai/neurophone/
-    │   ├── NativeLib.kt                   # add btScanEvent, btLost
+    │   ├── NativeLib.kt                   # add banEvent, btLost
     │   ├── bluetooth/
     │   │   ├── BurbleNeighborScanner.kt   # BluetoothLeScanner on Burble UUID
     │   │   ├── PresenceCollector.kt       # debounce, push into NativeLib
