@@ -34,5 +34,5 @@ jobs:
         run: bash .machine_readable/contractiles/k9/must-check.sh
 
       - name: EditorConfig (advisory)
-        uses: editorconfig-checker/action-editorconfig-checker@v2.2.0
+        uses: editorconfig-checker/action-editorconfig-checker@v3.0.0
         continue-on-error: true
