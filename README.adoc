@@ -519,7 +519,7 @@ cargo doc --open
 
 == Contributing
 
-Contributions welcome! See link:CONTRIBUTING.md[CONTRIBUTING.md].
+Contributions welcome! See link:.github/CONTRIBUTING.md[CONTRIBUTING.md].
 
 == License
 
