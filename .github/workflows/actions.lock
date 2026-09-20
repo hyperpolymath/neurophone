@@ -51,31 +51,68 @@ workflows:
     '.github/workflows/workflow-linter.yml':
         - 'actions/checkout@v7.0.1'
 dependencies:
+    'actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9':
+        ref: '55cc8345863c7cc4c66a329aec7e433d2d1c52a9'
+        commit: 'sha1-55cc8345863c7cc4c66a329aec7e433d2d1c52a9'
+        owner_id: 44036562
+        repo_id: 215566462
+
     'actions/cache@v6.1.0':
         ref: 'v6.1.0'
         commit: 'sha1-55cc8345863c7cc4c66a329aec7e433d2d1c52a9'
         owner_id: 44036562
         repo_id: 215566462
+
+    'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1':
+        ref: 'v7.0.1'
+        commit: 'sha1-3d3c42e5aac5ba805825da76410c181273ba90b1'
+        owner_id: 44036562
+        repo_id: 197814629
+
     'actions/checkout@v7.0.1':
         ref: 'v7.0.1'
         commit: 'sha1-3d3c42e5aac5ba805825da76410c181273ba90b1'
         owner_id: 44036562
         repo_id: 197814629
+
+    'actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d':
+        ref: '45bfe0192ca1faeb007ade9deae92b16b8254a0d'
+        commit: 'sha1-45bfe0192ca1faeb007ade9deae92b16b8254a0d'
+        owner_id: 44036562
+        repo_id: 513659658
+
     'actions/configure-pages@v6.0.0':
         ref: 'v6.0.0'
         commit: 'sha1-45bfe0192ca1faeb007ade9deae92b16b8254a0d'
         owner_id: 44036562
         repo_id: 513659658
+
+    'actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346':
+        ref: '368f82528645a54fb793d4d04e342629a3f51346'
+        commit: 'sha1-368f82528645a54fb793d4d04e342629a3f51346'
+        owner_id: 44036562
+        repo_id: 438112499
+
     'actions/deploy-pages@v5.0.1':
         ref: 'v5.0.1'
         commit: 'sha1-368f82528645a54fb793d4d04e342629a3f51346'
         owner_id: 44036562
         repo_id: 438112499
+
     'actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f':
         ref: 'v7.0.0'
         commit: 'sha1-bbbca2ddaa5d8feaa63e36b76fdaad77386f024f'
         owner_id: 44036562
         repo_id: 192625955
+
+    'actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9':
+        ref: 'fc324d3547104276b827a68afc52ff2a11cc49c9'
+        commit: 'sha1-fc324d3547104276b827a68afc52ff2a11cc49c9'
+        owner_id: 44036562
+        repo_id: 496012378
+        uses:
+            - 'actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f'
+
     'actions/upload-pages-artifact@v5.0.0':
         ref: 'v5.0.0'
         commit: 'sha1-fc324d3547104276b827a68afc52ff2a11cc49c9'
@@ -83,46 +120,109 @@ dependencies:
         repo_id: 496012378
         uses:
             - 'actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f'
+
+    'dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98':
+        ref: '25dd0e34f4fe68f24cc83900b1fe3fe149efef98'
+        commit: 'sha1-25dd0e34f4fe68f24cc83900b1fe3fe149efef98'
+        owner_id: 27347476
+        repo_id: 371068214
+
     'dependabot/fetch-metadata@v3.1.0':
         ref: 'v3.1.0'
         commit: 'sha1-25dd0e34f4fe68f24cc83900b1fe3fe149efef98'
         owner_id: 27347476
         repo_id: 371068214
+
+    'editorconfig-checker/action-editorconfig-checker@51f63319f592f97930c73d9c46184d20bd206393':
+        ref: 'v3.0.0'
+        commit: 'sha1-51f63319f592f97930c73d9c46184d20bd206393'
+        owner_id: 26415196
+        repo_id: 297874902
+
     'editorconfig-checker/action-editorconfig-checker@v3.0.0':
         ref: 'v3.0.0'
         commit: 'sha1-51f63319f592f97930c73d9c46184d20bd206393'
         owner_id: 26415196
         repo_id: 297874902
+
+    'github/codeql-action@b96794f015dfd88f77b49b1c93e0fa7110f94c63':
+        ref: 'b96794f015dfd88f77b49b1c93e0fa7110f94c63'
+        commit: 'sha1-b96794f015dfd88f77b49b1c93e0fa7110f94c63'
+        owner_id: 9919
+        repo_id: 259445878
+
     'github/codeql-action@cdf488f595d80d6e07e03d4674febd5ab45fa938':
         ref: 'v4.37.9'
         commit: 'sha1-cdf488f595d80d6e07e03d4674febd5ab45fa938'
         owner_id: 9919
         repo_id: 259445878
+
+    'google/clusterfuzzlite@884713a6c30a92e5e8544c39945cd7cb630abcd1':
+        ref: '884713a6c30a92e5e8544c39945cd7cb630abcd1'
+        commit: 'sha1-884713a6c30a92e5e8544c39945cd7cb630abcd1'
+        owner_id: 1342004
+        repo_id: 400046858
+
     'google/clusterfuzzlite@v1':
         ref: 'v1'
         commit: 'sha1-884713a6c30a92e5e8544c39945cd7cb630abcd1'
         owner_id: 1342004
         repo_id: 400046858
+
+    'haskell-actions/setup@6037f33647c3f17758a2356c80fc4a53d7e0685d':
+        ref: 'v2.12.0'
+        commit: 'sha1-6037f33647c3f17758a2356c80fc4a53d7e0685d'
+        owner_id: 75048950
+        repo_id: 623796603
+
     'haskell-actions/setup@v2.12.0':
         ref: 'v2.12.0'
         commit: 'sha1-6037f33647c3f17758a2356c80fc4a53d7e0685d'
         owner_id: 75048950
         repo_id: 623796603
+
+    'hyperpolymath/a2ml-ecosystem@ed83d6927e8fb21431e403dbf6d7a4af96772746':
+        ref: 'ed83d6927e8fb21431e403dbf6d7a4af96772746'
+        commit: 'sha1-ed83d6927e8fb21431e403dbf6d7a4af96772746'
+        owner_id: 6759885
+        repo_id: 1275649586
+
     'hyperpolymath/a2ml-ecosystem@main':
         ref: 'main'
         commit: 'sha1-f9d999b60cb5f383679ea19912bcdc49c944973a'
         owner_id: 6759885
         repo_id: 1275649586
+
+    'hyperpolymath/k9-ecosystem@c1a34884054fabf0e9de81dbf68f4ba7874e85f1':
+        ref: 'c1a34884054fabf0e9de81dbf68f4ba7874e85f1'
+        commit: 'sha1-c1a34884054fabf0e9de81dbf68f4ba7874e85f1'
+        owner_id: 6759885
+        repo_id: 1275650185
+
     'hyperpolymath/k9-ecosystem@main':
         ref: 'main'
         commit: 'sha1-2155aa26a21758f2ba119f61bc7e0e1981c106fb'
         owner_id: 6759885
         repo_id: 1275650185
+
+    'hyperpolymath/smtp-notify-action@22e7bdb322c430c1d0dac6b3bb307f4bb139d0be':
+        ref: '22e7bdb322c430c1d0dac6b3bb307f4bb139d0be'
+        commit: 'sha1-22e7bdb322c430c1d0dac6b3bb307f4bb139d0be'
+        owner_id: 6759885
+        repo_id: 1352485172
+
     'hyperpolymath/smtp-notify-action@v0.2.0':
         ref: 'v0.2.0'
         commit: 'sha1-ede1191ef6ff3ac02c4f4d9efdf837ee517e11d7'
         owner_id: 6759885
         repo_id: 1352485172
+
+    'peter-evans/repository-dispatch@28959ce8df70de7be546dd1250a005dd32156697':
+        ref: 'v4.0.1'
+        commit: 'sha1-28959ce8df70de7be546dd1250a005dd32156697'
+        owner_id: 18365890
+        repo_id: 220359305
+
     'peter-evans/repository-dispatch@v4.0.1':
         ref: 'v4.0.1'
         commit: 'sha1-28959ce8df70de7be546dd1250a005dd32156697'
