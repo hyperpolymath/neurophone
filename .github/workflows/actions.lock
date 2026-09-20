@@ -22,7 +22,7 @@ workflows:
         - 'google/clusterfuzzlite@v1'
     '.github/workflows/codeql.yml':
         - 'actions/checkout@v7.0.1'
-        - 'github/codeql-action@cdf488f595d80d6e07e03d4674febd5ab45fa938'
+        - 'github/codeql-action@v4.38.0'
     '.github/workflows/dependabot-automerge.yml':
         - 'dependabot/fetch-metadata@v3.1.0'
     '.github/workflows/dogfood-gate.yml':
@@ -39,7 +39,7 @@ workflows:
         - 'actions/checkout@v7.0.1'
     '.github/workflows/mirror.yml': []
     '.github/workflows/push-email-notify.yml':
-        - 'hyperpolymath/smtp-notify-action@v0.2.0'
+        - 'hyperpolymath/smtp-notify-action@v0.3.0'
     '.github/workflows/quality.yml':
         - 'actions/checkout@v7.0.1'
         - 'editorconfig-checker/action-editorconfig-checker@v3.0.0'
@@ -93,9 +93,9 @@ dependencies:
         commit: 'sha1-51f63319f592f97930c73d9c46184d20bd206393'
         owner_id: 26415196
         repo_id: 297874902
-    'github/codeql-action@cdf488f595d80d6e07e03d4674febd5ab45fa938':
-        ref: 'v4.37.9'
-        commit: 'sha1-cdf488f595d80d6e07e03d4674febd5ab45fa938'
+    'github/codeql-action@v4.38.0':
+        ref: 'v4.38.0'
+        commit: 'sha1-b96794f015dfd88f77b49b1c93e0fa7110f94c63'
         owner_id: 9919
         repo_id: 259445878
     'google/clusterfuzzlite@v1':
@@ -110,17 +110,17 @@ dependencies:
         repo_id: 623796603
     'hyperpolymath/a2ml-ecosystem@main':
         ref: 'main'
-        commit: 'sha1-f9d999b60cb5f383679ea19912bcdc49c944973a'
+        commit: 'sha1-ed83d6927e8fb21431e403dbf6d7a4af96772746'
         owner_id: 6759885
         repo_id: 1275649586
     'hyperpolymath/k9-ecosystem@main':
         ref: 'main'
-        commit: 'sha1-2155aa26a21758f2ba119f61bc7e0e1981c106fb'
+        commit: 'sha1-c1a34884054fabf0e9de81dbf68f4ba7874e85f1'
         owner_id: 6759885
         repo_id: 1275650185
-    'hyperpolymath/smtp-notify-action@v0.2.0':
-        ref: 'v0.2.0'
-        commit: 'sha1-ede1191ef6ff3ac02c4f4d9efdf837ee517e11d7'
+    'hyperpolymath/smtp-notify-action@v0.3.0':
+        ref: 'v0.3.0'
+        commit: 'sha1-22e7bdb322c430c1d0dac6b3bb307f4bb139d0be'
         owner_id: 6759885
         repo_id: 1352485172
     'peter-evans/repository-dispatch@v4.0.1':
