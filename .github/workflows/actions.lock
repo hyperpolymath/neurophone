@@ -27,7 +27,7 @@ workflows:
         - 'dependabot/fetch-metadata@v3.1.0'
     '.github/workflows/dogfood-gate.yml':
         - 'actions/checkout@v7.0.1'
-        - 'hyperpolymath/a2ml-ecosystem@main'
+        - 'hyperpolymath/deed-ecosystem@main'
         - 'hyperpolymath/k9-ecosystem@main'
     '.github/workflows/governance.yml': []
     '.github/workflows/hypatia-scan.yml': []
@@ -174,13 +174,13 @@ dependencies:
         owner_id: 75048950
         repo_id: 623796603
 
-    'hyperpolymath/a2ml-ecosystem@ed83d6927e8fb21431e403dbf6d7a4af96772746':
+    'hyperpolymath/deed-ecosystem@ed83d6927e8fb21431e403dbf6d7a4af96772746':
         ref: 'ed83d6927e8fb21431e403dbf6d7a4af96772746'
         commit: 'sha1-ed83d6927e8fb21431e403dbf6d7a4af96772746'
         owner_id: 6759885
         repo_id: 1275649586
 
-    'hyperpolymath/a2ml-ecosystem@main':
+    'hyperpolymath/deed-ecosystem@main':
         ref: 'main'
         commit: 'sha1-ed83d6927e8fb21431e403dbf6d7a4af96772746'
         owner_id: 6759885
