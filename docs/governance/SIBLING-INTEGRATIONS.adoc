@@ -199,9 +199,9 @@ integration is later commissioned.
 == Launcher standard — CARVE-OUT
 
 *The standard.* The estate launcher standard
-(`standards/launcher/launcher-standard.a2ml` + `docs/UX-standards/launcher-standard.adoc`)
+(`standards/launcher/launcher-standard_praxis.deed` + `docs/UX-standards/launcher-standard.adoc`)
 describes a *desktop/server* application launcher. Its load-bearing assumption is
-`[runtime].kind = "server-url"`: a long-running local process bound to a
+the `(runtime ...)` clause's `:kind "server-url"`: a long-running local process bound to a
 `localhost` port, started by a shell `command`, tracked by a `pid-file`, and
 polled until its `url` responds (`wait-for-url-timeout-seconds`) — after which it
 opens a browser. Its `--integ`/`--disinteg` modes install XDG `.desktop` files,
@@ -215,7 +215,7 @@ port, no shell start `command`, no pid-file, and no desktop entry. An Android
 app's launch surface is the platform `LAUNCHER` intent declared in
 `AndroidManifest.xml` (`MainActivity` with `android.intent.action.MAIN` +
 `android.intent.category.LAUNCHER`) — provided by the OS, not by an estate
-launcher script. None of the `[runtime]` fields the standard requires can be
+launcher script. None of the `(runtime ...)` clause fields the standard requires can be
 populated for an APK.
 
 *Scope of the standard.* The standard is provisioned by `launch-scaffolder` for
