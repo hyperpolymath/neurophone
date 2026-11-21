@@ -17,4 +17,4 @@ permissions:
 
 jobs:
   governance:
-    uses: hyperpolymath/standards/.github/workflows/governance-reusable.yml@da2c748aad55c1a1dcba00b60fe4a35017bc6540 # bumped 2026-07-03: standards #455 (baseline consulted) + #464 (filter runs under bash -e) + #466 (scan a clean caller tree, not the .standards-checkout tooling). Other standards reusables intentionally left at 7c9db0e.
+    uses: hyperpolymath/standards/.github/workflows/governance-reusable.yml@1ded685afb366dededa9f372f82fb58cd45f3c7b # bumped 2026-07-03: standards #455 (baseline consulted) + #464 (filter runs under bash -e) + #466 (scan a clean caller tree, not the .standards-checkout tooling). Other standards reusables intentionally left at 7c9db0e.
