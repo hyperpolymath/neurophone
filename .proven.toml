@@ -28,7 +28,9 @@ command = "cargo bench --locked -p neurophone-core --bench pipeline_bench"
 baselining = true
 
 # Other languages in the tree, accounted for (fail-closed language check).
-[languages.ignore.kotlin]
-reason = "android/ is the legacy Android client; it migrates to gossamer (#83) and is not built by the umbrella in release 0.1"
+[languages.ignore.java]
+reason = "android/ is the legacy Android client (Java sources); it migrates to gossamer (#83) and is not built by the umbrella in release 0.1"
 [languages.ignore.javascript]
-reason = "www/ and package.json are static site assets and tooling; no test suite exists to run"
+reason = "one script under android/ and package.json tooling; no JS test suite exists to run"
+[languages.ignore.lean]
+reason = "proofs/ Lean files are checked by `just proof-lean`; the umbrella cannot provision Lean in release 0.1 (proof witnesses are on the later list)"
