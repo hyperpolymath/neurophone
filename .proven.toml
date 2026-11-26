@@ -1,0 +1,36 @@
+# SPDX-License-Identifier: MPL-2.0
+# Manifest for neurophone (schema proven/manifest/v1); see
+# hyperpolymath/proven-cicd-and-workflows docs/PROVEN-ADOPTION.adoc.
+schema = "proven/manifest/v1"
+
+# Rust workspace. The umbrella's rust defaults for unit and build apply
+# (`cargo test --workspace --lib --bins --locked`, `cargo build --workspace
+# --all-targets --locked`). Its smoke and p2p defaults look for integration
+# tests named `smoke` and `p2p`, which this workspace does not have, so the two
+# categories below name the real tests that play those roles. No test is
+# invented and nothing is marked N/A.
+
+# Smoke: end-to-end lifecycle of the core system (init, run, query, shutdown,
+# restart) through the public API.
+[categories.smoke.rust]
+command = "cargo test --locked -p neurophone-core --test lifecycle"
+
+# P2P: the seam between the components. Sensor events flow through the
+# sensors, LSM and ESN crates into neurophone-core's pipeline.
+[categories.p2p.rust]
+command = "cargo test --locked -p neurophone-core --test integration_pipeline"
+
+# Benchmark: the core pipeline, which exercises the sensors, lsm and esn
+# crates end to end. Criterion benches in the other crates stay out of the gate
+# until a metric is chosen for each. baselining: no history on main yet.
+[bench.pipeline]
+command = "cargo bench --locked -p neurophone-core --bench pipeline_bench"
+baselining = true
+
+# Other languages in the tree, accounted for (fail-closed language check).
+[languages.ignore.java]
+reason = "android/ is the legacy Android client (Java sources); it migrates to gossamer (#83) and is not built by the umbrella in release 0.1"
+[languages.ignore.javascript]
+reason = "one script under android/ and package.json tooling; no JS test suite exists to run"
+[languages.ignore.lean]
+reason = "proofs/ Lean files are checked by `just proof-lean`; the umbrella cannot provision Lean in release 0.1 (proof witnesses are on the later list)"
