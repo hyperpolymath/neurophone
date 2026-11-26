@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: MPL-2.0
-# Trustfile — Trust boundaries and integrity invariants for rsr-template-repo
+# Trustfile — Trust boundaries and integrity invariants for neurophone
 # Author: Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 #
 # Defines what LLM/SLM agents are trusted to do without asking, and
 # integrity invariants that verify the repo has not been tampered with.
 
 @abstract:
-Trust boundaries and integrity checks for rsr-template-repo. This file
+Trust boundaries and integrity checks for neurophone. This file
 combines the trust-level definitions from the original TRUST.contractile
 with the integrity invariants from the old Trustfile.a2ml. It defines
 what AI agents may do autonomously and what requires human approval,
@@ -15,7 +15,7 @@ plus checks that verify repository integrity.
 
 ## Trust Levels
 
-The rsr-template-repo operates at trust level: maximal
+neurophone operates at trust level: maximal
 
 Trust levels:
 - maximal:    Agent may read, build, test, lint, format, heal freely.
@@ -86,3 +86,51 @@ Current trust level: maximal
 - description: No Dockerfile (use Containerfile)
 - run: test ! -f Dockerfile
 - severity: warning
+
+## Required Sections
+
+Machine-checked headings (trustfile.yml requires each `### [NAME]` below).
+
+### [META]
+- repo: hyperpolymath/neurophone
+- scope: neurosymbolic phone-sensor pipeline (LSM + ESN + LLM bridge), Rust workspace plus Android client
+- maintained-by: owner
+
+### [THREAT_MODEL]
+- assets: on-device sensor streams, Bluetooth presence secrets, LLM API credentials
+- adversaries: malicious dependency update, tampered vendored wire spec, leaked credential, hostile BLE peer
+- mitigations: frozen-spec build guard in crates/bt-presence, cargo-audit and secret-scanner in CI; SHA-pinning of actions is INCOMPLETE (about 20 tag-pinned uses: lines) and is removed by the umbrella proven workflow swap
+
+### [TRUSTFILE]
+- this-file: .machine_readable/contractiles/trust/Trustfile.a2ml
+- precedence: integrity invariants above are authoritative for agent autonomy in this repo
+
+### [ESTATE_STANDARD]
+- standards: metadatastician/standards STANDING-RULES.adoc
+- licence: MPL-2.0 for code, CC-BY-SA-4.0 for prose
+- merge-rule: SR-005 (squash, green checks, bot threads addressed, pinned head SHA)
+
+### [REPOSITORY_SPECIFIC]
+- vendored-spec: crates/bt-presence/vendor/nearby-presence.a2ml, wire-version 1, status frozen; build.rs fails loudly on any other version
+- rand-pin: rand stays on 0.9 until ndarray-rand supports 0.10
+
+### [PROOF_ARTIFACTS]
+- location: proofs/
+- status: see .machine_readable/6a2/STATE.a2ml; no proof is claimed here beyond what proofs/ contains
+
+### [CAPABILITY_GATEWAY]
+- network: LLM calls go only through crates/claude-client over HTTPS
+- sensors: access limited to crates/sensors; no raw sensor data leaves the device without the bridge
+
+### [CRYPTO_AGILITY]
+- hashing: SHA-256 or stronger; no MD5 or SHA-1 for security
+- presence-MAC: HMAC-SHA256 per the frozen wire spec; changing it is a wire-version bump
+- tls: rustls only
+
+### [SIGNATURE_BLOCK]
+- commits: unsigned by default; signed only on owner confirmation (SR-011)
+- release-signing: not yet configured
+
+### [DEPLOYMENT]
+- android: client under android/ (migrating per issue 83)
+- ci: single umbrella reusable workflow from proven-cicd-and-workflows once the gate lands
