@@ -99,7 +99,7 @@ Machine-checked headings (trustfile.yml requires each `### [NAME]` below).
 ### [THREAT_MODEL]
 - assets: on-device sensor streams, Bluetooth presence secrets, LLM API credentials
 - adversaries: malicious dependency update, tampered vendored wire spec, leaked credential, hostile BLE peer
-- mitigations: frozen-spec build guard in crates/bt-presence, cargo-audit and secret-scanner in CI, SHA-pinned actions
+- mitigations: frozen-spec build guard in crates/bt-presence, cargo-audit and secret-scanner in CI; SHA-pinning of actions is INCOMPLETE (about 20 tag-pinned uses: lines) and is removed by the umbrella proven workflow swap
 
 ### [TRUSTFILE]
 - this-file: .machine_readable/contractiles/trust/Trustfile.a2ml
