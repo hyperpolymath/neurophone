@@ -5,6 +5,10 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    ignore:
+      # ndarray-rand 0.16 bundles rand 0.9; rand 0.10 breaks esn and lsm.
+      - dependency-name: "rand"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
     # `open-pull-requests-limit: 0` suppresses routine version-update PRs
     # while leaving Dependabot SECURITY PRs flowing. The previous
     # `ignore: "*" patch` rule also silenced security PRs under GitHub\'s

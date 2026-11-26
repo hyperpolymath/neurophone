@@ -15,7 +15,7 @@ fn main() {
 
     let text =
         std::fs::read_to_string(manifest).unwrap_or_else(|e| panic!("cannot read {manifest}: {e}"));
-    // Strip SPDX license header comments which toml 0.8 cannot parse
+    // Strip SPDX header comments; toml::from_str parses a whole document (str::parse::<Value> parses a single value since toml 0.9)
     let text_no_spdx = text
         .lines()
         .skip_while(|line| {
@@ -25,8 +25,7 @@ fn main() {
         })
         .collect::<Vec<_>>()
         .join("\n");
-    let spec: toml::Value = text_no_spdx
-        .parse()
+    let spec: toml::Value = toml::from_str(&text_no_spdx)
         .unwrap_or_else(|e| panic!("{manifest} is not parseable as TOML/a2ml: {e}"));
 
     // ── Fail-loud version guard ──────────────────────────────────────────────

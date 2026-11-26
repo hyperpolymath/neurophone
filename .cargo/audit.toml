@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: MPL-2.0
+# cargo-audit configuration.
+[advisories]
+ignore = [
+  # chrono is flagged "unmaintained"; no patched release exists. It is a direct
+  # dependency of four workspace crates and a transitive one of gating-contract
+  # (conative-gating), so removal needs an upstream change first.
+  # Revisit: drop this entry when chrono publishes a successor or the
+  # workspace migrates to `time` and gating-contract follows.
+  "RUSTSEC-2026-0543",
+]
